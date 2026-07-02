@@ -11,8 +11,8 @@ then use the math to discover an unserved market and produce its blockbuster.
 3. Press **Play**. The whole game builds itself at runtime from the single `MadFact`
    GameObject (which carries the `MadFactBootstrap` component).
 
-> Everything — UI, sprites, fonts, and audio — is generated procedurally in code.
-> There are **no binary art or sound assets**, so the game is fully self-contained.
+> UI, fonts, and audio are generated procedurally in code. Imported character art lives under
+> `Resources/Characters/` and is loaded by the runtime-built UI.
 
 ## The arc (4 levels + hub)
 - **Storefront (hub):** a top-down store whose customer line grows to show the scaling
@@ -51,12 +51,13 @@ Level caps are monetary (`$40` to automate, `$110` to boot the mainframe).
   `UIFactory` (panels/buttons/sliders), `CommsBox` (Old Dude FMV vs. Robot icon), `Hud`.
 - `Levels/` — `StorefrontView`, `Level1Counter`, `Level2Robot`, `Level3Mainframe`,
   `Level4Corkboard`.
+- `Resources/Characters/` — imported, runtime-loaded character sprites grouped by role.
 - `MadFactBootstrap.cs` — builds the camera/canvas/EventSystem and drives the narrative flow.
 
 ## Notes & honest deviations from the GDD
-- **Art/photos/fonts are stylized placeholders generated in code** (dithered FMV portrait,
-  1-bit robot, procedural bevels). They establish the *Corporate Lo-Fi* look but are not
-  final hand-drawn pixel art. Real sprite/FMV assets can be dropped in later.
+- **Most art remains stylized procedural placeholder work** (dithered FMV portrait, 1-bit
+  robot, procedural bevels). The storefront queue now includes one imported movie-fan sprite,
+  establishing the path for gradually replacing the remaining placeholders.
 - **CRT look** is done with UI overlays (scanlines + vignette + phosphor tint) rather than
   URP post-processing volumes (bloom/chromatic aberration), to keep the build dependency-free
   and robust. URP is installed, so a post-processing pass can be added as polish.

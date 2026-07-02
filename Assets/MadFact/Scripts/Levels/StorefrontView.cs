@@ -11,6 +11,8 @@ namespace MadFact
     /// </summary>
     public class StorefrontView : MonoBehaviour
     {
+        static Sprite _movieFan;
+
         readonly List<GameObject> _line = new List<GameObject>();
         Button _enter;
         Text _enterLabel, _subtitle;
@@ -93,6 +95,18 @@ namespace MadFact
             var rt = (RectTransform)go.transform;
             rt.sizeDelta = new Vector2(34, 70);
             rt.anchoredPosition = new Vector2(index * 40, 0);
+
+            // Give the first spot in the queue a full character sprite while the
+            // remaining customers retain the lightweight procedural treatment.
+            if (index == 0)
+            {
+                var fan = UIFactory.Image(go.transform, "MovieFan", Color.white, MovieFanSprite());
+                fan.preserveAspect = true;
+                UIFactory.Place(UIFactory.RT(fan.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(34, 70), Vector2.zero);
+                go.AddComponent<Bob>().offset = index * 0.5f;
+                return go;
+            }
+
             var rnd = new System.Random(index * 7 + 3);
             Color shirt = new Color((float)rnd.NextDouble() * 0.6f + 0.2f, (float)rnd.NextDouble() * 0.6f + 0.2f, (float)rnd.NextDouble() * 0.6f + 0.2f);
             Color skin = new Color(0.95f, 0.78f + (float)rnd.NextDouble() * 0.1f, 0.62f);
@@ -102,6 +116,26 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(head.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(22, 22), new Vector2(0, 40));
             go.AddComponent<Bob>().offset = index * 0.5f;
             return go;
+        }
+
+        static Sprite MovieFanSprite()
+        {
+            if (_movieFan != null) return _movieFan;
+
+            var texture = Resources.Load<Texture2D>("Characters/Customers/MovieFan");
+            if (texture == null) return Theme.Solid;
+
+            texture.filterMode = FilterMode.Point;
+            // Crop the transparent staging canvas so preserveAspect fits the
+            // character itself to the same 34 x 70 footprint as the queue.
+            var crop = new Rect(
+                texture.width * 0.3365f,
+                texture.height * 0.1268f,
+                texture.width * 0.3238f,
+                texture.height * 0.7887f);
+            _movieFan = Sprite.Create(texture, crop, new Vector2(0.5f, 0f), 100f);
+            _movieFan.name = "Customer Movie Fan";
+            return _movieFan;
         }
 
         public void SetLine(int n)

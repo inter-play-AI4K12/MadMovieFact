@@ -5,7 +5,7 @@ namespace MadFact
     /// <summary>
     /// "Corporate Lo-Fi" art direction: 1990s bureaucratic tech, muted fluorescent
     /// lighting, heavy plastics, manila folders, chunky Windows-95 bevels and a glowing
-    /// CRT for the Mainframe. All visuals are generated procedurally (no binary assets)
+    /// CRT for the Mainframe. Core UI visuals are generated procedurally
     /// so the game is fully self-contained.
     /// </summary>
     public static class Theme

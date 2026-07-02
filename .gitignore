@@ -10,6 +10,7 @@
 [Rr]ecordings/
 .consulo/
 *.tmp
+/tmp/
 
 # ---------------- IDE / project files ----------------
 .vs/

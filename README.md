@@ -12,9 +12,9 @@ algorithm**, then use the math to discover an unserved audience and produce its 
 2. Open the scene **`Assets/MadFact/MadFact.unity`**.
 3. Press **Play**.
 
-The entire game builds itself at runtime from the single `MadFact` GameObject
-(`MadFactBootstrap`). All UI, sprites, fonts, and audio are generated procedurally in code —
-there are **no binary art or sound assets**.
+The game builds itself at runtime from the single `MadFact` GameObject
+(`MadFactBootstrap`). UI, fonts, and audio are generated procedurally in code, while imported
+character art is organized under `Assets/MadFact/Resources/Characters/`.
 
 ## The arc
 - **Storefront** — a video store whose customer line grows to show the scaling bottleneck.
