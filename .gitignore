@@ -58,3 +58,6 @@ UserSettings/
 /Assets/SkySeries Freebie.meta
 /Assets/VRTemplateAssets/
 /Assets/VRTemplateAssets.meta
+
+# Unity crash-recovery autosave scenes
+/Assets/_Recovery/
