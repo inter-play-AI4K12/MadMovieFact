@@ -48,6 +48,8 @@ crashlytics-build.properties
 .mcp.json
 UserSettings/
 .claude/
+.agents/
+.codex/
 
 # ---------------- Large unrelated sample asset packs (not used by MadFact) ----------------
 /Assets/Furniture Mega Pack/
