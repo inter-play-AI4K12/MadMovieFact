@@ -49,7 +49,18 @@ namespace MadFact
             // retained as a safety net for empty test scenes and rapid prototyping.
             bool authored = Storefront != null && Hud != null && Comms != null &&
                 L1 != null && L2 != null && L3 != null && L4 != null;
-            if (authored) RuntimeSkin.Apply(_canvas.transform);
+            if (authored)
+            {
+                RuntimeSkin.Apply(_canvas.transform);
+                // Levels 1-2 are iterating quickly in code right now. Rebuild them from
+                // script so layout and button wiring always match the current source —
+                // the prefab captures drift out of date (e.g. a Next button serialized
+                // half off-screen where the raycaster can't reach it).
+                Destroy(L1.gameObject);
+                L1 = Level1Counter.Create(_canvas.transform);
+                Destroy(L2.gameObject);
+                L2 = Level2Robot.Create(_canvas.transform);
+            }
             if (!authored)
             {
                 Storefront = StorefrontView.Create(_canvas.transform);
@@ -85,6 +96,7 @@ namespace MadFact
         {
             if (GameManager.I == null) new GameObject("GameManager").AddComponent<GameManager>();
             if (AudioTension.I == null) new GameObject("Audio").AddComponent<AudioTension>();
+            if (MusicManager.I == null) new GameObject("Music").AddComponent<MusicManager>();
             if (Object.FindAnyObjectByType<AudioListener>() == null) AudioTension.I.gameObject.AddComponent<AudioListener>();
         }
 

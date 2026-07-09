@@ -8,6 +8,8 @@ namespace MadFact
     /// Level 1 — The Manual Era. The player reviews a physical customer file, may ask a
     /// limited number of clarifying questions (action economy), then recommends a tape.
     /// Payment scales with how well the recommendation matches the customer's true taste.
+    /// After the very first recommendation, Mr. Pellings breaks in to explain WHY the
+    /// customer reacted the way they did — feature matching, said out loud.
     /// The growing line proves manual labour can't scale.
     /// </summary>
     public class Level1Counter : MonoBehaviour
@@ -24,6 +26,7 @@ namespace MadFact
         int _questionsLeft;
         int _served;
         bool _recommended;
+        bool _pellingsExplained;   // the one-time "here's why they liked/hated it" lesson
         readonly System.Random _rng = new System.Random(12345);
 
         void Awake()
@@ -77,10 +80,10 @@ namespace MadFact
             BuildRecommend(window.transform);
 
             _result = UIFactory.Text(window.transform, "Result", "", 16, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(_result.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(600, 28), new Vector2(0, 50));
+            UIFactory.Place(UIFactory.RT(_result.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(600, 28), new Vector2(-60, 50));
 
             _nextBtn = UIFactory.Button(window.transform, "Next", "NEXT CUSTOMER", NextCustomer, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
-            UIFactory.Place(UIFactory.RT(_nextBtn.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(220, 36), new Vector2(0, 14));
+            UIFactory.Place(UIFactory.RT(_nextBtn.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(220, 36), new Vector2(-60, 14));
             UIFactory.ButtonIcon(_nextBtn, ArtSprites.Next(), 24f);
             _nextBtn.gameObject.SetActive(false);
 
@@ -153,11 +156,17 @@ namespace MadFact
             {
                 int idx = i;
                 var m = GameData.Movies[i];
-                var b = UIFactory.Button(window.transform, "M" + i, m.Title, () => Recommend(idx), Theme.Plastic, 14, Theme.SystemSans);
-                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 30), new Vector2(610, -68 - i * 36));
-                UIFactory.ButtonIcon(b, ArtSprites.MovieCover(i), 24f);
-                var t = b.GetComponentInChildren<Text>(); t.alignment = TextAnchor.MiddleLeft;
-                var rt = UIFactory.RT(t.gameObject); rt.offsetMin = new Vector2(36, rt.offsetMin.y);
+                var b = UIFactory.Button(window.transform, "M" + i, m.Title, () => Recommend(idx), Theme.Plastic, 13, Theme.SystemSans);
+                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 58), new Vector2(610, -68 - i * 64));
+
+                // a real poster thumbnail, tall enough to actually read the art
+                var poster = UIFactory.Image(b.transform, "Poster", Color.white, ArtSprites.MovieCover(i), Image.Type.Simple, false);
+                poster.preserveAspect = true;
+                UIFactory.Place(UIFactory.RT(poster.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(40, 52), new Vector2(6, 0));
+
+                var t = b.GetComponentInChildren<Text>();
+                t.alignment = TextAnchor.MiddleLeft;
+                var rt = UIFactory.RT(t.gameObject); rt.offsetMin = new Vector2(54, rt.offsetMin.y);
                 _movieButtons.Add(b);
             }
         }
@@ -180,9 +189,11 @@ namespace MadFact
             _notes.text = "";
             _nextBtn.gameObject.SetActive(false);
 
-            // pick a customer (rotate through regulars, occasionally a gap customer to confuse)
+            // pick a customer — anyone but the person who was just served
             var pool = GameData.Customers;
-            _cust = pool[_rng.Next(pool.Count)];
+            int pick;
+            do { pick = _rng.Next(pool.Count); } while (pool.Count > 1 && pool[pick] == _cust);
+            _cust = pool[pick];
 
             _name.text = _cust.Name;
             _history.text = "HISTORY: " + _cust.HistoryGenre + " tapes";
@@ -244,6 +255,14 @@ namespace MadFact
             _served++;
             _nextBtn.gameObject.SetActive(true);
 
+            // Mr. Pellings breaks in ONCE, after the very first sale, to teach the lesson:
+            // taste is a set of features, and matching them is the whole job.
+            if (!_pellingsExplained)
+            {
+                _pellingsExplained = true;
+                ShowPellingsLesson(movie, tier);
+            }
+
             // upgrade check
             if (GameManager.I.Money >= GameManager.Level1Goal && !MadFactBootstrap.I.Level1Cleared)
             {
@@ -251,6 +270,50 @@ namespace MadFact
                 _nextBtn.gameObject.SetActive(false);
                 Invoke(nameof(TriggerUpgrade), 1.2f);
             }
+        }
+
+        /// <summary>Explain, in Pellings' voice, why this customer reacted the way they did.</summary>
+        void ShowPellingsLesson(MovieData movie, SaleTier tier)
+        {
+            // find the customer's strongest craving and how much of it the tape delivers
+            int axis = 0;
+            for (int d = 1; d < Latent.Dim; d++) if (_cust.TrueVibe[d] > _cust.TrueVibe[axis]) axis = d;
+            int cv = Mathf.RoundToInt(Mathf.Clamp01(_cust.TrueVibe[axis]) * 10f);
+            int mv = Mathf.RoundToInt(Mathf.Clamp01(movie.Vibe[axis]) * 10f);
+            string vibe = Latent.Names[axis];
+
+            string[] lines;
+            switch (tier)
+            {
+                case SaleTier.Perfect:
+                    lines = new[]
+                    {
+                        $"Ha! See that smile? That right there is a PERFECT match, kid.",
+                        $"Look at the file: what {_cust.Name} craves most is {vibe} — about {cv} out of 10.",
+                        $"And '{movie.Title}' is packed with it — {mv} out of 10. Taste met tape.",
+                        "That's the whole job. Match what they LOVE, not just what they say."
+                    };
+                    break;
+                case SaleTier.Close:
+                    lines = new[]
+                    {
+                        $"Not bad — {_cust.Name} paid, but did you see that shrug? They weren't thrilled.",
+                        $"Their file says they crave {vibe} at {cv} out of 10.",
+                        $"'{movie.Title}' only delivers {mv} out of 10 of it. Close... but close pays five bucks.",
+                        "Study the HISTORY, ask a question or two, and hunt for the PERFECT tape."
+                    };
+                    break;
+                default:
+                    lines = new[]
+                    {
+                        $"Hold up, kid. {_cust.Name} stormed out — let me show you what went wrong.",
+                        $"Their file says what they crave most is {vibe} — about {cv} out of 10.",
+                        $"'{movie.Title}'? It's got {mv} out of 10 of that. Wrong tape, angry customer, refund.",
+                        "Read the HISTORY, read what they WANT, ask your questions. THEN match."
+                    };
+                    break;
+            }
+            MadFactBootstrap.I.Comms.Show(Speaker.OldDude, lines);
         }
 
         void TriggerUpgrade()
