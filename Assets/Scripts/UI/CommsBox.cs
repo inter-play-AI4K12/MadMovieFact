@@ -134,6 +134,25 @@ namespace MadFact
             NextLine();
         }
 
+        public void ShowCustomer(CustomerData customer, string[] lines, Action onComplete = null)
+        {
+            gameObject.SetActive(true);
+            transform.SetAsLastSibling();
+            _speaker = Speaker.System;
+            _onComplete = onComplete;
+            _queue.Clear();
+            foreach (var l in lines) _queue.Enqueue(l);
+
+            _name.text = customer.Name + "  (customer)";
+            _name.font = Theme.Typewriter;
+            _body.font = Theme.Typewriter;
+            _portrait.sprite = ArtSprites.CustomerPortrait(customer.Name);
+            _portrait.color = Color.white;
+            _titleText.text = "CUSTOMER FOLLOW-UP";
+            _instant = false;
+            NextLine();
+        }
+
         public void Hide() { gameObject.SetActive(false); }
 
         void NextLine()

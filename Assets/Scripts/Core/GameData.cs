@@ -69,6 +69,15 @@ namespace MadFact
         // optimizer surfaces the Spook-Comedy cluster as uniformly low.
         public static readonly int[] MatrixCustomers = { 0, 1, 2, 3, 4 }; // Wendell, Dot, Hank, Priya, Tibbs
 
+        public static int CustomerIndex(string name)
+        {
+            for (int i = 0; i < Customers.Count; i++)
+                if (Customers[i].Name == name) return i;
+            return 0;
+        }
+
+        public static CustomerData CustomerByName(string name) => Customers[CustomerIndex(name)];
+
         /// <summary>Ground-truth star rating (1..5) of a customer for a movie.</summary>
         public static float TrueRating(CustomerData c, MovieData m) => MfMath.Predict(c.TrueVibe, m.Vibe);
 

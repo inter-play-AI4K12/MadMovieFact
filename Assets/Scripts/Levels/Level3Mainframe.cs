@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace MadFact
 {
     /// <summary>
-    /// Level 3 — The Algorithm Era (Matrix Factorization). The CRT Mainframe shows a
+    /// Level 4 — Collaborative Filtering (Matrix Factorization). The CRT Mainframe shows a
     /// Customers x Movies grid. Each known cell has a Target and a live Guess = 1 + 4·dot(U,V).
     /// Clicking a row (customer) or column (movie) opens four plastic latent-feature sliders.
     /// Tuning one cell breaks others (red glow + audio static): the player feels the coupling.
@@ -415,10 +415,10 @@ namespace MadFact
             yield return new WaitForSecondsRealtime(1.0f);
             HighlightUnderserved();
             yield return new WaitForSecondsRealtime(0.6f);
-            if (!MadFactBootstrap.I.Level3Cleared)
+            if (!MadFactBootstrap.I.Level4Cleared)
             {
-                MadFactBootstrap.I.Level3Cleared = true;
-                MadFactBootstrap.I.OnLevel3Goal();
+                MadFactBootstrap.I.Level4Cleared = true;
+                MadFactBootstrap.I.OnLevel4Goal();
             }
             else _optimizeBtn.interactable = true;
         }

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MadFact
 {
     /// <summary>
-    /// The live Matrix Factorization model behind the Mainframe (Level 3).
+    /// The live Matrix Factorization model behind the Mainframe (Level 4).
     /// Rows = customers (latent taste U, editable), Cols = movies (latent features V, editable).
     /// guess(i,j) = 1 + scale * dot(U_i, V_j). The Optimizer runs real gradient descent
     /// over the known cells to minimise squared error.

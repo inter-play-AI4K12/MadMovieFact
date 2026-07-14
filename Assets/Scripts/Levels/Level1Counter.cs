@@ -20,11 +20,13 @@ namespace MadFact
         [SerializeField] Image _portrait;
         [SerializeField] Text _portraitInitial;
 
+        LevelScenario _scenario;
+        CustomerVisit _visit;
         CustomerData _cust;
         int _questionsLeft;
+        int _questionsAsked;
         int _served;
         bool _recommended;
-        readonly System.Random _rng = new System.Random(12345);
 
         void Awake()
         {
@@ -176,18 +178,22 @@ namespace MadFact
         {
             _recommended = false;
             _questionsLeft = 2;
+            _questionsAsked = 0;
             _result.text = "";
-            _notes.text = "";
             _nextBtn.gameObject.SetActive(false);
 
-            // pick a customer (rotate through regulars, occasionally a gap customer to confuse)
-            var pool = GameData.Customers;
-            _cust = pool[_rng.Next(pool.Count)];
+            // Scenarios own the authored task; CustomerData owns the persistent person.
+            // This is the first step away from random POC customers toward returning,
+            // consequence-bearing customer arcs.
+            _scenario = ScenarioDatabase.NextLevel1Manual(GameManager.I.Run);
+            _visit = _scenario.Visit;
+            _cust = _visit.Customer;
 
             _name.text = _cust.Name;
-            _history.text = "HISTORY: " + _cust.HistoryGenre + " tapes";
-            _stated.text = "WANTS: a " + _cust.StatedGenre + " movie";
-            _quip.text = "“" + _cust.Quip + "”";
+            _history.text = "HISTORY: " + _visit.HistoryGenre + " tapes";
+            _stated.text = "WANTS: a " + _visit.StatedGenre + " movie";
+            _quip.text = "“" + _visit.DemandLine + "”";
+            _notes.text = BuildInitialNotes(_visit);
             var portrait = ArtSprites.CustomerPortrait(_cust.Name);
             bool hasPortrait = portrait != Theme.Disc;
             _portrait.sprite = portrait;
@@ -204,6 +210,21 @@ namespace MadFact
             MadFactBootstrap.I.Storefront.SetSubtitle($"The line is {2 + _served} deep and growing...");
         }
 
+        string BuildInitialNotes(CustomerVisit visit)
+        {
+            string notes = "";
+            if (visit.ReturnVisit)
+            {
+                int visits = GameManager.I.Run.VisitsFor(visit.Customer.Name);
+                if (visits > 0)
+                    notes += $"- RETURN VISIT: last satisfaction {GameManager.I.Run.LastSatisfactionFor(visit.Customer.Name):0.0}/5\n";
+                else
+                    notes += "- RETURN VISIT: claims to know the store\n";
+            }
+            if (!string.IsNullOrEmpty(visit.FileNote)) notes += "- " + visit.FileNote + "\n";
+            return notes;
+        }
+
         void UpdateQLeft()
         {
             _qLeft.text = _questionsLeft > 0 ? $"{_questionsLeft} questions remaining" : "No questions left — recommend now";
@@ -214,6 +235,7 @@ namespace MadFact
         {
             if (_questionsLeft <= 0 || _recommended) return;
             _questionsLeft--;
+            _questionsAsked++;
             float w = _cust.TrueVibe[(int)_qAxis[qi]];
             string ans = w > 0.66f ? "“Oh yes, absolutely!”" : w > 0.33f ? "“Eh, it's fine I guess.”" : "“Ugh, no thank you.”";
             _notes.text += $"Q: {_qText[qi]}\n   {ans}\n";
@@ -237,19 +259,49 @@ namespace MadFact
             // payout at the register position (top-centre-ish)
             Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
             var tier = GameManager.I.RecordSale(error, pop);
+            GameManager.I.Run.RecordRecommendation(_scenario, movie, tier, satisfaction, _questionsAsked);
             string stars = new string('★', Mathf.RoundToInt(satisfaction)) + new string('·', 5 - Mathf.RoundToInt(satisfaction));
             _result.text = $"{Economy.TierLabel(tier)}  —  {movie.Title}  [{stars}]";
             _result.color = Economy.TierColor(tier);
 
             _served++;
-            _nextBtn.gameObject.SetActive(true);
 
             // upgrade check
             if (GameManager.I.Money >= GameManager.Level1Goal && !MadFactBootstrap.I.Level1Cleared)
             {
                 MadFactBootstrap.I.Level1Cleared = true;
                 _nextBtn.gameObject.SetActive(false);
-                Invoke(nameof(TriggerUpgrade), 1.2f);
+                PlayScenarioOutcome(tier, TriggerUpgrade);
+                return;
+            }
+
+            PlayScenarioOutcome(tier, () => _nextBtn.gameObject.SetActive(true));
+        }
+
+        void PlayScenarioOutcome(SaleTier tier, System.Action onComplete)
+        {
+            var outcome = _scenario != null ? _scenario.OutcomeFor(tier) : null;
+            if (outcome == null || outcome.Lines == null || outcome.Lines.Length == 0)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            GameManager.I.Run.SetFlag(outcome.FlagToSet);
+            switch (outcome.Target)
+            {
+                case DialogueTarget.Customer:
+                    MadFactBootstrap.I.Comms.ShowCustomer(_cust, outcome.Lines, onComplete);
+                    break;
+                case DialogueTarget.OldDude:
+                    MadFactBootstrap.I.Comms.Show(Speaker.OldDude, outcome.Lines, onComplete);
+                    break;
+                case DialogueTarget.Robot:
+                    MadFactBootstrap.I.Comms.Show(Speaker.Robot, outcome.Lines, onComplete);
+                    break;
+                default:
+                    MadFactBootstrap.I.Comms.Show(Speaker.System, outcome.Lines, onComplete);
+                    break;
             }
         }
 

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace MadFact
 {
     /// <summary>
-    /// Level 4 — The Reward & Insight. The optimized matrix revealed an underserved
+    /// Level 5 — Market Gap Research & Movie Making. The optimized matrix revealed an underserved
     /// demographic (high Spooky + high Funny, no inventory match). On the Corkboard the
     /// player drags magazine-cutout stickers — each carrying latent weights — to design a
     /// movie poster that targets that gap. Match the gap vibe to greenlight the blockbuster.
