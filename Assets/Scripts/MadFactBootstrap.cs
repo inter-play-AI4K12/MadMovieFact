@@ -7,8 +7,8 @@ namespace MadFact
 {
     /// <summary>
     /// The conductor. Drop this on a single empty GameObject in an empty scene and it builds
-    /// the entire MadFact game: managers, audio, camera, canvas, all four levels, and the
-    /// narrative flow that ties them together.
+    /// the entire MadFact game: managers, audio, camera, canvas, all five learning levels,
+    /// and the narrative flow that ties them together.
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public class MadFactBootstrap : MonoBehaviour
@@ -20,10 +20,13 @@ namespace MadFact
         public CommsBox Comms;
         public Level1Counter L1;
         public Level2Robot L2;
+        public Level3ContentBased L3Content;
         public Level3Mainframe L3;
         public Level4Corkboard L4;
 
-        public bool Level1Cleared, Level2Cleared, Level3Cleared;
+        public bool Level1Cleared, Level2Cleared, Level3Cleared, Level4Cleared;
+        [Tooltip("-1 = normal full-game intro, 0 = storefront hub, 1..5 = start directly in that dedicated level scene.")]
+        public int StartPhaseOverride = -1;
         int _currentLevel = 1;
         bool _built;
 
@@ -46,33 +49,32 @@ namespace MadFact
             EnsureCanvasAndEventSystem();
 
             // Production scenes provide serialized prefab instances. The factory path is
-            // retained as a safety net for empty test scenes and rapid prototyping.
-            bool authored = Storefront != null && Hud != null && Comms != null &&
-                L1 != null && L2 != null && L3 != null && L4 != null;
-            if (authored)
-            {
-                RuntimeSkin.Apply(_canvas.transform);
-                // Levels 1-2 are iterating quickly in code right now. Rebuild them from
-                // script so layout and button wiring always match the current source —
-                // the prefab captures drift out of date (e.g. a Next button serialized
-                // half off-screen where the raycaster can't reach it).
-                Destroy(L1.gameObject);
-                L1 = Level1Counter.Create(_canvas.transform);
-                Destroy(L2.gameObject);
-                L2 = Level2Robot.Create(_canvas.transform);
-            }
-            if (!authored)
-            {
-                Storefront = StorefrontView.Create(_canvas.transform);
-                Hud = Hud.Create(_canvas.transform);
-                L1 = Level1Counter.Create(_canvas.transform);
-                L2 = Level2Robot.Create(_canvas.transform);
-                L3 = Level3Mainframe.Create(_canvas.transform);
-                L4 = Level4Corkboard.Create(_canvas.transform);
-                Comms = CommsBox.Create(_canvas.transform);
-            }
+            // retained as a safety net for empty test scenes and for newly-added levels.
+            bool hasAuthoredContent = Storefront != null || Hud != null || Comms != null ||
+                L1 != null || L2 != null || L3Content != null || L3 != null || L4 != null;
+            if (hasAuthoredContent) RuntimeSkin.Apply(_canvas.transform);
 
-            Intro();
+            // Levels 1-2 are iterating quickly in code right now. Rebuild them from script
+            // so layout and button wiring always match the current source even when a
+            // scene's authored instance has drifted out of date (e.g. a Next button
+            // serialized half off-screen where the raycaster can't reach it).
+            if (L1 != null) Destroy(L1.gameObject);
+            if (L2 != null) Destroy(L2.gameObject);
+            L1 = Level1Counter.Create(_canvas.transform);
+            L2 = Level2Robot.Create(_canvas.transform);
+
+            if (Storefront == null) Storefront = StorefrontView.Create(_canvas.transform);
+            if (Hud == null) Hud = Hud.Create(_canvas.transform);
+            if (L3Content == null) L3Content = Level3ContentBased.Create(_canvas.transform);
+            if (L3 == null) L3 = Level3Mainframe.Create(_canvas.transform);
+            if (L4 == null) L4 = Level4Corkboard.Create(_canvas.transform);
+            if (Comms == null) Comms = CommsBox.Create(_canvas.transform);
+
+            // Dedicated production scenes set StartPhaseOverride so designers can open a
+            // level scene and immediately see/play that level in context. The legacy
+            // all-in-one scene leaves this at -1 and runs the full intro/hub flow.
+            if (StartPhaseOverride >= 0) StartDedicatedScene(StartPhaseOverride);
+            else Intro();
         }
 
         // ---- Scene plumbing ----------------------------------------------
@@ -127,16 +129,11 @@ namespace MadFact
         // ---- Narrative flow ----------------------------------------------
         void Intro()
         {
+            if (!GameManager.I.HasActiveRun) GameManager.I.ResetForNewGame();
             GameManager.I.GoTo(Phase.Storefront);
             Storefront.SetLine(2);
             Storefront.SetEnterVisible(false);
-            Comms.Show(Speaker.OldDude, new[]
-            {
-                "So. You actually showed up to claim the place. PELLINGS VIDEO. My life's work.",
-                "Forty years I matched folks to tapes by hand. My back's done. The shop's yours now, kid.",
-                "Problem is... the line never stops growing, and nobody can guess what people want.",
-                "Figure it out. Match the customer to the tape. Make me proud. And make some money."
-            }, () =>
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.IntroOldDude, () =>
             {
                 Storefront.SetEnterVisible(true);
                 GoStorefront();
@@ -145,7 +142,7 @@ namespace MadFact
 
         public void GoStorefront()
         {
-            L1.Close(); L2.Close(); L3.Close(); L4.Close();
+            CloseAllLevels();
             GameManager.I.GoTo(Phase.Storefront);
 
             switch (_currentLevel)
@@ -161,17 +158,49 @@ namespace MadFact
                     Storefront.SetSubtitle("LEVEL 2 — the line is huge. Program rules and let the robot serve.");
                     break;
                 case 3:
-                    Storefront.SetLine(16);
-                    Storefront.SetEnter("POWER ON THE MAINFRAME", EnterCurrentLevel);
-                    Storefront.SetSubtitle("LEVEL 3 — rules failed. Boot the Matrix Factorization mainframe.");
+                    Storefront.SetLine(12);
+                    Storefront.SetEnter("SORT BY MOVIE FEATURES", EnterCurrentLevel);
+                    Storefront.SetSubtitle("LEVEL 3 — content-based recommendation. Match item features to stated needs.");
                     break;
                 case 4:
+                    Storefront.SetLine(16);
+                    Storefront.SetEnter("POWER ON THE MAINFRAME", EnterCurrentLevel);
+                    Storefront.SetSubtitle("LEVEL 4 — collaborative filtering. Learn hidden taste from the matrix.");
+                    break;
+                case 5:
                     Storefront.SetLine(0);
                     Storefront.SetEnter("GO TO THE CORKBOARD", EnterCurrentLevel);
-                    Storefront.SetSubtitle("LEVEL 4 — you found a market gap. Go make the movie.");
+                    Storefront.SetSubtitle("LEVEL 5 — market gap research. Make the movie people are starving for.");
                     break;
             }
             Storefront.SetEnterVisible(true);
+        }
+
+        void CloseAllLevels()
+        {
+            if (L1 != null) L1.Close();
+            if (L2 != null) L2.Close();
+            if (L3Content != null) L3Content.Close();
+            if (L3 != null) L3.Close();
+            if (L4 != null) L4.Close();
+        }
+
+        void StartDedicatedScene(int sceneLevel)
+        {
+            _currentLevel = Mathf.Clamp(sceneLevel, 0, 5);
+            Storefront.SetEnterVisible(false);
+
+            if (_currentLevel == 0)
+            {
+                GameManager.I.PrepareStandaloneLevel(1);
+                _currentLevel = 1;
+                GoStorefront();
+                return;
+            }
+
+            GameManager.I.PrepareStandaloneLevel(_currentLevel);
+            CloseAllLevels();
+            EnterCurrentLevel();
         }
 
         void EnterCurrentLevel()
@@ -181,63 +210,43 @@ namespace MadFact
             {
                 case 1: GameManager.I.GoTo(Phase.Level1); L1.Open(); break;
                 case 2: GameManager.I.GoTo(Phase.Level2); L2.Open(); break;
-                case 3: GameManager.I.GoTo(Phase.Level3); L3.Open(); break;
-                case 4: GameManager.I.GoTo(Phase.Level4); L4.Open(); break;
+                case 3: GameManager.I.GoTo(Phase.Level3); L3Content.Open(); break;
+                case 4: GameManager.I.GoTo(Phase.Level4); L3.Open(); break;
+                case 5: GameManager.I.GoTo(Phase.Level5); L4.Open(); break;
             }
         }
 
         public void OnLevel1Goal()
         {
             _currentLevel = 2;
-            Comms.Show(Speaker.OldDude, new[]
-            {
-                $"${GameManager.I.Money}! Look at you. But your hand's cramping and the line's out the door.",
-                "My nephew left a robot assistant in the back. Beige thing. Talks funny.",
-                "Teach it some rules. Let IT do the matching. That's called AUTOMATION, kid."
-            }, () => Comms.Show(Speaker.Robot, new[]
-            {
-                "GREETINGS PROPRIETOR. I AM UNIT B-EIGE.",
-                "PROVIDE ME WITH IF/THEN RULES. I WILL SERVE THE LINE WITHOUT REST.",
-                "WARNING: I DO EXACTLY WHAT YOU SAY. NOTHING MORE."
-            }, GoStorefront));
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.Level1GoalOldDude(GameManager.I.Money),
+                () => Comms.Show(Speaker.Robot, NarrativeDatabase.Level1GoalRobot, GoStorefront));
         }
 
         public void OnLevel2Goal()
         {
             _currentLevel = 3;
-            Comms.Show(Speaker.Robot, new[]
-            {
-                "PROPRIETOR. MY RULES ARE TOO RIGID FOR REAL PEOPLE.",
-                "TASTE IS CONTINUOUS. RULES ARE NOT. I HAVE REACHED MY LIMIT."
-            }, () => Comms.Show(Speaker.OldDude, new[]
-            {
-                "There's an old mainframe in the basement. Cost me a fortune in '91.",
-                "It doesn't use rules. It learns hidden 'vibes' — numbers behind the taste.",
-                "They call it MATRIX FACTORIZATION. Go on. Boot it up."
-            }, GoStorefront));
+            Comms.Show(Speaker.Robot, NarrativeDatabase.Level2GoalRobot,
+                () => Comms.Show(Speaker.OldDude, NarrativeDatabase.Level2GoalOldDude, GoStorefront));
         }
 
-        public void OnLevel3Goal()
+        public void OnContentBasedGoal()
         {
             _currentLevel = 4;
-            Comms.Show(Speaker.OldDude, new[]
-            {
-                "You see that cluster? Rates EVERYTHING we stock a one or a two.",
-                "Look at the math — their vibe is high SPOOKY and high FUNNY. Spook-comedy!",
-                "We never stocked a single one. That's not a problem, kid. That's a GOLDMINE.",
-                "We've got the budget. Go to the corkboard and MAKE the movie they're starving for."
-            }, () => { GoStorefront(); L4.Open(); GameManager.I.GoTo(Phase.Level4); });
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.ContentBasedCompleteOldDude, GoStorefront);
+        }
+
+        public void OnLevel4Goal()
+        {
+            _currentLevel = 5;
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.Level4GoalOldDude,
+                () => { GoStorefront(); L4.Open(); GameManager.I.GoTo(Phase.Level5); });
         }
 
         public void OnGreenlit()
         {
             GameManager.I.GoTo(Phase.Win);
-            Comms.Show(Speaker.OldDude, new[]
-            {
-                "THAT'S IT. That's the one. Spooky AND funny — exactly what the numbers screamed for.",
-                "You went from matching tapes by hand to PRODUCING the blockbuster the data predicted.",
-                "From manual, to rules, to the algorithm. You learned to feel the math, kid. Proud of you."
-            }, ShowWin);
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.GreenlitOldDude, ShowWin);
         }
 
         void ShowWin()
@@ -251,10 +260,10 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(UIFactory.Text(card.transform, "t", "★  BLOCKBUSTER GREENLIT  ★", 22, Theme.TitleText, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold).gameObject),
                 new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(500, 32), new Vector2(0, -6));
             UIFactory.Place(UIFactory.RT(UIFactory.Text(card.transform, "b",
-                $"You inherited a failing store and rebuilt it with math.\n\nFinal balance:  ${GameManager.I.Money}\n\nManual  →  Rules  →  Matrix Factorization  →  Insight\n\nYou didn't just compute the error. You FELT it.",
+                $"You inherited a failing store and rebuilt it with math.\n\nFinal balance:  ${GameManager.I.Money}\n\nManual  →  Rules  →  Content  →  Collaborative Filtering  →  Insight\n\nYou didn't just compute the error. You FELT it.",
                 16, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperCenter, true).gameObject),
                 new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(500, 190), new Vector2(0, -54));
-            var back = UIFactory.Button(card.transform, "Back", "RETURN TO STORE", () => { _winPanel.SetActive(false); _currentLevel = 4; GoStorefront(); }, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
+            var back = UIFactory.Button(card.transform, "Back", "RETURN TO STORE", () => { _winPanel.SetActive(false); _currentLevel = 5; GoStorefront(); }, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
             UIFactory.Place(UIFactory.RT(back.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(220, 40), new Vector2(0, 24));
             UIFactory.ButtonIcon(back, ArtSprites.Back(), 28f);
         }

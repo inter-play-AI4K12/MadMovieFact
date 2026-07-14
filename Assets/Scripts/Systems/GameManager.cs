@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MadFact
 {
-    public enum Phase { Boot, Storefront, Level1, Level2, Level3, Level4, Win }
+    public enum Phase { Boot, Storefront, Level1, Level2, Level3, Level4, Level5, Win }
 
     /// <summary>Central game state: money, current phase, the shared matrix model.</summary>
     public class GameManager : MonoBehaviour
@@ -13,6 +13,8 @@ namespace MadFact
         public int Money { get; private set; }
         public Phase Current { get; private set; } = Phase.Boot;
         public MfModel Matrix { get; private set; }
+        public RunState Run { get; private set; }
+        public bool HasActiveRun { get; private set; }
 
         // Highest level the player has unlocked (lets them revisit the hub).
         public int HighestUnlocked = 1;
@@ -30,7 +32,45 @@ namespace MadFact
         {
             if (I != null && I != this) { Destroy(gameObject); return; }
             I = this;
+            DontDestroyOnLoad(gameObject);
             Matrix = new MfModel();
+            Run = new RunState();
+        }
+
+        /// <summary>
+        /// Start a clean playthrough from the menu or full-game scene. This intentionally
+        /// recreates the learning model and run memory while keeping the persistent manager.
+        /// </summary>
+        public void ResetForNewGame()
+        {
+            Money = 0;
+            Current = Phase.Boot;
+            Matrix = new MfModel();
+            Run = new RunState();
+            HighestUnlocked = 1;
+            HasActiveRun = true;
+            OnMoneyChanged?.Invoke(Money, 0);
+            OnPhaseChanged?.Invoke(Current);
+        }
+
+        /// <summary>
+        /// Seed enough state for opening an individual level scene directly in the editor.
+        /// If the player arrived from the menu/full game, the existing run is preserved.
+        /// </summary>
+        public void PrepareStandaloneLevel(int level)
+        {
+            if (HasActiveRun)
+            {
+                HighestUnlocked = Mathf.Max(HighestUnlocked, Mathf.Clamp(level, 1, 5));
+                return;
+            }
+
+            Money = level <= 1 ? 0 : level == 2 ? Level1Goal : Level2Goal;
+            Matrix = new MfModel();
+            Run = new RunState();
+            HighestUnlocked = Mathf.Clamp(level, 1, 5);
+            HasActiveRun = true;
+            OnMoneyChanged?.Invoke(Money, 0);
         }
 
         public void SetMoney(int value)
@@ -74,10 +114,13 @@ namespace MadFact
             if (p == Phase.Level2) HighestUnlocked = Mathf.Max(HighestUnlocked, 2);
             if (p == Phase.Level3) HighestUnlocked = Mathf.Max(HighestUnlocked, 3);
             if (p == Phase.Level4) HighestUnlocked = Mathf.Max(HighestUnlocked, 4);
+            if (p == Phase.Level5) HighestUnlocked = Mathf.Max(HighestUnlocked, 5);
             OnPhaseChanged?.Invoke(p);
         }
 
         public bool Level2Unlocked => Money >= Level1Goal || HighestUnlocked >= 2;
         public bool Level3Unlocked => Money >= Level2Goal || HighestUnlocked >= 3;
+        public bool Level4Unlocked => HighestUnlocked >= 4;
+        public bool Level5Unlocked => HighestUnlocked >= 5;
     }
 }

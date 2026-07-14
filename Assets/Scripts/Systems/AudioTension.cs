@@ -29,6 +29,7 @@ namespace MadFact
         {
             if (I != null && I != this) { Destroy(gameObject); return; }
             I = this;
+            DontDestroyOnLoad(gameObject);
 
             _brown    = MakeBrownNoise(2.0f);
             _clunk    = MakeClunk();

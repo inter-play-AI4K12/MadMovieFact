@@ -83,10 +83,11 @@ namespace MadFact
             switch (p)
             {
                 case Phase.Storefront: _level.text = "— THE STOREFRONT —"; break;
-                case Phase.Level1: _level.text = "LEVEL 1 · THE MANUAL ERA"; break;
-                case Phase.Level2: _level.text = "LEVEL 2 · THE AUTOMATION ERA"; break;
-                case Phase.Level3: _level.text = "LEVEL 3 · THE ALGORITHM ERA"; break;
-                case Phase.Level4: _level.text = "LEVEL 4 · THE MARKET GAP"; break;
+                case Phase.Level1: _level.text = "LEVEL 1 · MANUAL RECOMMENDATION"; break;
+                case Phase.Level2: _level.text = "LEVEL 2 · RULE-BASED RECOMMENDATION"; break;
+                case Phase.Level3: _level.text = "LEVEL 3 · CONTENT-BASED RECOMMENDATION"; break;
+                case Phase.Level4: _level.text = "LEVEL 4 · COLLABORATIVE FILTERING"; break;
+                case Phase.Level5: _level.text = "LEVEL 5 · MARKET GAP RESEARCH"; break;
                 case Phase.Win: _level.text = "★ BLOCKBUSTER ★"; break;
             }
             RefreshGoal();

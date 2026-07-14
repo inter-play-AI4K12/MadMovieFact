@@ -112,6 +112,11 @@ namespace MadFact
         public static Sprite Reset() => Ui("reset", 443, 236, 120, 112);
         public static Sprite Optimize() => Ui("optimize", 585, 235, 120, 113);
         public static Sprite Confirm() => Ui("confirm", 730, 237, 112, 112);
+        public static Sprite CustomerPerson() => Ui("customer", 447, 430, 112, 108);
+        public static Sprite MovieTape() => Ui("movie_tape", 596, 431, 126, 106);
+        public static Sprite Robot() => Ui("robot", 759, 422, 122, 116);
+        public static Sprite Mainframe() => Ui("mainframe", 895, 426, 126, 114);
+        public static Sprite Corkboard() => Ui("corkboard", 1036, 426, 126, 114);
 
         static Sprite Ui(string key, float x, float top, float width, float height) =>
             Crop("Interface", "ui_" + key, x, top, width, height);
