@@ -19,9 +19,10 @@ namespace MadFact
         // Highest level the player has unlocked (lets them revisit the hub).
         public int HighestUnlocked = 1;
 
-        // Monetary thresholds that gate progression.
-        public const int Level1Goal = 40;
-        public const int Level2Goal = 110;
+        // Monetary thresholds that gate progression. Tuned so Level 1 takes ~8-10
+        // customers and Level 2 takes 2-3 full batches even with strong rules.
+        public const int Level1Goal = 100;
+        public const int Level2Goal = 300;
 
         public event Action<int, int> OnMoneyChanged;   // (newTotal, delta)
         public event Action<Phase> OnPhaseChanged;
@@ -31,6 +32,10 @@ namespace MadFact
         {
             if (I != null && I != this) { Destroy(gameObject); return; }
             I = this;
+            // Scene composition groups managers under _SceneCommon for readability.
+            // Persistent objects must be roots before Unity can move them to the
+            // DontDestroyOnLoad scene.
+            if (transform.parent != null) transform.SetParent(null, true);
             DontDestroyOnLoad(gameObject);
             Matrix = new MfModel();
             Run = new RunState();

@@ -32,7 +32,7 @@ namespace MadFact
         public static Sprite MovieFanFullBody()
         {
             const string key = "customer_movie_fan_full";
-            if (Cache.TryGetValue(key, out var cached)) return cached;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
             var texture = Resources.Load<Texture2D>("Characters/Customers/MovieFan");
             if (texture == null) return Theme.Solid;
             texture.filterMode = FilterMode.Point;
@@ -55,11 +55,31 @@ namespace MadFact
         public static Sprite StorefrontBackground()
         {
             const string key = "background_storefront";
-            if (Cache.TryGetValue(key, out var cached)) return cached;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
             var texture = Resources.Load<Texture2D>("Backgrounds/Storefront");
             if (texture == null) return Theme.Solid;
             texture.filterMode = FilterMode.Point;
             var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
+                new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            sprite.name = key;
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        public static Sprite LevelBackground(int level)
+        {
+            if (level < 2 || level > 4) return StorefrontBackground();
+
+            string key = "background_level_" + level;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
+
+            var texture = Resources.Load<Texture2D>($"Backgrounds/MadFact_Level{level}_Background");
+            if (texture == null) return StorefrontBackground();
+            texture.filterMode = FilterMode.Bilinear;
+            // The generated level backgrounds share a narrow white presentation matte.
+            // Crop it instead of displaying two unrelated white bars at 16:9.
+            int sideMatte = Mathf.RoundToInt(texture.width * 0.035f);
+            var sprite = Sprite.Create(texture, new Rect(sideMatte, 0, texture.width - sideMatte * 2, texture.height),
                 new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
             sprite.name = key;
             Cache[key] = sprite;
@@ -129,7 +149,10 @@ namespace MadFact
 
         static Sprite Crop(string atlas, string key, float x, float top, float width, float height, Vector4 border)
         {
-            if (Cache.TryGetValue(key, out var sprite)) return sprite;
+            // Enter Play Mode Options can keep this static dictionary while Unity
+            // destroys runtime-created Sprite objects. A destroyed Unity object still
+            // occupies the dictionary entry, so explicitly reject its fake-null value.
+            if (Cache.TryGetValue(key, out var sprite) && sprite != null) return sprite;
 
             var texture = Resources.Load<Texture2D>("Atlases/" + atlas);
             if (texture == null) return Theme.Solid;

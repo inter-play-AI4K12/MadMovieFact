@@ -33,7 +33,6 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(go));
             var lvl = go.AddComponent<Level3ContentBased>();
             lvl.Build(go.transform);
-            lvl._root.SetActive(false);
             return lvl;
         }
 
@@ -57,8 +56,8 @@ namespace MadFact
                 "• match those attributes to a customer's stated need\n" +
                 "• expose why content-based systems miss hidden collaborative taste\n\n" +
                 "For now this slot preserves the real five-level structure and routes into collaborative filtering.",
-                16, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, true);
-            UIFactory.Place(UIFactory.RT(body.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(690, 240), new Vector2(0, -68));
+                13, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, true);
+            UIFactory.Place(UIFactory.RT(body.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(690, 200), new Vector2(0, -62));
 
             var featureStrip = UIFactory.Bevel(window.transform, "FeatureStrip", new Color(0.06f, 0.09f, 0.10f), sunken: true);
             UIFactory.Place(UIFactory.RT(featureStrip.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(620, 70), new Vector2(0, 78));
@@ -72,7 +71,7 @@ namespace MadFact
             }
 
             var cont = UIFactory.Button(window.transform, "Continue", "CONTINUE TO COLLABORATIVE FILTERING", Complete, Theme.Cash, 15, Theme.SystemSans, Theme.TitleText);
-            UIFactory.Place(UIFactory.RT(cont.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(360, 38), new Vector2(0, 24));
+            UIFactory.Place(UIFactory.RT(cont.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(400, 38), new Vector2(0, 24));
             UIFactory.ButtonIcon(cont, ArtSprites.Next(), 26f);
 
             var leave = UIFactory.Button(window.transform, "Leave", "", () => MadFactBootstrap.I.GoStorefront(), Theme.Face, 16);
@@ -84,7 +83,9 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
-            MadFactBootstrap.I.Storefront.SetLine(12);
+            // The workbench intentionally covers the storefront. Do not leave queue
+            // sprites peeking through the narrow side gutters of the modal layout.
+            MadFactBootstrap.I.Storefront.SetLine(0);
         }
 
         public void Close() => _root.SetActive(false);

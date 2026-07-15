@@ -14,7 +14,8 @@ namespace MadFact
     public class Level3Mainframe : MonoBehaviour
     {
         [SerializeField] GameObject _root;
-        MfModel M => GameManager.I.Matrix;
+        MfModel _previewModel;
+        MfModel M => GameManager.I != null ? GameManager.I.Matrix : (_previewModel ??= new MfModel());
 
         Image[,] _cellBg; Image[,] _cellGlow; Text[,] _cellGuess; Text[,] _cellTarget;
         Button[] _rowBtn; Button[] _colBtn;
@@ -32,7 +33,7 @@ namespace MadFact
         bool _optimizing;
         bool _suppressSliderEvents;
 
-        const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 104, ColHeadH = 40;
+        const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 116, ColHeadH = 40;
 
         void Awake()
         {
@@ -95,7 +96,6 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(go));
             var lvl = go.AddComponent<Level3Mainframe>();
             lvl.Build(go.transform);
-            lvl._root.SetActive(false);
             return lvl;
         }
 
@@ -149,8 +149,8 @@ namespace MadFact
                 int cj = j;
                 var b = UIFactory.Button(gridRoot.transform, "Col" + j, GameData.Movies[j].Title.Replace(" ", "\n"), () => SelectCol(cj), Theme.CrtBgSoft, 11, Theme.Typewriter, Theme.CrtGreen);
                 UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(CellW, ColHeadH - 2), new Vector2(RowHeadW + j * (CellW + GapX), 0));
-                UIFactory.ButtonIcon(b, ArtSprites.MovieCover(j), 18f);
-                b.GetComponentInChildren<Text>().fontSize = 9;
+                UIFactory.ButtonIcon(b, ArtSprites.MovieCover(j), 14f);
+                b.GetComponentInChildren<Text>().fontSize = 7;
                 _colBtn[j] = b;
                 _colSel[j] = UIFactory.Image(b.transform, "Sel", new Color(1, 1, 0.4f, 0.25f), null, Image.Type.Simple, false);
                 UIFactory.Fill(UIFactory.RT(_colSel[j].gameObject)); _colSel[j].gameObject.SetActive(false);
@@ -206,7 +206,7 @@ namespace MadFact
                 var vibeIcon = UIFactory.Image(panel.transform, "SI" + d, Color.white, ArtSprites.VibeIcon(d), Image.Type.Simple, false);
                 vibeIcon.preserveAspect = true;
                 UIFactory.Place(UIFactory.RT(vibeIcon.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(28, 28), new Vector2(x, -46));
-                var nameT = UIFactory.Text(panel.transform, "SN" + d, Latent.Names[d], 11, col, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
+                var nameT = UIFactory.Text(panel.transform, "SN" + d, Latent.Names[d], 9, col, Theme.Typewriter, TextAnchor.UpperCenter, false, FontStyle.Bold);
                 UIFactory.Place(UIFactory.RT(nameT.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(72, 22), new Vector2(x, -76));
 
                 var s = UIFactory.VSlider(panel.transform, 0f, 1.2f, 0.5f, col, v => OnSlider(cd, v));
@@ -239,7 +239,7 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(_resetBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(150, 34), new Vector2(-180, 16));
             UIFactory.ButtonIcon(_resetBtn, ArtSprites.Reset(), 24f);
 
-            _optimizeBtn = UIFactory.Button(screen.transform, "Optimize", "RUN OPTIMIZER", RunOptimizer, Theme.CrtAmber, 16, Theme.SystemSans, Theme.CrtBg);
+            _optimizeBtn = UIFactory.Button(screen.transform, "Optimize", "RUN OPTIMIZER", RunOptimizer, Theme.CrtBgSoft, 16, Theme.SystemSans, Theme.CrtAmber);
             UIFactory.Place(UIFactory.RT(_optimizeBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(180, 38), new Vector2(-20, 14));
             UIFactory.ButtonIcon(_optimizeBtn, ArtSprites.Optimize(), 28f);
         }
@@ -249,7 +249,7 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
-            MadFactBootstrap.I.Storefront.SetLine(16);
+            MadFactBootstrap.I.Storefront.SetLine(0);
             Deselect();
             RefreshGrid();
         }

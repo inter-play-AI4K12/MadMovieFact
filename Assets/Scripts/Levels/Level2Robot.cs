@@ -24,6 +24,7 @@ namespace MadFact
         [SerializeField] Image _genreIcon, _movieIcon;
         [SerializeField] Button _runBtn;
         bool _running;
+        bool _complainedOnce;   // the robot's "my rules are rigid" speech plays only once
 
         void Awake()
         {
@@ -50,7 +51,6 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(go));
             var lvl = go.AddComponent<Level2Robot>();
             lvl.Build(go.transform);
-            lvl._root.SetActive(false);
             return lvl;
         }
 
@@ -63,7 +63,7 @@ namespace MadFact
             var chassis = UIFactory.DialogWindow(_root.transform, "Chassis", Theme.Plastic);
             UIFactory.Place(UIFactory.RT(chassis.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(900, 470), new Vector2(0, 10));
 
-            var head = UIFactory.Text(chassis.transform, "Head", "UNIT B-EIGE  ·  RULE PROGRAMMER v2.1", 16, Theme.TitleText, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold);
+            var head = UIFactory.Text(chassis.transform, "Head", "UNIT B-EIGE  ·  RULE PROGRAMMER v2.1", 16, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(head.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(500, 24), new Vector2(18, -14));
 
             // ---- Rule builder (left) ----
@@ -77,7 +77,7 @@ namespace MadFact
             _genreIcon = UIFactory.ButtonIcon(gSel, ArtSprites.GenreIcon(_selGenre), 22f);
             _genreSel = gSel.GetComponentInChildren<Text>();
 
-            UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i2", "THEN  RECOMMEND TAPE:", 14, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i2", "THEN  RECOMMEND TAPE:", 13, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
                 new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 22), new Vector2(12, -48));
             var mSel = UIFactory.Button(builder.transform, "MSel", "", () => CycleMovie(1), Theme.Plastic, 13, Theme.SystemSans);
             UIFactory.Place(UIFactory.RT(mSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 28), new Vector2(210, -46));
@@ -102,12 +102,12 @@ namespace MadFact
             // ---- DOS output (right) ----
             var crt = UIFactory.Bevel(chassis.transform, "CRT", new Color(0.04f, 0.09f, 0.05f), sunken: true);
             UIFactory.Place(UIFactory.RT(crt.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(420, 358), new Vector2(-18, -46));
-            _log = UIFactory.Text(crt.transform, "Log", "C:\\STORE> _\n", 14, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
-            UIFactory.Place(UIFactory.RT(_log.gameObject), new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 320), new Vector2(0, -10));
-            UIFactory.RT(_log.gameObject).offsetMin = new Vector2(12, 30);
-            UIFactory.RT(_log.gameObject).offsetMax = new Vector2(-12, -10);
-            _summary = UIFactory.Text(crt.transform, "Sum", "", 14, Theme.CrtAmber, Theme.Typewriter, TextAnchor.LowerLeft, true, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(_summary.gameObject), new Vector2(0, 0), new Vector2(1, 0), new Vector2(-24, 22), new Vector2(0, 8));
+            _log = UIFactory.Text(crt.transform, "Log", "C:\\STORE> _\n", 13, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
+            UIFactory.Fill(UIFactory.RT(_log.gameObject), 12, 10, 12, 52); // bottom gap = summary strip
+            _summary = UIFactory.Text(crt.transform, "Sum", "", 13, Theme.CrtAmber, Theme.Typewriter, TextAnchor.LowerLeft, true, FontStyle.Bold);
+            var srt = UIFactory.RT(_summary.gameObject);
+            srt.anchorMin = new Vector2(0, 0); srt.anchorMax = new Vector2(1, 0); srt.pivot = new Vector2(0.5f, 0);
+            srt.sizeDelta = new Vector2(-24, 44); srt.anchoredPosition = new Vector2(0, 6);
 
             // ---- bottom buttons ----
             _runBtn = UIFactory.Button(chassis.transform, "Run", "RUN BATCH (12 customers)", RunBatch, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
@@ -154,7 +154,9 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
-            MadFactBootstrap.I.Storefront.SetLine(16);
+            // The rule programmer owns the full work area; showing the queue here only
+            // leaves a clipped customer sprite visible in the narrow side gutter.
+            MadFactBootstrap.I.Storefront.SetLine(0);
         }
         public void Close() { _root.SetActive(false); if (AudioTension.I != null) AudioTension.I.Silence(); }
 
@@ -163,6 +165,10 @@ namespace MadFact
             if (_running) return;
             StartCoroutine(RunBatchRoutine());
         }
+
+        /// <summary>Rich-text coloured payout token for the CRT log (+$ green, -$ red).</summary>
+        static string Money(int amount)
+            => amount >= 0 ? $"<color=#66E07A>+${amount}</color>" : $"<color=#F05A66>-${-amount}</color>";
 
         IEnumerator RunBatchRoutine()
         {
@@ -190,7 +196,7 @@ namespace MadFact
                 {
                     terrible++; earned += Economy.Refund;
                     if (AudioTension.I != null) { AudioTension.I.SetError(3f); AudioTension.I.Buzzer(); }
-                    line = $"> {cust.Name}: wants {cust.StatedGenre} — NO RULE. refund -$5";
+                    line = $"> <color=#F05A66>✕</color> {cust.Name}: wants {cust.StatedGenre} — NO RULE {Money(Economy.Refund)}";
                 }
                 else
                 {
@@ -206,7 +212,10 @@ namespace MadFact
                         AudioTension.I.SetError(err);
                         if (tier == SaleTier.Perfect) AudioTension.I.Coin(); else if (tier == SaleTier.Terrible) AudioTension.I.Buzzer();
                     }
-                    line = $"> {cust.Name}: '{movie.Title}' [{Mathf.RoundToInt(sat)}★] {(pay >= 0 ? "+$" + pay : "-$" + (-pay))}";
+                    string mark = tier == SaleTier.Perfect ? "<color=#66E07A>✓</color>"
+                                : tier == SaleTier.Close ? "<color=#E0C266>~</color>"
+                                : "<color=#F05A66>✕</color>";
+                    line = $"> {mark} {cust.Name}: '{movie.Title}' [{Mathf.RoundToInt(sat)}★] {Money(pay)}";
                 }
                 _log.text += line + "\n";
                 yield return new WaitForSecondsRealtime(0.18f);
@@ -216,7 +225,7 @@ namespace MadFact
             if (AudioTension.I != null) AudioTension.I.Silence();
 
             float acc = (perfect * 1f + close * 0.4f) / batch;
-            _summary.text = $"BATCH: +${earned}  (perfect {perfect} / close {close} / refunds {terrible})\n" +
+            _summary.text = $"BATCH: {Money(earned)}  ·  <color=#66E07A>{perfect} perfect</color> / <color=#E0C266>{close} close</color> / <color=#F05A66>{terrible} refunds</color>\n" +
                             $"earned ${earned} of ${potential:0} possible — {acc * 100f:0}% effective";
             _log.text += "\nC:\\STORE> _\n";
 
@@ -233,14 +242,15 @@ namespace MadFact
                     Close();
                     MadFactBootstrap.I.OnLevel2Goal();
                 }
-                else if (terrible >= 3)
+                else if (terrible >= 3 && !_complainedOnce)
                 {
+                    _complainedOnce = true;
                     yield return new WaitForSecondsRealtime(0.6f);
                     MadFactBootstrap.I.Comms.Show(Speaker.Robot, new[]
                     {
                         "ANALYSIS: " + terrible + " CUSTOMERS COULD NOT BE SERVED.",
                         "MY RULES ARE RIGID. TASTE IS NOT. THIS WILL NOT SCALE.",
-                        "RECOMMENDATION: ACQUIRE A REAL ALGORITHM."
+                        "RECOMMENDATION: ADJUST THE RULES. OR ACQUIRE A REAL ALGORITHM."
                     });
                 }
             }

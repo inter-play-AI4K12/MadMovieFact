@@ -15,6 +15,7 @@ namespace MadFact
         [SerializeField] Button _enter;
         [SerializeField] Text _enterLabel, _subtitle;
         [SerializeField] RectTransform _lineRoot;
+        [SerializeField] Image _background;
 
         public Button Enter => _enter;
 
@@ -29,10 +30,10 @@ namespace MadFact
 
         void Build(Transform root)
         {
-            var background = UIFactory.Image(root, "StoreInterior", Color.white,
+            _background = UIFactory.Image(root, "StoreInterior", Color.white,
                 ArtSprites.StorefrontBackground(), Image.Type.Simple, false);
-            background.preserveAspect = false;
-            UIFactory.Fill(UIFactory.RT(background.gameObject));
+            _background.preserveAspect = false;
+            UIFactory.Fill(UIFactory.RT(_background.gameObject));
 
             // line of customers (spawns to the right of the counter, trailing off-screen)
             _lineRoot = UIFactory.RT(UIFactory.Node(root, "Line"));
@@ -85,6 +86,17 @@ namespace MadFact
 
         public void SetEnterVisible(bool v) => _enter.gameObject.SetActive(v);
         public void SetSubtitle(string s) => _subtitle.text = s;
+
+        public void SetBackgroundForLevel(int level)
+        {
+            if (_background == null)
+                _background = UIFactory.FindDeep<Image>(transform, "StoreInterior");
+            if (_background == null) return;
+
+            _background.sprite = ArtSprites.LevelBackground(level);
+            _background.color = Color.white;
+            _background.preserveAspect = false;
+        }
     }
 
     /// <summary>Gentle idle bob for customer figures so the line feels alive.</summary>
