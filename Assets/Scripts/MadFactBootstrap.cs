@@ -54,20 +54,24 @@ namespace MadFact
                 L1 != null || L2 != null || L3Content != null || L3 != null || L4 != null;
             if (hasAuthoredContent) RuntimeSkin.Apply(_canvas.transform);
 
-            // Levels 1-2 are iterating quickly in code right now. Rebuild them from script
-            // so layout and button wiring always match the current source even when a
-            // scene's authored instance has drifted out of date (e.g. a Next button
-            // serialized half off-screen where the raycaster can't reach it).
+            // Every level is iterating quickly in code right now. Rebuild them all from
+            // script so layout, backgrounds, and button wiring always match the current
+            // source even when a scene's authored instance has drifted out of date
+            // (e.g. a Next button serialized half off-screen, or a stage backdrop the
+            // prefab never knew about).
             if (L1 != null) Destroy(L1.gameObject);
             if (L2 != null) Destroy(L2.gameObject);
+            if (L3Content != null) Destroy(L3Content.gameObject);
+            if (L3 != null) Destroy(L3.gameObject);
+            if (L4 != null) Destroy(L4.gameObject);
             L1 = Level1Counter.Create(_canvas.transform);
             L2 = Level2Robot.Create(_canvas.transform);
+            L3Content = Level3ContentBased.Create(_canvas.transform);
+            L3 = Level3Mainframe.Create(_canvas.transform);
+            L4 = Level4Corkboard.Create(_canvas.transform);
 
             if (Storefront == null) Storefront = StorefrontView.Create(_canvas.transform);
             if (Hud == null) Hud = Hud.Create(_canvas.transform);
-            if (L3Content == null) L3Content = Level3ContentBased.Create(_canvas.transform);
-            if (L3 == null) L3 = Level3Mainframe.Create(_canvas.transform);
-            if (L4 == null) L4 = Level4Corkboard.Create(_canvas.transform);
             if (Comms == null) Comms = CommsBox.Create(_canvas.transform);
 
             // Dedicated production scenes set StartPhaseOverride so designers can open a
@@ -144,6 +148,7 @@ namespace MadFact
         {
             CloseAllLevels();
             GameManager.I.GoTo(Phase.Storefront);
+            Storefront.SetEra(_currentLevel);   // the shop itself upgrades between levels
 
             switch (_currentLevel)
             {
@@ -199,6 +204,7 @@ namespace MadFact
             }
 
             GameManager.I.PrepareStandaloneLevel(_currentLevel);
+            Storefront.SetEra(_currentLevel);
             CloseAllLevels();
             EnterCurrentLevel();
         }

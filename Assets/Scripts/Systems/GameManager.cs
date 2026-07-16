@@ -16,6 +16,27 @@ namespace MadFact
         public RunState Run { get; private set; }
         public bool HasActiveRun { get; private set; }
 
+        // Community trust in the store (0-100). Mishandled customers and shady data
+        // practices push it down; low trust visibly thins the customer line.
+        public const int StartTrust = 70;
+        public int Trust { get; private set; } = StartTrust;
+        public event Action<int, int> OnTrustChanged;   // (newTotal, delta)
+
+        public void AddTrust(int delta)
+        {
+            int before = Trust;
+            Trust = Mathf.Clamp(Trust + delta, 0, 100);
+            if (Trust != before) OnTrustChanged?.Invoke(Trust, Trust - before);
+        }
+
+        /// <summary>How many customers actually show up, given current trust.</summary>
+        public int TrustScaledCustomers(int nominal)
+        {
+            if (Trust >= 60) return nominal;
+            if (Trust >= 30) return Mathf.Max(1, Mathf.RoundToInt(nominal * 0.75f));
+            return Mathf.Max(1, Mathf.RoundToInt(nominal * 0.5f));
+        }
+
         // Highest level the player has unlocked (lets them revisit the hub).
         public int HighestUnlocked = 1;
 
@@ -49,7 +70,9 @@ namespace MadFact
             Run = new RunState();
             HighestUnlocked = 1;
             HasActiveRun = true;
+            Trust = StartTrust;
             OnMoneyChanged?.Invoke(Money, 0);
+            OnTrustChanged?.Invoke(Trust, 0);
             OnPhaseChanged?.Invoke(Current);
         }
 
@@ -70,7 +93,9 @@ namespace MadFact
             Run = new RunState();
             HighestUnlocked = Mathf.Clamp(level, 1, 5);
             HasActiveRun = true;
+            Trust = StartTrust;
             OnMoneyChanged?.Invoke(Money, 0);
+            OnTrustChanged?.Invoke(Trust, 0);
         }
 
         public void SetMoney(int value)

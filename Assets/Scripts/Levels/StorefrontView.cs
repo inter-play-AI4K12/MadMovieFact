@@ -15,6 +15,8 @@ namespace MadFact
         [SerializeField] Button _enter;
         [SerializeField] Text _enterLabel, _subtitle;
         [SerializeField] RectTransform _lineRoot;
+        Image _background;
+        int _era = 1;
 
         public Button Enter => _enter;
 
@@ -29,10 +31,10 @@ namespace MadFact
 
         void Build(Transform root)
         {
-            var background = UIFactory.Image(root, "StoreInterior", Color.white,
+            _background = UIFactory.Image(root, "StoreInterior", Color.white,
                 ArtSprites.StorefrontBackground(), Image.Type.Simple, false);
-            background.preserveAspect = false;
-            UIFactory.Fill(UIFactory.RT(background.gameObject));
+            _background.preserveAspect = false;
+            UIFactory.Fill(UIFactory.RT(_background.gameObject));
 
             // line of customers (spawns to the right of the counter, trailing off-screen)
             _lineRoot = UIFactory.RT(UIFactory.Node(root, "Line"));
@@ -48,6 +50,9 @@ namespace MadFact
 
             _subtitle = UIFactory.Text(root, "Subtitle", "", 15, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, true);
             _subtitle.color = Theme.TitleText;
+            var outline = _subtitle.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0, 0, 0, 0.9f);          // readable on bright era backdrops
+            outline.effectDistance = new Vector2(1.5f, -1.5f);
             UIFactory.Place(UIFactory.RT(_subtitle.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(700, 42), new Vector2(0, 326));
 
             _enter = UIFactory.Button(root, "Enter", "APPROACH THE COUNTER", null, Theme.Manila, 18, Theme.SystemSans);
@@ -85,6 +90,23 @@ namespace MadFact
 
         public void SetEnterVisible(bool v) => _enter.gameObject.SetActive(v);
         public void SetSubtitle(string s) => _subtitle.text = s;
+
+        /// <summary>
+        /// The store itself levels up: 1 = the tired original shop, 2 = computerized
+        /// storefront, 3 = the Quantum Networks office, 4 = Aethelred Global HQ.
+        /// </summary>
+        public void SetEra(int era)
+        {
+            era = Mathf.Clamp(era, 1, 4);
+            // Authored prefab instances never ran Build(), and their interior art may live
+            // in the separate Environment prefab — search the whole canvas by name.
+            if (_background == null) _background = UIFactory.FindDeep<Image>(transform.root, "StoreInterior");
+            if (era == _era || _background == null) return;
+            _era = era;
+            _background.sprite = era == 1 ? ArtSprites.StorefrontBackground() : ArtSprites.LevelBackground(era);
+            // the queue art belongs to the original shop's floor; hide it in later eras
+            if (_lineRoot != null) _lineRoot.gameObject.SetActive(era <= 2);
+        }
     }
 
     /// <summary>Gentle idle bob for customer figures so the line feels alive.</summary>

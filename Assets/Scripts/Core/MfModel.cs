@@ -25,7 +25,9 @@ namespace MadFact
         public MfModel()
         {
             foreach (var idx in GameData.MatrixCustomers) Customers.Add(GameData.Customers[idx]);
-            Movies.AddRange(GameData.Movies);
+            // The grid is pinned to the original stock: it keeps the board a readable 5x5
+            // and the '91 mainframe never indexed the newer shelf sections anyway.
+            foreach (var idx in GameData.MatrixMovies) Movies.Add(GameData.Movies[idx]);
             int r = Rows, c = Cols;
 
             U = new Latent[r];

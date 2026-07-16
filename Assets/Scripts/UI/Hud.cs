@@ -9,6 +9,8 @@ namespace MadFact
         [SerializeField] Text _money, _goal, _level;
         [SerializeField] Image _goalIcon;
         [SerializeField] RectTransform _canvas;
+        Text _trust;
+        Image _trustFill;
         bool _bound;
 
         void Start()
@@ -22,10 +24,39 @@ namespace MadFact
             if (_bound) return;
             _bound = true;
             if (_canvas == null) _canvas = GetComponentInParent<Canvas>().transform as RectTransform;
+            EnsureTrustPlate();
             gm.OnMoneyChanged += OnMoney;
             gm.OnPhaseChanged += OnPhase;
             gm.OnSale += OnSale;
+            gm.OnTrustChanged += OnTrust;
             OnMoney(gm.Money, 0);
+            OnTrust(gm.Trust, 0);
+        }
+
+        /// <summary>
+        /// The trust meter is newer than the authored HUD prefab, so it is always built
+        /// at bind time — on both the authored and the code-constructed path.
+        /// </summary>
+        void EnsureTrustPlate()
+        {
+            if (_trust != null) return;
+            if (_goal != null)
+            {
+                // authored prefabs park the goal text where the plate now lives
+                var grt = UIFactory.RT(_goal.gameObject);
+                grt.anchoredPosition = new Vector2(-296, grt.anchoredPosition.y);
+            }
+
+            var trustPlate = UIFactory.Bevel(transform, "TrustPlate", new Color(0.13f, 0.12f, 0.16f), sunken: true);
+            UIFactory.Place(UIFactory.RT(trustPlate.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(118, 30), new Vector2(-168, 0));
+            var trustBg = UIFactory.Image(trustPlate.transform, "TrustBg", new Color(0, 0, 0, 0.35f), null, Image.Type.Simple, false);
+            UIFactory.Fill(UIFactory.RT(trustBg.gameObject), 5, 6, 5, 6);
+            _trustFill = UIFactory.Image(trustBg.transform, "TrustFill", Theme.Cash, null, Image.Type.Simple, false);
+            var tfr = UIFactory.RT(_trustFill.gameObject);
+            tfr.anchorMin = Vector2.zero; tfr.anchorMax = new Vector2(0.7f, 1f);
+            tfr.offsetMin = Vector2.zero; tfr.offsetMax = Vector2.zero;
+            _trust = UIFactory.Text(trustPlate.transform, "Trust", "TRUST 70", 11, Theme.TitleText, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+            UIFactory.Fill(UIFactory.RT(_trust.gameObject));
         }
 
         public static Hud Create(Transform canvas)
@@ -61,8 +92,9 @@ namespace MadFact
             hud._money = UIFactory.Text(moneyPlate.transform, "Money", "$0", 20, Theme.CrtGreen, Theme.Typewriter, TextAnchor.MiddleRight, false, FontStyle.Bold);
             UIFactory.Fill(UIFactory.RT(hud._money.gameObject), 34, 2, 10, 2);
 
+            // goal text; the trust meter is added by EnsureTrustPlate() during Bind
             hud._goal = UIFactory.Text(bar.transform, "Goal", "", 12, Theme.TitleText, Theme.SystemSans, TextAnchor.MiddleRight, false);
-            UIFactory.Place(UIFactory.RT(hud._goal.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(160, 16), new Vector2(-170, 0));
+            UIFactory.Place(UIFactory.RT(hud._goal.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(160, 16), new Vector2(-296, 0));
             hud._goalIcon = UIFactory.Image(bar.transform, "GoalIcon", Color.white, ArtSprites.Goal(), Image.Type.Simple, false);
             hud._goalIcon.preserveAspect = true;
             hud._goalIcon.gameObject.SetActive(false);
@@ -76,6 +108,32 @@ namespace MadFact
             _money.text = "$" + total;
             _money.color = total < 0 ? Theme.ErrorRed : Theme.CrtGreen;
             RefreshGoal();
+        }
+
+        void OnTrust(int total, int delta)
+        {
+            if (_trust == null) return;
+            _trust.text = "TRUST " + total;
+            var c = total >= 60 ? Theme.Cash : total >= 30 ? Theme.Coin : Theme.ErrorRed;
+            _trustFill.color = c;
+            var rt = UIFactory.RT(_trustFill.gameObject);
+            rt.anchorMax = new Vector2(total / 100f, 1f);
+            if (delta != 0)
+            {
+                // float a +/- trust popup near the meter
+                var go = UIFactory.Node(_canvas, "TrustPop");
+                var t = go.AddComponent<Text>();
+                t.font = Theme.SystemSans; t.fontSize = 18; t.fontStyle = FontStyle.Bold;
+                t.alignment = TextAnchor.MiddleCenter; t.raycastTarget = false;
+                t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
+                t.color = delta > 0 ? Theme.Cash : Theme.ErrorRed;
+                t.text = (delta > 0 ? "+" : "") + delta + " TRUST";
+                var rt2 = (RectTransform)go.transform;
+                rt2.anchorMin = rt2.anchorMax = new Vector2(1f, 1f);
+                rt2.sizeDelta = new Vector2(160, 30);
+                rt2.anchoredPosition = new Vector2(-220, -70);
+                go.AddComponent<FloatAway>();
+            }
         }
 
         void OnPhase(Phase p)
@@ -100,6 +158,7 @@ namespace MadFact
             {
                 case Phase.Level1: _goal.text = $"goal: ${GameManager.Level1Goal} to upgrade"; break;
                 case Phase.Level2: _goal.text = $"goal: ${GameManager.Level2Goal} to automate"; break;
+                case Phase.Level3: _goal.text = "goal: serve the line by the box"; break;
                 default: _goal.text = ""; break;
             }
             _goalIcon.gameObject.SetActive(false);

@@ -153,10 +153,118 @@ namespace MadFact
             NextLine();
         }
 
+        /// <summary>Dialogue from a one-off narrative figure (data broker, filmmaker, angry parent...).</summary>
+        public void ShowNamed(string displayName, string titleBar, Sprite portrait, string[] lines, Action onComplete = null)
+        {
+            gameObject.SetActive(true);
+            transform.SetAsLastSibling();
+            _speaker = Speaker.System;
+            _onComplete = onComplete;
+            _queue.Clear();
+            foreach (var l in lines) _queue.Enqueue(l);
+
+            _name.text = displayName;
+            _name.font = Theme.Typewriter;
+            _body.font = Theme.Typewriter;
+            _portrait.sprite = portrait;
+            _portrait.color = Color.white;
+            _titleText.text = titleBar;
+            _instant = false;
+            NextLine();
+        }
+
+        // ---- Choices / MCQ -------------------------------------------------
+        GameObject _choiceRoot;
+
+        /// <summary>
+        /// Pose a question with 2-4 answer buttons. Keeps whatever portrait/name is
+        /// currently on the box, so call it right after (or from the onComplete of) a
+        /// Show/ShowNamed from the same character. The box hides before onPick runs.
+        /// </summary>
+        public void AskChoice(string question, string[] options, Action<int> onPick)
+        {
+            gameObject.SetActive(true);
+            transform.SetAsLastSibling();
+            _queue.Clear();
+            _typing = false;
+            _full = question;
+            _body.text = question;
+            // questions read differently from prose: bold, amber, a size up
+            _body.fontStyle = FontStyle.Bold;
+            _body.color = Theme.CrtAmber;
+            _next.gameObject.SetActive(false);
+
+            ClearChoices();
+            _choiceRoot = UIFactory.Node(transform, "Choices");
+            UIFactory.Fill(UIFactory.RT(_choiceRoot));
+
+            int n = Mathf.Min(options.Length, 4);
+            var rt = (RectTransform)transform;
+            rt.sizeDelta = new Vector2(rt.sizeDelta.x, 188 + n * 36);
+
+            // body sits above the option stack
+            var brt = UIFactory.RT(_body.gameObject);
+            brt.anchoredPosition = new Vector2(144, -66);
+
+            for (int i = 0; i < n; i++)
+            {
+                int pick = i;
+                var b = UIFactory.Button(_choiceRoot.transform, "Choice" + i, options[i], () => Pick(pick, onPick),
+                    Theme.Face, 14, Theme.SystemSans, Theme.TitleText);
+                var brt2 = UIFactory.RT(b.gameObject);
+                brt2.anchorMin = new Vector2(0, 0); brt2.anchorMax = new Vector2(1, 0);
+                brt2.pivot = new Vector2(0.5f, 0);
+                brt2.sizeDelta = new Vector2(-(144 + 16), 32);          // margins: 144 left (portrait), 16 right
+                brt2.anchoredPosition = new Vector2((144 - 16) / 2f, 14 + (n - 1 - i) * 36);
+                var label = b.GetComponentInChildren<Text>();
+                label.alignment = TextAnchor.MiddleLeft;
+                label.rectTransform.offsetMin = new Vector2(12, label.rectTransform.offsetMin.y);
+            }
+            if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        /// <summary>Question with speaker styling in one call.</summary>
+        public void AskChoice(Speaker who, string question, string[] options, Action<int> onPick)
+        {
+            Show(who, new string[0], null);   // sets portrait/name/fonts, queues nothing
+            gameObject.SetActive(true);       // Show() hides itself on an empty queue
+            AskChoice(question, options, onPick);
+        }
+
+        public void AskChoiceNamed(string displayName, string titleBar, Sprite portrait,
+            string question, string[] options, Action<int> onPick)
+        {
+            _name.text = displayName;
+            _name.font = Theme.Typewriter;
+            _body.font = Theme.Typewriter;
+            _portrait.sprite = portrait;
+            _portrait.color = Color.white;
+            _titleText.text = titleBar;
+            AskChoice(question, options, onPick);
+        }
+
+        void Pick(int index, Action<int> onPick)
+        {
+            if (AudioTension.I != null) AudioTension.I.Clunk();
+            ClearChoices();
+            _next.gameObject.SetActive(true);
+            var rt = (RectTransform)transform;
+            rt.sizeDelta = new Vector2(rt.sizeDelta.x, 188);
+            Hide();
+            onPick?.Invoke(index);
+        }
+
+        void ClearChoices()
+        {
+            if (_choiceRoot != null) { Destroy(_choiceRoot); _choiceRoot = null; }
+        }
+
         public void Hide() { gameObject.SetActive(false); }
 
         void NextLine()
         {
+            _body.fontStyle = FontStyle.Normal;
+            _body.color = Theme.TitleText;
             if (_queue.Count == 0) { Hide(); _onComplete?.Invoke(); return; }
             _full = _queue.Dequeue();
             _revealed = 0f;
