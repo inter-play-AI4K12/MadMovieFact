@@ -16,6 +16,7 @@ D'Stasio; supervision and development by Erfan Farhadi.
 - Universal Render Pipeline **17.5.0**
 - Input System **1.19.0**
 - Unity UI (uGUI) **2.0.0**
+- Unity **WebGL Build Support** module (only required for web exports)
 
 Unity MCP packages are included for editor automation, but the game itself does not require an
 active MCP connection to run.
@@ -32,6 +33,39 @@ run in `Storefront.unity`, then carries the persistent game state, money, custom
 and narrative flags through the dedicated level scenes.
 
 The menu also provides direct access to the storefront and every level for development and testing.
+
+## Create and serve a web build
+
+The reusable exporter builds every enabled scene in Build Settings and creates both a deployable
+folder and a ZIP archive:
+
+```bash
+./scripts/build-web.sh
+```
+
+Close this project in Unity before running the terminal command. If the project is already open,
+use **MadFact → Build → WebGL Export** from Unity's menu instead; both routes use the same exporter.
+
+The outputs are:
+
+- `Builds/WebGL/` — the folder to deploy to a static web host.
+- `Builds/MadMovieFact-WebGL.zip` — the same export packaged for sharing or uploading.
+
+Build outputs and logs are intentionally ignored by Git. If Unity is installed outside the default
+Unity Hub location, provide its executable explicitly:
+
+```bash
+UNITY_PATH="/path/to/Unity" ./scripts/build-web.sh
+```
+
+To test the latest export locally with Unity's compression-aware web server:
+
+```bash
+./scripts/serve-web.sh
+```
+
+Then open <http://localhost:8080/>. Set a different port when needed, for example
+`PORT=9000 ./scripts/serve-web.sh`, and press `Ctrl+C` to stop the server.
 
 ## Playing an individual level
 
@@ -77,6 +111,7 @@ runtime-sliced atlas sprites and OS fonts that Unity cannot serialize reliably i
 
 Useful editor commands are available under the **MadFact** menu:
 
+- **Build → WebGL Export**
 - **Rebuild Authored Main Menu**
 - **Refresh Editor UI Preview**
 - **Refresh Authored Level Prefabs**

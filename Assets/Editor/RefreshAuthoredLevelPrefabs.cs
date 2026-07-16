@@ -119,12 +119,17 @@ public static class RefreshAuthoredLevelPrefabs
         var level3Content = Load("Assets/Prefabs/Levels/Level3ContentBased.prefab");
         var level3Mainframe = Load("Assets/Prefabs/Levels/Level3Mainframe.prefab");
         var level4 = Load("Assets/Prefabs/Levels/Level4Corkboard.prefab");
+        var dialogue = Load("Assets/Prefabs/UI/DialogueBox.prefab");
 
         RequireActive(level1.transform, "Level1Counter");
         RequireActive(level2.transform, "Level2Robot");
         RequireActive(level3Content.transform, "Level3ContentBased");
         RequireActive(level3Mainframe.transform, "Level3Mainframe");
         RequireActive(level4.transform, "Level4Corkboard");
+
+        var dialogueBody = Require(dialogue.transform, "Body").GetComponent<Text>();
+        if (dialogueBody == null || dialogueBody.lineSpacing < 1.2f)
+            throw new System.InvalidOperationException("Dialogue body line spacing must remain at least 1.2.");
 
         foreach (string prefabPath in AuthoredUiPrefabPaths)
         {
