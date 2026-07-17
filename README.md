@@ -1,78 +1,214 @@
 # MadMovieFact
 
-A tactile Unity game that teaches recommendation systems and **Matrix Factorization**
-(collaborative filtering — latent features, dot products, loss, and gradient descent) to kids.
-You inherit a failing 1990s video store and upgrade it from **manual recommendations → rigid
-IF/THEN rules → content-based matching → collaborative filtering**, then use the math to discover
-an unserved audience and produce its blockbuster.
+MadMovieFact is a 2D Unity learning game about recommendation systems. The player inherits
+Pellings Video, a struggling 1990s VHS store, and improves its recommendations across five
+levels:
 
-*inter.play Lab · AI4K12 — designer: Luca D'Stasio · supervisor: Erfan.*
+**manual recommendations → rule-based recommendations → content-based recommendations →
+collaborative filtering → market-gap research and movie making**
 
-## Run it
-1. Open the project in **Unity 6000.4.7f1** (URP).
-2. Open the scene **`Assets/Scenes/MainMenu.unity`**.
+The project is developed by the inter.play Lab / AI4K12 project. Original design by Luca
+D'Stasio; supervision and development by Erfan Farhadi.
+
+## Requirements
+
+- Unity **6000.5.3f1**
+- Universal Render Pipeline **17.5.0**
+- Input System **1.19.0**
+- Unity UI (uGUI) **2.0.0**
+- Unity **WebGL Build Support** module (only required for web exports)
+
+Unity MCP packages are included for editor automation, but the game itself does not require an
+active MCP connection to run.
+
+## Run the game
+
+1. Open the project in Unity `6000.5.3f1`.
+2. Open `Assets/Scenes/MainMenu.unity`.
 3. Press **Play**.
+4. Choose **Start Full Game**.
 
-`MainMenu.unity` is first in Build Settings and can launch the full game, storefront, or any
-individual level. `MadMovieFact.unity` remains the full playable all-in-one game scene. For focused
-editing, open any dedicated scene under `Assets/Scenes/Level*.unity`; each one contains its shared
-UI/bootstrap plus the matching level prefab and starts directly at that level with basic standalone
-defaults if no existing run is active.
+`MainMenu.unity` is the first enabled scene in Build Settings. The full-game button starts a clean
+run in `Storefront.unity`, then carries the persistent game state, money, customer history, matrix,
+and narrative flags through the dedicated level scenes.
 
-`MadFactBootstrap.StartPhaseOverride` controls whether a scene runs the full intro (`-1`), starts at
-the storefront (`0`), or opens directly inside Level 1-5.
+The menu also provides direct access to the storefront and every level for development and testing.
+
+## Create and serve a web build
+
+The reusable exporter builds every enabled scene in Build Settings and creates both a deployable
+folder and a ZIP archive:
+
+```bash
+./scripts/build-web.sh
+```
+
+Close this project in Unity before running the terminal command. If the project is already open,
+use **MadFact → Build → WebGL Export** from Unity's menu instead; both routes use the same exporter.
+
+The outputs are:
+
+- `Builds/WebGL/` — the folder to deploy to a static web host.
+- `Builds/MadMovieFact-WebGL.zip` — the same export packaged for sharing or uploading.
+
+Build outputs and logs are intentionally ignored by Git. If Unity is installed outside the default
+Unity Hub location, provide its executable explicitly:
+
+```bash
+UNITY_PATH="/path/to/Unity" ./scripts/build-web.sh
+```
+
+To test the latest export locally with Unity's compression-aware web server:
+
+```bash
+./scripts/serve-web.sh
+```
+
+Then open <http://localhost:8080/>. Set a different port when needed, for example
+`PORT=9000 ./scripts/serve-web.sh`, and press `Ctrl+C` to stop the server.
+
+## Playing an individual level
+
+Every dedicated level scene can be opened and played directly in the Unity editor. When no run is
+active, `GameManager.PrepareStandaloneLevel` supplies appropriate starting money, progression, run
+state, and matrix values. If the scene was reached from the main menu or storefront, the existing
+run is preserved instead.
+
+This makes both workflows valid:
+
+- Start at `MainMenu.unity` to test progression and state carried between scenes.
+- Start at any `Level*.unity` scene to work on that mechanic in isolation.
+
+## Scene map
+
+| Scene | Purpose |
+| --- | --- |
+| `MainMenu.unity` | Authored entry menu with full-game, storefront, and per-level buttons. |
+| `Storefront.unity` | VHS shop hub, customer queue, narrative dialogue, and level entrances. |
+| `Level01_ManualRecommendation.unity` | Read customer files, ask limited questions, and recommend a tape manually. |
+| `Level02_RuleBasedRecommendation.unity` | Program UNIT B-EIGE with rigid `IF genre THEN movie` rules and run customer batches. |
+| `Level03_ContentBasedRecommendation.unity` | Introduces matching explicit item features to stated needs; the full mechanic is still planned. |
+| `Level04_CollaborativeFiltering.unity` | Explore a Customers × Movies matrix, latent-vibe sliders, prediction error, and gradient descent. |
+| `Level05_MarketGapResearch.unity` | Use the learned market gap to assemble and greenlight a new movie poster. |
+| `MadMovieFact.unity` | Compatibility/all-in-one composition scene; retained for reference, but disabled in Build Settings. |
+
+`Assets/Scripts/Core/LevelSceneCatalog.cs` is the authoritative code-side map for these paths.
+
+## Authored editor structure
+
+The main menu and gameplay screens are visible and editable before entering Play Mode:
+
+- `MainMenu.unity` contains its Canvas, background, window, labels, icons, buttons, and EventSystem.
+- Dedicated scenes contain the shared storefront, HUD, dialogue box, bootstrap, and relevant level
+  prefab as normal scene objects.
+- Level layouts live in `Assets/Prefabs/Levels/`.
+- Runtime controllers bind behavior to serialized references instead of replacing the authored
+  hierarchy.
+
+Runtime creation is retained for content that is genuinely dynamic, including changing queue
+members, sale feedback, dialogue state, and stickers placed by the player. `RuntimeSkin` reconnects
+runtime-sliced atlas sprites and OS fonts that Unity cannot serialize reliably into prefabs.
+
+Useful editor commands are available under the **MadFact** menu:
+
+- **Build → WebGL Export**
+- **Rebuild Authored Main Menu**
+- **Refresh Editor UI Preview**
+- **Refresh Authored Level Prefabs**
+- **Normalize Dedicated Scene UI Order**
+- **Repair Dedicated Level Scene Slots**
+- **Bake Serializable Preview Fonts**
+
+## Gameplay arc
+
+### Storefront
+
+The shop is the narrative and progression hub. A growing queue demonstrates why manual service does
+not scale, while Mr. Pellings, UNIT B-EIGE, and other characters explain the consequences of each
+recommendation approach.
+
+### Level 1 — Manual recommendation
+
+Each customer has a visit-specific history, demand, notes, and hidden preferences. The player spends
+a limited number of clarifying questions, recommends one of five VHS tapes, and earns or loses money
+based on the match.
+
+### Level 2 — Rule-based recommendation
+
+The player creates brittle genre-to-movie rules and runs them against a batch of customers. The CRT
+log reports perfect sales, close matches, and refunds, making the limitations of hand-authored rules
+visible.
+
+### Level 3 — Content-based recommendation
+
+This level introduces direct comparison of movie attributes with a customer's stated needs. Its
+dedicated scene and progression route are implemented; the final interactive mechanic is still to be
+filled in.
+
+### Level 4 — Collaborative filtering
+
+The mainframe displays known and predicted ratings for a Customers × Movies matrix. Four latent
+dimensions—Space-y, Spooky, Funny, and Explosions—can be adjusted manually. The optimizer runs real
+gradient descent to reduce total prediction error and expose missing ratings.
+
+### Level 5 — Market-gap research and movie making
+
+The optimized matrix reveals an underserved Spooky + Funny audience. The player combines weighted
+cutouts on a corkboard, matches the target latent profile, and greenlights the resulting movie.
+
+## State and scenario model
+
+- `CustomerData` contains a customer's persistent identity and true taste.
+- `CustomerVisit` contains one appearance: recent history, stated demand, notes, and return context.
+- `LevelScenario` connects a visit to success and failure follow-up dialogue.
+- `RunState` remembers visits, recommendations, satisfaction, decisions, and story flags.
+- `GameManager` owns persistent money, phase, unlocks, matrix state, and the active run.
+
+This supports returning customers and consequence dialogue without introducing a large quest system.
 
 ## Project structure
 
-- `Assets/Scenes/` — playable scene assets.
-- `Assets/Prefabs/Environment/` — editable storefront environment.
-- `Assets/Prefabs/UI/` — HUD and dialogue presentation.
-- `Assets/Prefabs/Levels/` — one editable prefab per gameplay level.
-- `Assets/Scripts/` — behavior, state, binding, and reusable UI helpers.
-- `Assets/Scripts/Scenarios/` — authored customer visits, scenario beats, and fixed narrative copy.
-- `Assets/Resources/` — generated backgrounds, character art, and source atlases.
+```text
+Assets/
+├── Editor/                 MadFact authoring and validation utilities
+├── Prefabs/
+│   ├── Environment/        Editable storefront environment
+│   ├── Levels/             Editable gameplay level layouts
+│   └── UI/                 HUD and dialogue presentation
+├── Resources/
+│   ├── Atlases/            Pixel-art source sheets
+│   ├── Audio/Music/        Background music
+│   ├── Backgrounds/        Storefront and dedicated level backgrounds
+│   └── Characters/         Customer and queue sprites
+├── Scenes/                 Main menu, storefront, and five dedicated levels
+└── Scripts/
+    ├── Core/               Catalog, customer data, latent vectors, and matrix model
+    ├── Levels/             Level mechanics and scene views
+    ├── Scenarios/          Customer visits and narrative copy
+    ├── Systems/            State, economy, audio, and music
+    └── UI/                 Authored UI binding, styling, and sprite slicing
+```
 
-## Scene structure
+## Economy and progression
 
-- `Assets/Scenes/MainMenu.unity` — playable entry menu with full-game and per-level launch buttons.
-- `Assets/Scenes/MadMovieFact.unity` — full intro-to-finale all-in-one scene.
-- `Assets/Scenes/Storefront.unity` — hub / VHS shop floor.
-- `Assets/Scenes/Level01_ManualRecommendation.unity` — customer file and counter scene.
-- `Assets/Scenes/Level02_RuleBasedRecommendation.unity` — robot/rule terminal scene.
-- `Assets/Scenes/Level03_ContentBasedRecommendation.unity` — item-feature matching scene, placeholder for now.
-- `Assets/Scenes/Level04_CollaborativeFiltering.unity` — matrix/mainframe scene.
-- `Assets/Scenes/Level05_MarketGapResearch.unity` — corkboard/movie-making scene.
+Recommendation error determines the sale result:
 
-`LevelSceneCatalog` is the code-side map for these scene paths and their intended background keys.
-The scenes are also listed in Build Settings after `MadMovieFact.unity` so they can be opened or
-tested individually.
+- Perfect match: `+$20`
+- Close match: `+$5`
+- Poor match/refund: `-$5`
 
-## Scenario structure
+Current progression thresholds are `$100` for completing Level 1 and `$300` for completing Level 2.
+Later levels advance through their mechanic-specific completion events rather than additional money
+gates.
 
-The project now separates persistent customers from per-level visits:
+## Additional documentation
 
-- `CustomerData` describes the person and their true taste.
-- `CustomerVisit` describes a specific appearance: recent history, stated demand, file note, and return-visit context.
-- `LevelScenario` wraps a visit with success/failure follow-up dialogue.
-- `RunState` remembers recommendations, customer satisfaction, visits, and lightweight story flags.
+`Assets/Docs/MadFact.md` contains earlier design and implementation notes. Treat the root README and
+the current scene/prefab hierarchy as authoritative when those historical notes differ from the
+present five-level build.
 
-This keeps the game content flexible enough for returning customers and consequence dialogue without
-adding a heavy quest system.
+## Repository notes
 
-## The arc
-- **Storefront** — a video store whose customer line grows to show the scaling bottleneck.
-- **Level 1 · Manual recommendation** — read customer files, ask limited questions, recommend a tape.
-- **Level 2 · Rule-based recommendation** — program a robot with brittle `IF wants=Genre THEN tape` rules.
-- **Level 3 · Content-based recommendation** — match explicit movie features to stated customer needs; placeholder mechanic for now.
-- **Level 4 · Collaborative filtering** — the CRT Matrix Factorization engine: a Customers×Movies grid with
-  live `guess = 1 + 4·dot(U,V)`, draggable latent "vibe" sliders, audible error tension, and an
-  **Optimizer** that runs real gradient descent to balance the board and fill in predictions.
-- **Level 5 · Market gap research and movie making** — the matrix surfaces an underserved Spooky+Funny audience; design a
-  poster on the corkboard to match their latent vibe and greenlight the movie.
-
-See **`Assets/Docs/MadFact.md`** for the full design notes, code map, and tuning knobs.
-
-## Repo notes
-The project has been reduced to the MadFact game, its URP configuration, and the core Unity MCP
-development bridge. XR, VR-template, tutorial, multiplayer, sample-scene, and package-demo
-content has been removed. Unity's generated `Library/` cache remains ignored.
+The repository contains only the 2D MadFact game, its Unity configuration, authoring utilities, and
+editor integration. Generated `Library/`, `Temp/`, recovery scenes, user settings, and build outputs
+remain ignored.

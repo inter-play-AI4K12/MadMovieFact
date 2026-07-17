@@ -12,6 +12,7 @@ namespace MadFact
         Text _trust;
         Image _trustFill;
         bool _bound;
+        GameManager _manager;
 
         void Start()
         {
@@ -23,6 +24,7 @@ namespace MadFact
         {
             if (_bound) return;
             _bound = true;
+            _manager = gm;
             if (_canvas == null) _canvas = GetComponentInParent<Canvas>().transform as RectTransform;
             EnsureTrustPlate();
             gm.OnMoneyChanged += OnMoney;
@@ -31,6 +33,20 @@ namespace MadFact
             gm.OnTrustChanged += OnTrust;
             OnMoney(gm.Money, 0);
             OnTrust(gm.Trust, 0);
+            OnPhase(gm.Current);
+        }
+
+        void OnDestroy()
+        {
+            // GameManager survives scene loads, while each authored scene owns its HUD.
+            // Remove callbacks before this scene's Text components are destroyed.
+            if (_manager == null) return;
+            _manager.OnMoneyChanged -= OnMoney;
+            _manager.OnPhaseChanged -= OnPhase;
+            _manager.OnSale -= OnSale;
+            _manager.OnTrustChanged -= OnTrust;
+            _manager = null;
+            _bound = false;
         }
 
         /// <summary>
@@ -81,8 +97,8 @@ namespace MadFact
             var sign = UIFactory.Text(bar.transform, "Sign", "PELLINGS VIDEO", 18, Theme.TitleText, Theme.Typewriter, TextAnchor.MiddleLeft, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(sign.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(240, 34), new Vector2(84, 0));
 
-            hud._level = UIFactory.Text(bar.transform, "Level", "", 14, Theme.CrtAmber, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(hud._level.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(280, 30), new Vector2(0, -6));
+            hud._level = UIFactory.Text(bar.transform, "Level", "", 11, Theme.CrtAmber, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(hud._level.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(300, 30), new Vector2(0, -6));
 
             var moneyPlate = UIFactory.Bevel(bar.transform, "MoneyPlate", new Color(0.10f, 0.16f, 0.10f), sunken: true);
             UIFactory.Place(UIFactory.RT(moneyPlate.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(150, 30), new Vector2(-12, 0));
@@ -94,12 +110,13 @@ namespace MadFact
 
             // goal text; the trust meter is added by EnsureTrustPlate() during Bind
             hud._goal = UIFactory.Text(bar.transform, "Goal", "", 12, Theme.TitleText, Theme.SystemSans, TextAnchor.MiddleRight, false);
-            UIFactory.Place(UIFactory.RT(hud._goal.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(160, 16), new Vector2(-296, 0));
+            // Erfan's wider/taller goal text, shifted left of the trust plate
+            UIFactory.Place(UIFactory.RT(hud._goal.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(210, 22), new Vector2(-296, 0));
             hud._goalIcon = UIFactory.Image(bar.transform, "GoalIcon", Color.white, ArtSprites.Goal(), Image.Type.Simple, false);
             hud._goalIcon.preserveAspect = true;
             hud._goalIcon.gameObject.SetActive(false);
 
-            hud.Bind(GameManager.I);
+            if (GameManager.I != null) hud.Bind(GameManager.I);
             return hud;
         }
 

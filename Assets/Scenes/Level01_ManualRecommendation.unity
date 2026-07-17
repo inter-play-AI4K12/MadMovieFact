@@ -161,7 +161,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 23aeb252e6b06a1418e233a1794337d9, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.GameManager
   HighestUnlocked: 1
 --- !u!1 &93136005
@@ -338,7 +338,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4190126191081567891, guid: 43c3b35c55724437f93252364ec057f1, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: -46
       objectReference: {fileID: 0}
     - target: {fileID: 4190126191081567891, guid: 43c3b35c55724437f93252364ec057f1, type: 3}
       propertyPath: m_LocalPosition.x
@@ -374,7 +374,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4190126191081567891, guid: 43c3b35c55724437f93252364ec057f1, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -23
       objectReference: {fileID: 0}
     - target: {fileID: 4190126191081567891, guid: 43c3b35c55724437f93252364ec057f1, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -407,7 +407,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8d10004a3cff834ba12e46e2e0dc0dc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.StorefrontView
 --- !u!1 &174952354
 GameObject:
@@ -501,38 +501,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &455012283
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 455012284}
-  m_Layer: 0
-  m_Name: _LevelSlot_01_-_Manual_Recommendation
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &455012284
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 455012283}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2001286420}
-  m_Father: {fileID: 1695734078}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &563257771
 GameObject:
   m_ObjectHideFlags: 0
@@ -580,7 +548,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 0.8, g: 0.75, b: 0.55, a: 0.5}
@@ -655,7 +623,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01614664b831546d2ae94a42149d80ac, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.UI.InputSystemUIInputModule
   m_SendPointerHoverToParent: 1
   m_MoveRepeatDelay: 0.5
@@ -686,7 +654,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76c392e42b5098c458856cdf6ecaaaa1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.EventSystems.EventSystem
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
@@ -734,7 +702,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7ae4f2d4d4cad7649a1bd35928b9a077, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.AudioTension
 --- !u!82 &1045470417
 AudioSource:
@@ -851,15 +819,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_AnchorMin.x
-      value: 0
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_AnchorMin.y
@@ -867,11 +835,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 820
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: 188
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_LocalPosition.x
@@ -907,7 +875,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: 16
       objectReference: {fileID: 0}
     - target: {fileID: 2635295583135722185, guid: 5b424f8c0c87c4ba3a103de8539c1d0c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -944,7 +912,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 915ea2ec10811294e9652bb389bb14be, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.CommsBox
 --- !u!1001 &1282366823
 PrefabInstance:
@@ -976,7 +944,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 547517161340589406, guid: 8bba1d62d69cf486cb31412eab6b5397, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 547517161340589406, guid: 8bba1d62d69cf486cb31412eab6b5397, type: 3}
       propertyPath: m_SizeDelta.x
@@ -984,7 +952,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 547517161340589406, guid: 8bba1d62d69cf486cb31412eab6b5397, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: 46
       objectReference: {fileID: 0}
     - target: {fileID: 547517161340589406, guid: 8bba1d62d69cf486cb31412eab6b5397, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1057,7 +1025,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b2803040e7e6dfa45bdda8dd7b4b09b7, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.Hud
 --- !u!1 &1547481273
 GameObject:
@@ -1101,7 +1069,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a42e52a8844dee94fa5d6fbe235c487a, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.MadFactBootstrap
   Storefront: {fileID: 144760055}
   Hud: {fileID: 1282366825}
@@ -1116,6 +1084,7 @@ MonoBehaviour:
   Level3Cleared: 0
   Level4Cleared: 0
   StartPhaseOverride: 1
+  _allowRuntimeFallback: 0
   _canvas: {fileID: 1695734077}
 --- !u!1 &1695734076
 GameObject:
@@ -1173,10 +1142,10 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 144760054}
-  - {fileID: 455012284}
+  - {fileID: 2001286420}
+  - {fileID: 563257772}
   - {fileID: 1282366824}
   - {fileID: 1243050129}
-  - {fileID: 563257772}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1194,7 +1163,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GraphicRaycaster
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
@@ -1211,7 +1180,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
@@ -1230,7 +1199,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 455012284}
+    m_TransformParent: {fileID: 1695734078}
     m_Modifications:
     - target: {fileID: 1148668159492562000, guid: 5169764ecaea94ec2a6e5b41b1221985, type: 3}
       propertyPath: m_Name
@@ -1330,7 +1299,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e5deafe004912624fbf4ce47269d03ff, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level1Counter
 --- !u!224 &2001286420 stripped
 RectTransform:

@@ -33,7 +33,7 @@ namespace MadFact
         public static Sprite MovieFanFullBody()
         {
             const string key = "customer_movie_fan_full";
-            if (Cache.TryGetValue(key, out var cached)) return cached;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
             var texture = Resources.Load<Texture2D>("Characters/Customers/MovieFan");
             if (texture == null) return Theme.Solid;
             texture.filterMode = FilterMode.Point;
@@ -56,7 +56,7 @@ namespace MadFact
         public static Sprite StorefrontBackground()
         {
             const string key = "background_storefront";
-            if (Cache.TryGetValue(key, out var cached)) return cached;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
             var texture = Resources.Load<Texture2D>("Backgrounds/Storefront");
             if (texture == null) return Theme.Solid;
             texture.filterMode = FilterMode.Point;
@@ -84,7 +84,7 @@ namespace MadFact
         public static Sprite UserArt(string folder, string name)
         {
             string key = "user_" + folder + "_" + Slug(name);
-            if (Cache.TryGetValue(key, out var cached)) return cached;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
             var texture = Resources.Load<Texture2D>(folder + "/" + Slug(name));
             if (texture == null) return null;
             texture.filterMode = FilterMode.Point;
@@ -126,11 +126,14 @@ namespace MadFact
         /// <summary>Full-stage backdrop for a store era (2 = computerized store, 3 = startup, 4 = corporate HQ).</summary>
         public static Sprite LevelBackground(int level)
         {
+            if (level < 2 || level > 4) return StorefrontBackground();
+
             string key = "background_level_" + level;
-            if (Cache.TryGetValue(key, out var cached)) return cached;
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
             var texture = Resources.Load<Texture2D>("Backgrounds/MadFact_Level" + level + "_Background");
-            if (texture == null) return Theme.Solid;
-            // The source renders carry baked-in white margins on the sides; crop them off
+            if (texture == null) return StorefrontBackground();
+            texture.filterMode = FilterMode.Bilinear;
+            // The source renders carry a baked-in white presentation matte; crop it off
             // so the stage fills edge to edge.
             float insetX = texture.width * 0.045f;
             float insetY = texture.height * 0.012f;
@@ -189,7 +192,7 @@ namespace MadFact
 
         static Sprite Crop(string atlas, string key, float x, float top, float width, float height, Vector4 border)
         {
-            if (Cache.TryGetValue(key, out var sprite)) return sprite;
+            if (Cache.TryGetValue(key, out var sprite) && sprite != null) return sprite;
 
             var texture = Resources.Load<Texture2D>("Atlases/" + atlas);
             if (texture == null) return Theme.Solid;

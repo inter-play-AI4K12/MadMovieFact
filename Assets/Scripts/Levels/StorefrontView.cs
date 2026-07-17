@@ -15,7 +15,7 @@ namespace MadFact
         [SerializeField] Button _enter;
         [SerializeField] Text _enterLabel, _subtitle;
         [SerializeField] RectTransform _lineRoot;
-        Image _background;
+        [SerializeField] Image _background;
         int _era = 1;
 
         public Button Enter => _enter;
@@ -107,6 +107,9 @@ namespace MadFact
             // the queue art belongs to the original shop's floor; hide it in later eras
             if (_lineRoot != null) _lineRoot.gameObject.SetActive(era <= 2);
         }
+
+        /// <summary>Staging-branch compatibility alias: levels map straight onto eras.</summary>
+        public void SetBackgroundForLevel(int level) => SetEra(Mathf.Max(1, level));
     }
 
     /// <summary>Gentle idle bob for customer figures so the line feels alive.</summary>

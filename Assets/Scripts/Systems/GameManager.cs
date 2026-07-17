@@ -53,6 +53,10 @@ namespace MadFact
         {
             if (I != null && I != this) { Destroy(gameObject); return; }
             I = this;
+            // Scene composition groups managers under _SceneCommon for readability.
+            // Persistent objects must be roots before Unity can move them to the
+            // DontDestroyOnLoad scene.
+            if (transform.parent != null) transform.SetParent(null, true);
             DontDestroyOnLoad(gameObject);
             Matrix = new MfModel();
             Run = new RunState();

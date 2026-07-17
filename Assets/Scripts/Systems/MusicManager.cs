@@ -21,6 +21,8 @@ namespace MadFact
         {
             if (I != null && I != this) { Destroy(gameObject); return; }
             I = this;
+            if (transform.parent != null) transform.SetParent(null, true);
+            DontDestroyOnLoad(gameObject);
             _src = gameObject.AddComponent<AudioSource>();
             _src.playOnAwake = false;
             _src.loop = false;          // looping is handled by the sequence coroutine
