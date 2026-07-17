@@ -33,7 +33,7 @@ namespace MadFact
         bool _optimizing;
         bool _suppressSliderEvents;
 
-        const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 116, ColHeadH = 40;
+        const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 104, ColHeadH = 40;
 
         void Awake()
         {
@@ -41,7 +41,7 @@ namespace MadFact
             // Multidimensional UI arrays are not serialized by Unity. Rebuild the lookup
             // table from stable prefab object names, then restore interaction callbacks.
             int rows = GameData.MatrixCustomers.Length;
-            int cols = GameData.Movies.Count;
+            int cols = GameData.MatrixMovies.Length;   // grid is pinned to the original stock
             _cellBg = new Image[rows, cols]; _cellGlow = new Image[rows, cols];
             _cellGuess = new Text[rows, cols]; _cellTarget = new Text[rows, cols];
             _rowBtn = new Button[rows]; _colBtn = new Button[cols];
@@ -101,7 +101,8 @@ namespace MadFact
 
         void Build(Transform parent)
         {
-            _root = UIFactory.Image(parent, "Level3Mainframe", Theme.CrtBg).gameObject;
+            // translucent overlay: the corporate-era backdrop lives on the storefront behind
+            _root = UIFactory.Image(parent, "Level3Mainframe", new Color(0, 0, 0, 0.55f)).gameObject;
             UIFactory.Fill(UIFactory.RT(_root), 40, 40, 40, 0);
 
             // CRT screen
@@ -149,8 +150,13 @@ namespace MadFact
                 int cj = j;
                 var b = UIFactory.Button(gridRoot.transform, "Col" + j, GameData.Movies[j].Title.Replace(" ", "\n"), () => SelectCol(cj), Theme.CrtBgSoft, 11, Theme.Typewriter, Theme.CrtGreen);
                 UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(CellW, ColHeadH - 2), new Vector2(RowHeadW + j * (CellW + GapX), 0));
-                UIFactory.ButtonIcon(b, ArtSprites.MovieCover(j), 14f);
-                b.GetComponentInChildren<Text>().fontSize = 7;
+                UIFactory.ButtonIcon(b, ArtSprites.MovieCover(j), 18f);
+                var movieLabel = b.GetComponentInChildren<Text>();
+                movieLabel.fontSize = 9;
+                movieLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
+                movieLabel.resizeTextForBestFit = true;
+                movieLabel.resizeTextMinSize = 6;
+                movieLabel.resizeTextMaxSize = 9;
                 _colBtn[j] = b;
                 _colSel[j] = UIFactory.Image(b.transform, "Sel", new Color(1, 1, 0.4f, 0.25f), null, Image.Type.Simple, false);
                 UIFactory.Fill(UIFactory.RT(_colSel[j].gameObject)); _colSel[j].gameObject.SetActive(false);
@@ -239,9 +245,13 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(_resetBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(150, 34), new Vector2(-180, 16));
             UIFactory.ButtonIcon(_resetBtn, ArtSprites.Reset(), 24f);
 
-            _optimizeBtn = UIFactory.Button(screen.transform, "Optimize", "RUN OPTIMIZER", RunOptimizer, Theme.CrtBgSoft, 16, Theme.SystemSans, Theme.CrtAmber);
+            _optimizeBtn = UIFactory.Button(screen.transform, "Optimize", "RUN OPTIMIZER", RunOptimizer, Theme.CrtAmber, 16, Theme.SystemSans, Theme.TitleText);
             UIFactory.Place(UIFactory.RT(_optimizeBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(180, 38), new Vector2(-20, 14));
             UIFactory.ButtonIcon(_optimizeBtn, ArtSprites.Optimize(), 28f);
+            var optimizeLabel = _optimizeBtn.GetComponentInChildren<Text>();
+            optimizeLabel.resizeTextForBestFit = true;
+            optimizeLabel.resizeTextMinSize = 10;
+            optimizeLabel.resizeTextMaxSize = 16;
         }
 
         // ---- Open / refresh ----------------------------------------------
@@ -249,7 +259,7 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
-            MadFactBootstrap.I.Storefront.SetLine(0);
+            MadFactBootstrap.I.Storefront.SetLine(16);
             Deselect();
             RefreshGrid();
         }
@@ -411,16 +421,71 @@ namespace MadFact
             _optimizing = false;
             _resetBtn.interactable = true;
 
-            // highlight the underserved cluster, then hand off to Level 4
+            // Money on the table attracts vultures: Gibbs makes his pitch mid-level,
+            // right when the machine has just proven how profitable personalization is.
+            yield return new WaitForSecondsRealtime(0.8f);
+            bool pitching = true;
+            PrivacyScenario.Play(MadFactBootstrap.I.Comms, () => pitching = false);
+            yield return new WaitUntil(() => !pitching);
+
+            // highlight the underserved cluster, then hand off to Level 5 — but first
+            // the crowd's math shows its other face: popularity bias.
             yield return new WaitForSecondsRealtime(1.0f);
             HighlightUnderserved();
             yield return new WaitForSecondsRealtime(0.6f);
             if (!MadFactBootstrap.I.Level4Cleared)
             {
                 MadFactBootstrap.I.Level4Cleared = true;
-                MadFactBootstrap.I.OnLevel4Goal();
+                PopularityBiasScene(() => MadFactBootstrap.I.OnLevel4Goal());
             }
             else _optimizeBtn.interactable = true;
+        }
+
+        /// <summary>
+        /// Popularity bias beat: the optimizer's filled predictions crown the big hit,
+        /// an indie filmmaker protests, and Pellings quizzes the player on why the
+        /// crowd's math buries small tapes.
+        /// </summary>
+        void PopularityBiasScene(System.Action then)
+        {
+            _hint.text = "PREDICTIONS FILLED. 'STAR DRIFTER' now tops 4 of 5 customers' lists.";
+            var comms = MadFactBootstrap.I.Comms;
+            var iris = ArtSprites.CustomerPortrait("INDIE IRIS");
+
+            comms.ShowNamed("INDIE IRIS  (independent filmmaker)", "INCOMING COMPLAINT", iris, new[]
+            {
+                "Hey! Basement guy! Your machine only recommends the big blockbuster to EVERYONE now!",
+                "I made 'THE LONG WINTER' with two lamps and a firewood budget, and it's GOOD.",
+                "But nobody rates what nobody's shown, and nobody's shown what nobody rates. See the problem?!"
+            }, () => comms.Show(Speaker.OldDude, new[]
+            {
+                "She's got a point, kid. Look at the board — the tape with the most ratings wins every column.",
+                "Quick — tell me WHY the crowd's math piles onto the big hit."
+            }, () => comms.AskChoice(Speaker.OldDude,
+                "QUIZ: 'STAR DRIFTER' tops every list and 'THE LONG WINTER' never gets shown. Why?", new[]
+            {
+                "Popular tapes have the most ratings, so the math is most confident about them",
+                "The mainframe reads each movie's budget and always favors the expensive ones",
+                "Small movies always get worse ratings, so hiding them is correct behavior"
+            }, pick =>
+            {
+                string[] verdict = pick == 0
+                    ? new[]
+                    {
+                        "Exactly. The crowd's data is thickest around what's already popular.",
+                        "More recommendations, more rentals, more ratings — the loop feeds itself.",
+                        "That's POPULARITY BIAS. The little tapes never get the EXPOSURE to prove themselves.",
+                        "Remember Iris. A fair system has to spend some recommendations on the long shots."
+                    }
+                    : new[]
+                    {
+                        "Nope. The machine doesn't know budgets, and 'THE LONG WINTER' is terrific.",
+                        "It's the DATA: popular tapes have the most ratings, so the math is surest about them.",
+                        "Sure bets get recommended, get rented, get rated — the loop feeds itself. POPULARITY BIAS.",
+                        "The little tapes never get the EXPOSURE to prove themselves. Remember Iris."
+                    };
+                comms.Show(Speaker.OldDude, verdict, then);
+            })));
         }
 
         void HighlightUnderserved()

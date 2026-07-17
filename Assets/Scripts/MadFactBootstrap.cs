@@ -58,7 +58,7 @@ namespace MadFact
 
             // Level 1 deliberately keeps the original store. Staging supplied dedicated
             // art for Levels 2-4, which the split scenes now select at runtime.
-            Storefront.SetBackgroundForLevel(StartPhaseOverride);
+            Storefront.SetEra(StartPhaseOverride);
 
             // Dedicated production scenes set StartPhaseOverride so designers can open a
             // level scene and immediately see/play that level in context. The legacy
@@ -186,6 +186,7 @@ namespace MadFact
             CloseAllLevels();
             BringHudToFront();
             GameManager.I.GoTo(Phase.Storefront);
+            Storefront.SetEra(_currentLevel);
 
             switch (_currentLevel)
             {

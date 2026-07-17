@@ -20,7 +20,8 @@ namespace MadFact
 
         public static Sprite CustomerPortrait(string name)
         {
-            if (!CustomerIndices.TryGetValue(name, out int index)) return Theme.Disc;
+            if (!CustomerIndices.TryGetValue(name, out int index))
+                return ProceduralPortraits.Card(name);
             int col = index % 5;
             int row = index / 5;
             return Crop("CharacterCards", "customer_" + index,
@@ -32,7 +33,7 @@ namespace MadFact
         public static Sprite MovieFanFullBody()
         {
             const string key = "customer_movie_fan_full";
-            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
+            if (Cache.TryGetValue(key, out var cached)) return cached;
             var texture = Resources.Load<Texture2D>("Characters/Customers/MovieFan");
             if (texture == null) return Theme.Solid;
             texture.filterMode = FilterMode.Point;
@@ -55,7 +56,7 @@ namespace MadFact
         public static Sprite StorefrontBackground()
         {
             const string key = "background_storefront";
-            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
+            if (Cache.TryGetValue(key, out var cached)) return cached;
             var texture = Resources.Load<Texture2D>("Backgrounds/Storefront");
             if (texture == null) return Theme.Solid;
             texture.filterMode = FilterMode.Point;
@@ -66,20 +67,28 @@ namespace MadFact
             return sprite;
         }
 
-        public static Sprite LevelBackground(int level)
+        /// <summary>"APOLLO: THE UNTOLD HOURS" -> "apollo_the_untold_hours" (asset file names).</summary>
+        public static string Slug(string name)
         {
-            if (level < 2 || level > 4) return StorefrontBackground();
+            var sb = new System.Text.StringBuilder();
+            bool lastUnderscore = true;
+            foreach (char c in name.ToLowerInvariant())
+            {
+                if (char.IsLetterOrDigit(c)) { sb.Append(c); lastUnderscore = false; }
+                else if (!lastUnderscore) { sb.Append('_'); lastUnderscore = true; }
+            }
+            return sb.ToString().TrimEnd('_');
+        }
 
-            string key = "background_level_" + level;
-            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
-
-            var texture = Resources.Load<Texture2D>($"Backgrounds/MadFact_Level{level}_Background");
-            if (texture == null) return StorefrontBackground();
-            texture.filterMode = FilterMode.Bilinear;
-            // The generated level backgrounds share a narrow white presentation matte.
-            // Crop it instead of displaying two unrelated white bars at 16:9.
-            int sideMatte = Mathf.RoundToInt(texture.width * 0.035f);
-            var sprite = Sprite.Create(texture, new Rect(sideMatte, 0, texture.width - sideMatte * 2, texture.height),
+        /// <summary>Loads a hand-generated image dropped into Resources, or null.</summary>
+        public static Sprite UserArt(string folder, string name)
+        {
+            string key = "user_" + folder + "_" + Slug(name);
+            if (Cache.TryGetValue(key, out var cached)) return cached;
+            var texture = Resources.Load<Texture2D>(folder + "/" + Slug(name));
+            if (texture == null) return null;
+            texture.filterMode = FilterMode.Point;
+            var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
                 new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
             sprite.name = key;
             Cache[key] = sprite;
@@ -88,8 +97,14 @@ namespace MadFact
 
         public static Sprite MovieCover(int index)
         {
-            index = Mathf.Clamp(index, 0, 4);
-            return Crop("MovieCatalog", "cover_" + index, 30 + index * 281, 92, 258, 500);
+            // Priority: a generated poster dropped into Resources/Posters/<slug>.png,
+            // then the atlas art for the five original tapes, then the procedural
+            // gradient poster in the style of the design sketch.
+            if (index < 0) index = 0;
+            var user = UserArt("Posters", GameData.Movies[Mathf.Min(index, GameData.Movies.Count - 1)].Title);
+            if (user != null) return user;
+            if (index <= 4) return Crop("MovieCatalog", "cover_" + index, 30 + index * 281, 92, 258, 500);
+            return ProceduralPosters.Cover(index);
         }
 
         public static Sprite MovieSpine(int index)
@@ -98,8 +113,33 @@ namespace MadFact
             return Crop("MovieCatalog", "spine_" + index, 30 + index * 281, 625, 258, 78);
         }
 
-        public static Sprite GenreIcon(Genre genre) => CatalogIcon((int)genre);
+        public static Sprite GenreIcon(Genre genre)
+        {
+            // Atlas icons cover the four original genres; the rest are generated chips.
+            int g = (int)genre;
+            if (g <= 3) return CatalogIcon(g);
+            return ProceduralPosters.GenreChip(genre);
+        }
+
         public static Sprite VibeIcon(int vibe) => CatalogIcon(4 + Mathf.Clamp(vibe, 0, 3));
+
+        /// <summary>Full-stage backdrop for a store era (2 = computerized store, 3 = startup, 4 = corporate HQ).</summary>
+        public static Sprite LevelBackground(int level)
+        {
+            string key = "background_level_" + level;
+            if (Cache.TryGetValue(key, out var cached)) return cached;
+            var texture = Resources.Load<Texture2D>("Backgrounds/MadFact_Level" + level + "_Background");
+            if (texture == null) return Theme.Solid;
+            // The source renders carry baked-in white margins on the sides; crop them off
+            // so the stage fills edge to edge.
+            float insetX = texture.width * 0.045f;
+            float insetY = texture.height * 0.012f;
+            var rect = new Rect(insetX, insetY, texture.width - insetX * 2f, texture.height - insetY * 2f);
+            var sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            sprite.name = key;
+            Cache[key] = sprite;
+            return sprite;
+        }
 
         static Sprite CatalogIcon(int index) =>
             Crop("MovieCatalog", "catalog_icon_" + index, 42 + index * 171, 782, 140, 170);
@@ -149,10 +189,7 @@ namespace MadFact
 
         static Sprite Crop(string atlas, string key, float x, float top, float width, float height, Vector4 border)
         {
-            // Enter Play Mode Options can keep this static dictionary while Unity
-            // destroys runtime-created Sprite objects. A destroyed Unity object still
-            // occupies the dictionary entry, so explicitly reject its fake-null value.
-            if (Cache.TryGetValue(key, out var sprite) && sprite != null) return sprite;
+            if (Cache.TryGetValue(key, out var sprite)) return sprite;
 
             var texture = Resources.Load<Texture2D>("Atlases/" + atlas);
             if (texture == null) return Theme.Solid;

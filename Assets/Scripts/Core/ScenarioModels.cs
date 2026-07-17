@@ -145,13 +145,23 @@ namespace MadFact
         }
 
         public void RecordRecommendation(LevelScenario scenario, MovieData movie, SaleTier tier, float satisfaction, int questionsAsked)
+            => RecordRecommendation(scenario.Id, scenario.Visit.Customer.Name, scenario.Phase, movie, tier, satisfaction, questionsAsked);
+
+        public void RecordRecommendation(string scenarioId, string customerName, Phase phase, MovieData movie, SaleTier tier, float satisfaction, int questionsAsked = 0)
         {
-            var customerName = scenario.Visit.Customer.Name;
-            Recommendations.Add(new RecommendationRecord(scenario.Id, customerName, movie.Title, scenario.Phase, tier, satisfaction, questionsAsked));
+            Recommendations.Add(new RecommendationRecord(scenarioId, customerName, movie.Title, phase, tier, satisfaction, questionsAsked));
 
             _visitsByCustomer.TryGetValue(customerName, out int visits);
             _visitsByCustomer[customerName] = visits + 1;
             _lastSatisfactionByCustomer[customerName] = satisfaction;
+        }
+
+        /// <summary>Has this customer already taken this exact tape home during the run?</summary>
+        public bool HasServed(string customerName, string movieTitle)
+        {
+            foreach (var r in Recommendations)
+                if (r.CustomerName == customerName && r.MovieTitle == movieTitle) return true;
+            return false;
         }
     }
 }

@@ -134,7 +134,76 @@ namespace MadFact
                         "Prefers space, but dislikes pure noise."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
-                        new[] { "Good. Not just lasers and shouting.", "You have taste, apparently." }))
+                        new[] { "Good. Not just lasers and shouting.", "You have taste, apparently." })),
+
+                new LevelScenario(
+                    "l1_rosa_heart_thing",
+                    Phase.Level1,
+                    new CustomerVisit(
+                        "visit_rosa_heart_thing",
+                        GameData.CustomerIndex("ROSA"),
+                        Genre.Romance,
+                        Genre.Romance,
+                        "Something that makes my heart do the thing.",
+                        "Very specific about 'the thing'. Will know it when she feels it."),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "THE THING. My heart did the thing.", "You're getting a regular out of this, you know." },
+                        "rosa_regular"),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "My heart did NOT do the thing.", "It did a different, worse thing." })),
+
+                new LevelScenario(
+                    "l1_earl_real_footage",
+                    Phase.Level1,
+                    new CustomerVisit(
+                        "visit_earl_real_footage",
+                        GameData.CustomerIndex("EARL"),
+                        Genre.Documentary,
+                        Genre.Documentary,
+                        "Real footage. Real facts. None of that made-up stuff.",
+                        "Retired. Watches everything twice: once for the facts, once to check them."),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "Now THAT'S footage. I'll be back Thursday to dispute two of the facts." }),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "This is FICTION. I can tell because it's interesting in the wrong way.", "Refund." })),
+
+                new LevelScenario(
+                    "l1_nguyen_two_dogs",
+                    Phase.Level1,
+                    new CustomerVisit(
+                        "visit_nguyen_two_dogs",
+                        GameData.CustomerIndex("THE NGUYEN KIDS"),
+                        Genre.Animation,
+                        Genre.Animation,
+                        "Cartoons! With a dog in them! Or TWO dogs!!",
+                        "Age 8. Mind the sticker on the box."),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "DOGS!! Did you SEE the part with the— the— WE'RE WATCHING IT AGAIN." }),
+                    new ScenarioOutcome(
+                        DialogueTarget.OldDude,
+                        new[] { "Kid, look at the box next time. The sticker in the corner isn't decoration.", "Wrong tape for an eight-year-old is worse than no tape at all." })),
+
+                new LevelScenario(
+                    "l1_babs_feel_something",
+                    Phase.Level1,
+                    new CustomerVisit(
+                        "visit_babs_feel_something",
+                        GameData.CustomerIndex("BABS"),
+                        Genre.Drama,
+                        Genre.Drama,
+                        "I want to FEEL something. Preferably in black and white.",
+                        "Do not recommend anything with a laugh track."),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "...I felt something.", "I'm not going to tell you what it was. Good tape." }),
+                    new ScenarioOutcome(
+                        DialogueTarget.Customer,
+                        new[] { "I felt NOTHING. Which, coincidentally, is what you'll be refunding me: everything." }))
             };
         }
     }

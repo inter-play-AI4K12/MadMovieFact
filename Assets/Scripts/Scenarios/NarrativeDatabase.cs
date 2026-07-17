@@ -17,9 +17,10 @@ namespace MadFact
 
         public static string[] Level1GoalOldDude(int money) => new[]
         {
-            $"${money}! Look at you. But your hand's cramping and the line's out the door.",
-            "My nephew left a robot assistant in the back. Beige thing. Talks funny.",
-            "Teach it some rules. Let IT do the matching. That's called AUTOMATION, kid."
+            $"${money}! Ha! The till hasn't sung like that in years.",
+            "And look at that LINE. Word's getting around — we've got more customers than hands now.",
+            "You're due for some upgrades, kid. New paint, new counters, computers on the desk. Liven the place up.",
+            "And my nephew's robot assistant comes out of the back room. Teach it some rules — that's AUTOMATION."
         };
 
         public static readonly string[] Level1GoalRobot =

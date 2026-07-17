@@ -112,6 +112,7 @@ public static class RefreshAuthoredLevelPrefabs
     /// Batch-friendly safeguard for the layouts that previously drifted behind staging.
     /// Throws when a prefab is stale so CI or a local batch run fails loudly.
     /// </summary>
+    [MenuItem("MadFact/Validate Authored Level Prefabs")]
     public static void Validate()
     {
         var level1 = Load("Assets/Prefabs/Levels/Level1Counter.prefab");
@@ -120,6 +121,7 @@ public static class RefreshAuthoredLevelPrefabs
         var level3Mainframe = Load("Assets/Prefabs/Levels/Level3Mainframe.prefab");
         var level4 = Load("Assets/Prefabs/Levels/Level4Corkboard.prefab");
         var dialogue = Load("Assets/Prefabs/UI/DialogueBox.prefab");
+        var hud = Load("Assets/Prefabs/UI/HUD.prefab");
 
         RequireActive(level1.transform, "Level1Counter");
         RequireActive(level2.transform, "Level2Robot");
@@ -130,6 +132,8 @@ public static class RefreshAuthoredLevelPrefabs
         var dialogueBody = Require(dialogue.transform, "Body").GetComponent<Text>();
         if (dialogueBody == null || dialogueBody.lineSpacing < 1.2f)
             throw new System.InvalidOperationException("Dialogue body line spacing must remain at least 1.2.");
+        Require(hud.transform, "Trust");
+        Require(hud.transform, "TrustFill");
 
         foreach (string prefabPath in AuthoredUiPrefabPaths)
         {
@@ -139,17 +143,25 @@ public static class RefreshAuthoredLevelPrefabs
                     throw new System.InvalidOperationException($"Text '{text.name}' in {prefabPath} has no serialized preview font.");
         }
 
-        for (int i = 0; i < 5; i++)
-        {
-            var movie = Require(level1.transform, "M" + i).GetComponent<RectTransform>();
-            Require(movie, "Poster");
-            RequireApproximately(movie.sizeDelta, new Vector2(250, 58), "Level 1 movie card size");
-        }
+        var level1Shelf = Require(level1.transform, "Shelf");
+        if (level1Shelf.GetComponent<PosterBrowser>() == null)
+            throw new System.InvalidOperationException("Level 1 shelf must use the authored PosterBrowser.");
+        Require(level1Shelf, "GenreName");
+        Require(level1Shelf, "Grid");
+        Require(level1Shelf, "Detail");
+        Require(level1Shelf, "Poster0");
 
         RequireApproximately(Require(level1.transform, "Result").GetComponent<RectTransform>().anchoredPosition,
-            new Vector2(-60, 50), "Level 1 result position");
+            new Vector2(18, 52), "Level 1 result position");
         RequireApproximately(Require(level1.transform, "Next").GetComponent<RectTransform>().anchoredPosition,
-            new Vector2(-60, 14), "Level 1 next-customer position");
+            new Vector2(18, 12), "Level 1 next-customer position");
+
+        var level3Shelf = Require(level3Content.transform, "Shelf");
+        if (level3Shelf.GetComponent<PosterBrowser>() == null)
+            throw new System.InvalidOperationException("Level 3 shelf must use the authored PosterBrowser.");
+        Require(level3Content.transform, "ProfilePanel");
+        for (int i = 0; i < GenreInfo.Count; i++)
+            Require(level3Content.transform, "pf" + i);
 
         var log = Require(level2.transform, "Log").GetComponent<RectTransform>();
         var summary = Require(level2.transform, "Sum").GetComponent<RectTransform>();

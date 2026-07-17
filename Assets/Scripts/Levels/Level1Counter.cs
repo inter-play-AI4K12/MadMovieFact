@@ -6,8 +6,9 @@ namespace MadFact
 {
     /// <summary>
     /// Level 1 — The Manual Era. The player reviews a physical customer file, may ask a
-    /// limited number of clarifying questions (action economy), then recommends a tape.
-    /// Payment scales with how well the recommendation matches the customer's true taste.
+    /// limited number of clarifying questions (action economy), then walks the shelves:
+    /// a genre carousel of poster thumbnails, each opening to box art and feature bars,
+    /// exactly like a clerk flipping a box over before recommending it.
     /// After the very first recommendation, Mr. Pellings breaks in to explain WHY the
     /// customer reacted the way they did — feature matching, said out loud.
     /// The growing line proves manual labour can't scale.
@@ -17,10 +18,10 @@ namespace MadFact
         [SerializeField] GameObject _root;
         [SerializeField] Text _name, _history, _stated, _quip, _notes, _qLeft, _result;
         [SerializeField] List<Button> _questionButtons = new List<Button>();
-        [SerializeField] List<Button> _movieButtons = new List<Button>();
         [SerializeField] Button _nextBtn;
         [SerializeField] Image _portrait;
         [SerializeField] Text _portraitInitial;
+        [SerializeField] PosterBrowser _browser;
 
         LevelScenario _scenario;
         CustomerVisit _visit;
@@ -34,6 +35,8 @@ namespace MadFact
         void Awake()
         {
             if (_root == null) return;
+            if (_browser == null) _browser = UIFactory.FindDeep<PosterBrowser>(transform, "Shelf");
+            if (_browser != null) _browser.OnRecommend = Recommend;
             _nextBtn.onClick.RemoveAllListeners();
             _nextBtn.onClick.AddListener(NextCustomer);
             var leave = UIFactory.FindDeep<Button>(transform, "Leave");
@@ -43,12 +46,6 @@ namespace MadFact
                 int index = i;
                 _questionButtons[i].onClick.RemoveAllListeners();
                 _questionButtons[i].onClick.AddListener(() => Ask(index));
-            }
-            for (int i = 0; i < _movieButtons.Count; i++)
-            {
-                int index = i;
-                _movieButtons[i].onClick.RemoveAllListeners();
-                _movieButtons[i].onClick.AddListener(() => Recommend(index));
             }
         }
 
@@ -78,13 +75,17 @@ namespace MadFact
 
             BuildFile(window.transform);
             BuildQuestions(window.transform);
-            BuildRecommend(window.transform);
 
-            _result = UIFactory.Text(window.transform, "Result", "", 16, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(_result.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(600, 28), new Vector2(-60, 50));
+            // the shelf browser (genre carousel + posters + detail), per the design sketch
+            _browser = PosterBrowser.Create(window.transform, "Shelf");
+            UIFactory.Place(UIFactory.RT(_browser.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(292, 384), new Vector2(-12, -40));
+            _browser.OnRecommend = Recommend;
+
+            _result = UIFactory.Text(window.transform, "Result", "", 15, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleLeft, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_result.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(560, 28), new Vector2(18, 52));
 
             _nextBtn = UIFactory.Button(window.transform, "Next", "NEXT CUSTOMER", NextCustomer, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
-            UIFactory.Place(UIFactory.RT(_nextBtn.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(220, 36), new Vector2(-60, 14));
+            UIFactory.Place(UIFactory.RT(_nextBtn.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(220, 36), new Vector2(18, 12));
             UIFactory.ButtonIcon(_nextBtn, ArtSprites.Next(), 24f);
             _nextBtn.gameObject.SetActive(false);
 
@@ -113,9 +114,9 @@ namespace MadFact
 
             _name = UIFactory.Text(folder.transform, "Name", "", 18, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(_name.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 24), new Vector2(108, -22));
-            _history = UIFactory.Text(folder.transform, "Hist", "", 13, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false);
+            _history = UIFactory.Text(folder.transform, "Hist", "", 14, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false);
             UIFactory.Place(UIFactory.RT(_history.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(108, -48));
-            _stated = UIFactory.Text(folder.transform, "Stated", "", 13, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false);
+            _stated = UIFactory.Text(folder.transform, "Stated", "", 14, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false);
             UIFactory.Place(UIFactory.RT(_stated.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(108, -70));
 
             _quip = UIFactory.Text(folder.transform, "Quip", "", 14, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, true, FontStyle.Italic);
@@ -141,35 +142,15 @@ namespace MadFact
             {
                 int idx = i;
                 var b = UIFactory.Button(window.transform, "Q" + i, _qText[i], () => Ask(idx), Theme.Face, 14, Theme.SystemSans);
-                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 26), new Vector2(330, -86 - i * 30));
+                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(245, 26), new Vector2(330, -86 - i * 30));
                 UIFactory.ButtonIcon(b, ArtSprites.VibeIcon((int)_qAxis[i]), 21f);
                 var t = b.GetComponentInChildren<Text>(); t.alignment = TextAnchor.MiddleLeft;
                 _questionButtons.Add(b);
             }
-        }
 
-        void BuildRecommend(Transform window)
-        {
-            var lbl = UIFactory.Text(window.transform, "RLbl", "RECOMMEND A TAPE", 14, Theme.Ink, Theme.SystemSans, TextAnchor.UpperLeft, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(lbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 20), new Vector2(610, -44));
-
-            for (int i = 0; i < GameData.Movies.Count; i++)
-            {
-                int idx = i;
-                var m = GameData.Movies[i];
-                var b = UIFactory.Button(window.transform, "M" + i, m.Title, () => Recommend(idx), Theme.Plastic, 13, Theme.SystemSans);
-                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 58), new Vector2(610, -68 - i * 64));
-
-                // a real poster thumbnail, tall enough to actually read the art
-                var poster = UIFactory.Image(b.transform, "Poster", Color.white, ArtSprites.MovieCover(i), Image.Type.Simple, false);
-                poster.preserveAspect = true;
-                UIFactory.Place(UIFactory.RT(poster.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(40, 52), new Vector2(6, 0));
-
-                var t = b.GetComponentInChildren<Text>();
-                t.alignment = TextAnchor.MiddleLeft;
-                var rt = UIFactory.RT(t.gameObject); rt.offsetMin = new Vector2(54, rt.offsetMin.y);
-                _movieButtons.Add(b);
-            }
+            var shelfHint = UIFactory.Text(window.transform, "ShelfHint",
+                "Then flip through the shelves →\nclick a box to read its features.", 12, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, true, FontStyle.Italic);
+            UIFactory.Place(UIFactory.RT(shelfHint.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 44), new Vector2(330, -212));
         }
 
         // ---- Flow --------------------------------------------------------
@@ -198,8 +179,8 @@ namespace MadFact
             _cust = _visit.Customer;
 
             _name.text = _cust.Name;
-            _history.text = "HISTORY: " + _visit.HistoryGenre + " tapes";
-            _stated.text = "WANTS: a " + _visit.StatedGenre + " movie";
+            _history.text = "HISTORY: " + GenreInfo.Name(_visit.HistoryGenre) + " tapes";
+            _stated.text = "WANTS: " + GenreInfo.Name(_visit.StatedGenre);
             _quip.text = "“" + _visit.DemandLine + "”";
             _notes.text = BuildInitialNotes(_visit);
             var portrait = ArtSprites.CustomerPortrait(_cust.Name);
@@ -210,7 +191,11 @@ namespace MadFact
             _portraitInitial.text = _cust.Name.Substring(0, 1);
 
             foreach (var b in _questionButtons) b.interactable = true;
-            foreach (var b in _movieButtons) b.interactable = true;
+            if (_browser != null)
+            {
+                _browser.SetLocked(false);
+                _browser.SetGenre(_visit.StatedGenre);   // open the shelf they asked about
+            }
             UpdateQLeft();
 
             // the line keeps growing — the bottleneck
@@ -220,7 +205,7 @@ namespace MadFact
 
         string BuildInitialNotes(CustomerVisit visit)
         {
-            string notes = "";
+            string notes = "- AGE: " + visit.Customer.Age + "\n";
             if (visit.ReturnVisit)
             {
                 int visits = GameManager.I.Run.VisitsFor(visit.Customer.Name);
@@ -254,15 +239,25 @@ namespace MadFact
         void Recommend(int mi)
         {
             if (_recommended) return;
-            _recommended = true;
             var movie = GameData.Movies[mi];
+
+            // no double-dipping: a customer never takes home the same tape twice
+            if (GameManager.I.Run.HasServed(_cust.Name, movie.Title))
+            {
+                if (AudioTension.I != null) AudioTension.I.Beep();
+                MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
+                    { $"'{movie.Title}'? I already RENTED that one from you. Got anything else?" });
+                return;
+            }
+
+            _recommended = true;
             float satisfaction = GameData.TrueRating(_cust, movie); // 1..5
             float error = 5f - satisfaction;                        // 0 = perfect
 
             foreach (var b in _questionButtons) b.interactable = false;
-            foreach (var b in _movieButtons) b.interactable = false;
+            _browser.SetLocked(true);
 
-            if (AudioTension.I != null) { AudioTension.I.SetError(error); AudioTension.I.Clunk(); }
+            if (AudioTension.I != null) AudioTension.I.Clunk();
 
             // payout at the register position (top-centre-ish)
             Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
@@ -274,24 +269,32 @@ namespace MadFact
 
             _served++;
 
-            // upgrade check
-            System.Action afterOutcome;
+            // Mr. Pellings breaks in ONCE, after the very first sale, to teach the lesson:
+            // taste is a set of features, and matching them is the whole job. Chain into
+            // the scenario's own outcome dialogue afterward so the two don't race to show
+            // on the CommsBox in the same frame.
+            if (!_pellingsExplained)
+            {
+                _pellingsExplained = true;
+                ShowPellingsLesson(movie, tier, () => AfterRecommend(tier));
+            }
+            else
+            {
+                AfterRecommend(tier);
+            }
+        }
+
+        void AfterRecommend(SaleTier tier)
+        {
             if (GameManager.I.Money >= GameManager.Level1Goal && !MadFactBootstrap.I.Level1Cleared)
             {
                 MadFactBootstrap.I.Level1Cleared = true;
                 _nextBtn.gameObject.SetActive(false);
-                afterOutcome = TriggerUpgrade;
+                PlayScenarioOutcome(tier, TriggerUpgrade);
+                return;
             }
-            else afterOutcome = () => _nextBtn.gameObject.SetActive(true);
 
-            // Mr. Pellings teaches feature matching once, then the customer's authored
-            // reaction plays. Chaining avoids two dialogue boxes replacing each other.
-            if (!_pellingsExplained)
-            {
-                _pellingsExplained = true;
-                ShowPellingsLesson(movie, tier, () => PlayScenarioOutcome(tier, afterOutcome));
-            }
-            else PlayScenarioOutcome(tier, afterOutcome);
+            PlayScenarioOutcome(tier, () => _nextBtn.gameObject.SetActive(true));
         }
 
         void PlayScenarioOutcome(SaleTier tier, System.Action onComplete)
