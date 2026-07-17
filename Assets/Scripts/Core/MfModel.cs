@@ -25,9 +25,9 @@ namespace MadFact
         public MfModel()
         {
             foreach (var idx in GameData.MatrixCustomers) Customers.Add(GameData.Customers[idx]);
-            // The grid is pinned to the original stock: it keeps the board a readable 5x5
-            // and the '91 mainframe never indexed the newer shelf sections anyway.
-            foreach (var idx in GameData.MatrixMovies) Movies.Add(GameData.Movies[idx]);
+            // The board uses the fictional MatrixMovieSet: students must not recognize the
+            // titles, or they'd set sliders from prior knowledge instead of optimizing.
+            Movies.AddRange(GameData.MatrixMovieSet);
             int r = Rows, c = Cols;
 
             U = new Latent[r];

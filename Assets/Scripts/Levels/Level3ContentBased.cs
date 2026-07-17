@@ -162,6 +162,8 @@ namespace MadFact
         }
 
         // ---- visit script --------------------------------------------------
+        // Kept deliberately short (per Erfan: don't go in-depth here): one intro serve,
+        // one normal Wendell serve, the filter-bubble beat, and the Tibbs finale.
         List<Visit> BuildVisits() => new List<Visit>
         {
             new Visit
@@ -172,12 +174,6 @@ namespace MadFact
             },
             new Visit
             {
-                Customer = "EARL",
-                Arrival = new[] { "The machine reads the boxes? Hmph. I read the boxes for FREE. Real footage, please." },
-                Note = "> NEW PROFILE: EARL\n> history: documentaries only\n> ranking every box..._"
-            },
-            new Visit
-            {
                 Customer = "WENDELL",
                 Arrival = new[] { "Back again! The gizmo knows I like space, right? Show me what it's got." },
                 Note = "> RETURNING: WENDELL\n> history: sci-fi, sci-fi, sci-fi\n> ranking every box..._"
@@ -185,21 +181,12 @@ namespace MadFact
             new Visit
             {
                 Customer = "WENDELL",
-                Arrival = new[] { "Me again... the machine only ever shows me the space shelf now. Which — fair. But still." },
-                Note = "> RETURNING: WENDELL (x2)\n> every serve reinforced SCI-FI\n> other genres losing exposure_",
-                EngineProfile = Narrowed("WENDELL", 0.45f),
-                ProfileCaption = "ENGINE PROFILE (NARROWING)",
-                CaptionColor = new Color(0.85f, 0.65f, 0.2f)
-            },
-            new Visit
-            {
-                Customer = "WENDELL",
                 Arrival = new[]
                 {
-                    "Okay, STOP. Every single time it's the same space tapes. I'm stuck in a LOOP here!",
+                    "Okay, STOP. Every time I come back it's the same space shelf. I'm stuck in a LOOP here!",
                     "I know I like space! But is this ALL I am to that thing?!"
                 },
-                Note = "> RETURNING: WENDELL (x3)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
+                Note = "> RETURNING: WENDELL (x2)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
                 EngineProfile = Narrowed("WENDELL", 0.12f),
                 ProfileCaption = "ENGINE PROFILE (OVERFIT!)",
                 CaptionColor = Theme.ErrorRed,

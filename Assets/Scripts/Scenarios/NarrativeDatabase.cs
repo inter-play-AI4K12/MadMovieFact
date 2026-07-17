@@ -54,7 +54,8 @@ namespace MadFact
         public static readonly string[] Level4GoalOldDude =
         {
             "You see that cluster? Rates EVERYTHING we stock a one or a two.",
-            "Look at the math — their vibe is high SPOOKY and high FUNNY. Spook-comedy!",
+            "And look at the dials the machine learned for them — nobody ever labeled those knobs, but two of them are pinned HIGH.",
+            "I've stocked shelves for forty years, kid. I know what those two dials are: SPOOKY and FUNNY. Spook-comedy!",
             "We never stocked a single one. That's not a problem, kid. That's a GOLDMINE.",
             "We've got the budget. Go to the corkboard and MAKE the movie they're starving for."
         };

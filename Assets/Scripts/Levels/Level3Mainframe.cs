@@ -33,6 +33,19 @@ namespace MadFact
         bool _optimizing;
         bool _suppressSliderEvents;
 
+        // ---- two-stage flow ----------------------------------------------
+        // Stage 1: the student fills the blank cells of the ground-truth ledger by
+        // reading the patterns (collaborative filtering by hand). Stage 2: the sliders
+        // unlock — four UNLABELED dials per row/column — and the optimizer takes over.
+        bool _stage2;
+        int[,] _stage1Guess;
+        GameObject _sliderPanel, _pickerRoot, _lossBox;
+        Text _pickerLabel;
+        Button[,] _cellBtn;
+        int _pickI = -1, _pickJ = -1;
+        const string FlagStage1Done = "mf_stage1_done";
+        const string FlagStage1Intro = "mf_stage1_intro";
+
         const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 116, ColHeadH = 40;
 
         void Awake()
@@ -41,7 +54,7 @@ namespace MadFact
             // Multidimensional UI arrays are not serialized by Unity. Rebuild the lookup
             // table from stable prefab object names, then restore interaction callbacks.
             int rows = GameData.MatrixCustomers.Length;
-            int cols = GameData.MatrixMovies.Length;   // grid is pinned to the original stock
+            int cols = GameData.MatrixMovieSet.Count;   // the fictional mainframe stock
             _cellBg = new Image[rows, cols]; _cellGlow = new Image[rows, cols];
             _cellGuess = new Text[rows, cols]; _cellTarget = new Text[rows, cols];
             _rowBtn = new Button[rows]; _colBtn = new Button[cols];
@@ -148,9 +161,9 @@ namespace MadFact
             for (int j = 0; j < cols; j++)
             {
                 int cj = j;
-                var b = UIFactory.Button(gridRoot.transform, "Col" + j, GameData.Movies[j].Title.Replace(" ", "\n"), () => SelectCol(cj), Theme.CrtBgSoft, 11, Theme.Typewriter, Theme.CrtGreen);
+                var b = UIFactory.Button(gridRoot.transform, "Col" + j, M.Movies[j].Short.Replace(" ", "\n"), () => SelectCol(cj), Theme.CrtBgSoft, 11, Theme.Typewriter, Theme.CrtGreen);
                 UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(CellW, ColHeadH - 2), new Vector2(RowHeadW + j * (CellW + GapX), 0));
-                UIFactory.ButtonIcon(b, ArtSprites.MovieCover(j), 14f);
+                UIFactory.ButtonIcon(b, ArtSprites.MatrixCover(j), 14f);
                 b.GetComponentInChildren<Text>().fontSize = 7;
                 _colBtn[j] = b;
                 _colSel[j] = UIFactory.Image(b.transform, "Sel", new Color(1, 1, 0.4f, 0.25f), null, Image.Type.Simple, false);
@@ -176,6 +189,14 @@ namespace MadFact
                         new Vector2(RowHeadW + j * (CellW + GapX), -(ColHeadH + i * (CellH + GapY))));
                     _cellBg[i, j] = cell;
 
+                    // stage-1: blank ledger cells are clickable fill-in targets
+                    var cellBtn = cell.gameObject.AddComponent<Button>();
+                    cellBtn.transition = Selectable.Transition.None;
+                    int bi = i, bj = j;
+                    cellBtn.onClick.AddListener(() => OnCellClicked(bi, bj));
+                    if (_cellBtn == null) _cellBtn = new Button[rows, cols];
+                    _cellBtn[i, j] = cellBtn;
+
                     var glow = UIFactory.Image(cell.transform, "Glow", new Color(1, 0, 0, 0), Theme.Glow, Image.Type.Simple, false);
                     UIFactory.Fill(UIFactory.RT(glow.gameObject), -6, -6, -6, -6);
                     _cellGlow[i, j] = glow;
@@ -195,29 +216,51 @@ namespace MadFact
         {
             var panel = UIFactory.Bevel(screen.transform, "Sliders", new Color(0.10f, 0.14f, 0.10f), sunken: true);
             UIFactory.Place(UIFactory.RT(panel.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(300, 320), new Vector2(-20, -44));
+            _sliderPanel = panel.gameObject;
 
             _editLabel = UIFactory.Text(panel.transform, "Edit", "SELECT A ROW OR COLUMN", 14, Theme.CrtAmber, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(_editLabel.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(280, 40), new Vector2(0, -8));
 
+            // The dials are deliberately UNLABELED: the whole point of matrix
+            // factorization is that the machine discovers what they mean on its own.
+            var dialGrey = new Color(0.55f, 0.62f, 0.55f);
             for (int d = 0; d < 4; d++)
             {
                 int cd = d;
                 float x = -114 + d * 76;
-                var col = Latent.Colors[d];
-                var vibeIcon = UIFactory.Image(panel.transform, "SI" + d, Color.white, ArtSprites.VibeIcon(d), Image.Type.Simple, false);
-                vibeIcon.preserveAspect = true;
-                UIFactory.Place(UIFactory.RT(vibeIcon.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(28, 28), new Vector2(x, -46));
-                var nameT = UIFactory.Text(panel.transform, "SN" + d, Latent.Names[d], 9, col, Theme.Typewriter, TextAnchor.UpperCenter, false, FontStyle.Bold);
-                UIFactory.Place(UIFactory.RT(nameT.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(72, 22), new Vector2(x, -76));
+                var nameT = UIFactory.Text(panel.transform, "SN" + d, "FEATURE\n" + (d + 1), 9, dialGrey, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
+                UIFactory.Place(UIFactory.RT(nameT.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(72, 34), new Vector2(x, -50));
 
-                var s = UIFactory.VSlider(panel.transform, 0f, 1.2f, 0.5f, col, v => OnSlider(cd, v));
+                var s = UIFactory.VSlider(panel.transform, 0f, 1.2f, 0.5f, dialGrey, v => OnSlider(cd, v));
                 UIFactory.Place(UIFactory.RT(s.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(46, 146), new Vector2(x, -98));
                 _sliders[d] = s;
 
-                _sliderVal[d] = UIFactory.Text(panel.transform, "SV" + d, "0.50", 12, col, Theme.Typewriter, TextAnchor.UpperCenter, false);
+                _sliderVal[d] = UIFactory.Text(panel.transform, "SV" + d, "0.50", 12, dialGrey, Theme.Typewriter, TextAnchor.UpperCenter, false);
                 UIFactory.Place(UIFactory.RT(_sliderVal[d].gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(72, 18), new Vector2(x, -250));
             }
             SetSlidersInteractable(false);
+
+            BuildStage1Picker(screen);
+        }
+
+        /// <summary>Stage-1 rating picker; occupies the slider panel's spot while it's hidden.</summary>
+        void BuildStage1Picker(Transform screen)
+        {
+            var picker = UIFactory.Bevel(screen.transform, "Picker", new Color(0.10f, 0.14f, 0.10f), sunken: true);
+            UIFactory.Place(UIFactory.RT(picker.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(300, 320), new Vector2(-20, -44));
+            _pickerRoot = picker.gameObject;
+
+            _pickerLabel = UIFactory.Text(picker.transform, "PickLbl",
+                "STAGE 1 — FILL THE LEDGER\n\nClick a ? cell on the board,\nthen give your best guess.", 13, Theme.CrtAmber, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_pickerLabel.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(260, 130), new Vector2(0, -14));
+
+            for (int v = 1; v <= 5; v++)
+            {
+                int val = v;
+                var b = UIFactory.Button(picker.transform, "Pick" + v, v + "★", () => PickValue(val), Theme.CrtBgSoft, 16, Theme.Typewriter, Theme.CrtGreen);
+                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(230, 32), new Vector2(0, 16 + (5 - v) * 36));
+            }
+            _pickerRoot.SetActive(false);
         }
 
         void BuildBottom(Transform screen)
@@ -225,6 +268,7 @@ namespace MadFact
             // loss meter
             var lossBox = UIFactory.Bevel(screen.transform, "LossBox", Theme.CrtBgSoft, sunken: true);
             UIFactory.Place(UIFactory.RT(lossBox.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(460, 30), new Vector2(20, 16));
+            _lossBox = lossBox.gameObject;
             var lossBar = UIFactory.Image(lossBox.transform, "BarBg", new Color(0, 0, 0, 0.5f));
             UIFactory.Place(UIFactory.RT(lossBar.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(250, 16), new Vector2(150, 0));
             _lossFill = UIFactory.Image(lossBar.transform, "Fill", Theme.ErrorRed);
@@ -251,17 +295,108 @@ namespace MadFact
             transform.SetAsLastSibling();
             _root.SetActive(true);
             MadFactBootstrap.I.Storefront.SetLine(0);
+
+            _stage2 = GameManager.I.Run.HasFlag(FlagStage1Done);
+            if (_stage1Guess == null)
+                _stage1Guess = new int[M.Rows, M.Cols];
+            ApplyStage();
             Deselect();
             RefreshGrid();
+
+            if (!_stage2 && !GameManager.I.Run.HasFlag(FlagStage1Intro))
+            {
+                GameManager.I.Run.SetFlag(FlagStage1Intro);
+                MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+                {
+                    "The mainframe kept a LEDGER: five customers, five tapes, one-to-five stars.",
+                    "But five entries never got logged. Before any machine touches this board — YOU fill them in.",
+                    "How? Read the PATTERNS. If two customers agree everywhere else, they'll probably agree on the blanks.",
+                    "Click a ? cell and give me your best guess."
+                });
+            }
         }
         public void Close() { _root.SetActive(false); if (AudioTension.I != null) AudioTension.I.Silence(); }
 
+        void ApplyStage()
+        {
+            if (_sliderPanel != null) _sliderPanel.SetActive(_stage2);
+            if (_pickerRoot != null) _pickerRoot.SetActive(!_stage2);
+            if (_lossBox != null) _lossBox.SetActive(_stage2);
+            if (_optimizeBtn != null) _optimizeBtn.gameObject.SetActive(_stage2);
+            if (_resetBtn != null) _resetBtn.gameObject.SetActive(_stage2);
+            if (_hint != null)
+                _hint.text = _stage2
+                    ? "STAGE 2 — four unlabeled dials per row and column. Fixing one customer often breaks another. Feel the friction, then hit OPTIMIZE."
+                    : "STAGE 1 — five ratings are missing from the ledger. Fill each ? by reading the rows and columns around it.";
+        }
+
+        // ---- Stage 1: fill in the blanks ----------------------------------
+        void OnCellClicked(int i, int j)
+        {
+            if (_stage2 || M.Known[i, j] || _stage1Guess == null) return;
+            _pickI = i; _pickJ = j;
+            _pickerLabel.text = $"HOW WOULD\n{M.Customers[i].Name}\nRATE '{M.Movies[j].Title}'?\n\nRead their row.\nRead the tape's column.";
+            if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        void PickValue(int value)
+        {
+            if (_stage2 || _pickI < 0) return;
+            _stage1Guess[_pickI, _pickJ] = value;
+            _pickI = -1; _pickJ = -1;
+            if (AudioTension.I != null) AudioTension.I.Clunk();
+
+            int filled = 0, blanks = 0;
+            for (int i = 0; i < M.Rows; i++)
+                for (int j = 0; j < M.Cols; j++)
+                    if (!M.Known[i, j]) { blanks++; if (_stage1Guess[i, j] > 0) filled++; }
+
+            _pickerLabel.text = filled < blanks
+                ? $"LOGGED {filled} OF {blanks}.\n\nClick the next ? cell."
+                : "LEDGER COMPLETE.\nChecking against the vault copy...";
+            RefreshGrid();
+            if (filled >= blanks) Stage1Evaluate();
+        }
+
+        void Stage1Evaluate()
+        {
+            int correct = 0, blanks = 0;
+            for (int i = 0; i < M.Rows; i++)
+                for (int j = 0; j < M.Cols; j++)
+                {
+                    if (M.Known[i, j]) continue;
+                    blanks++;
+                    float truth = GameData.TrueRating(M.Customers[i], M.Movies[j]);
+                    bool ok = Mathf.Abs(_stage1Guess[i, j] - truth) <= 0.75f;
+                    if (ok) correct++;
+                    _cellTarget[i, j].text = "t" + (Mathf.Round(truth * 2f) / 2f).ToString("0.0");
+                    _cellGuess[i, j].color = ok ? new Color(0.33f, 0.95f, 0.40f) : Theme.ErrorRed;
+                }
+
+            if (AudioTension.I != null) { if (correct >= 3) AudioTension.I.ChaChing(); else AudioTension.I.Buzzer(); }
+
+            MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+            {
+                $"Vault copy says: {correct} of {blanks} within one star. " + (correct >= 4 ? "Sharp eyes, kid." : correct >= 2 ? "Not bad for a first shift." : "Rough — but watch what comes next."),
+                "Notice HOW you guessed: you compared ROWS. Similar customers rate similarly. That's COLLABORATIVE FILTERING, done by hand.",
+                "Now the machine's turn. It gives every customer and every tape four hidden dials — no names, no labels, just numbers.",
+                "It tunes them until the board agrees with the ledger. What the dials MEAN, it figures out on its own. STAGE 2 — go."
+            }, () =>
+            {
+                GameManager.I.Run.SetFlag(FlagStage1Done);
+                _stage2 = true;
+                ApplyStage();
+                RefreshGrid();
+            });
+        }
+
         void SelectRow(int i)
         {
+            if (!_stage2) return;
             _editingRow = true; _editIndex = i;
             HighlightSelection();
             var u = M.U[i];
-            _editLabel.text = "CUSTOMER: " + M.Customers[i].Name + "\n(their taste vibes)";
+            _editLabel.text = "CUSTOMER: " + M.Customers[i].Name + "\n(four hidden dials)";
             LoadSliders(u);
             SetSlidersInteractable(true);
             if (AudioTension.I != null) AudioTension.I.Beep();
@@ -269,10 +404,11 @@ namespace MadFact
 
         void SelectCol(int j)
         {
+            if (!_stage2) return;
             _editingRow = false; _editIndex = j;
             HighlightSelection();
             var v = M.V[j];
-            _editLabel.text = "MOVIE: " + M.Movies[j].Title + "\n(its feature vibes)";
+            _editLabel.text = "MOVIE: " + M.Movies[j].Title + "\n(four hidden dials)";
             LoadSliders(v);
             SetSlidersInteractable(true);
             if (AudioTension.I != null) AudioTension.I.Beep();
@@ -322,6 +458,32 @@ namespace MadFact
 
         void RefreshGrid()
         {
+            // Stage 1 shows the plain ledger: big known ratings, ? blanks, no model
+            // guesses, no error glow, no audio tension. The machine hasn't started.
+            if (!_stage2)
+            {
+                for (int i = 0; i < M.Rows; i++)
+                    for (int j = 0; j < M.Cols; j++)
+                    {
+                        _cellGlow[i, j].color = Color.clear;
+                        _cellBg[i, j].color = Theme.CrtBgSoft;
+                        if (M.Known[i, j])
+                        {
+                            _cellTarget[i, j].text = "";
+                            _cellGuess[i, j].text = M.Target[i, j].ToString("0.0");
+                            _cellGuess[i, j].color = Theme.CrtGreen;
+                        }
+                        else
+                        {
+                            int guessed = _stage1Guess != null ? _stage1Guess[i, j] : 0;
+                            _cellTarget[i, j].text = "";
+                            _cellGuess[i, j].text = guessed > 0 ? guessed.ToString("0") : "?";
+                            _cellGuess[i, j].color = Theme.CrtAmber;
+                        }
+                    }
+                return;
+            }
+
             for (int i = 0; i < M.Rows; i++)
                 for (int j = 0; j < M.Cols; j++)
                 {
@@ -446,14 +608,14 @@ namespace MadFact
             comms.ShowNamed("INDIE IRIS  (independent filmmaker)", "INCOMING COMPLAINT", iris, new[]
             {
                 "Hey! Basement guy! Your machine only recommends the big blockbuster to EVERYONE now!",
-                "I made 'THE LONG WINTER' with two lamps and a firewood budget, and it's GOOD.",
+                "I made 'QUASAR RUN' with two lamps and a borrowed camera, and it's GOOD.",
                 "But nobody rates what nobody's shown, and nobody's shown what nobody rates. See the problem?!"
             }, () => comms.Show(Speaker.OldDude, new[]
             {
                 "She's got a point, kid. Look at the board — the tape with the most ratings wins every column.",
                 "Quick — tell me WHY the crowd's math piles onto the big hit."
             }, () => comms.AskChoice(Speaker.OldDude,
-                "QUIZ: 'STAR DRIFTER' tops every list and 'THE LONG WINTER' never gets shown. Why?", new[]
+                "QUIZ: 'STAR DRIFTER' tops every list and 'QUASAR RUN' never gets shown. Why?", new[]
             {
                 "Popular tapes have the most ratings, so the math is most confident about them",
                 "The mainframe reads each movie's budget and always favors the expensive ones",
@@ -470,7 +632,7 @@ namespace MadFact
                     }
                     : new[]
                     {
-                        "Nope. The machine doesn't know budgets, and 'THE LONG WINTER' is terrific.",
+                        "Nope. The machine doesn't know budgets, and 'QUASAR RUN' is terrific.",
                         "It's the DATA: popular tapes have the most ratings, so the math is surest about them.",
                         "Sure bets get recommended, get rented, get rated — the loop feeds itself. POPULARITY BIAS.",
                         "The little tapes never get the EXPOSURE to prove themselves. Remember Iris."

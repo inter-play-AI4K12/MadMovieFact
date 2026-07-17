@@ -27,7 +27,7 @@ namespace MadFact
         [SerializeField] Button _runBtn;
         bool _running;
         bool _complainedOnce;   // the robot's "my rules are rigid" speech plays only once
-        bool _incidentPause;    // batch is frozen while the rated-R scene plays out
+        bool _incidentPause;    // batch is frozen while the age-rating scene plays out
 
         const string FlagKidIncident = "kid_incident_done";
         const string FlagAgeRule = "age_rule_learned";
@@ -211,7 +211,7 @@ namespace MadFact
 
             // The trust lesson: the first time a horror rule exists that would hand an
             // R-rated tape to a kid, Timmy is guaranteed to walk in and take it home.
-            bool kidPrimed = !GameManager.I.Run.HasFlag(FlagKidIncident) && FindRatedRHorrorRule() >= 0;
+            bool kidPrimed = !GameManager.I.Run.HasFlag(FlagKidIncident) && FindUnsafeHorrorRule() >= 0;
             int kidSlot = kidPrimed ? Mathf.Min(2, batch - 1) : -1;
 
             for (int n = 0; n < batch; n++)
@@ -324,11 +324,13 @@ namespace MadFact
             }
         }
 
-        int FindRatedRHorrorRule()
+        int FindUnsafeHorrorRule()
         {
+            // any horror rule whose tape a nine-year-old shouldn't take home (PG-13+)
+            var timmy = GameData.CustomerByName("TIMMY");
             for (int r = 0; r < _rules.Count; r++)
                 if (_rules[r].Stated == Genre.Horror &&
-                    GameData.Movies[_rules[r].Movie].Rating == AgeRating.R) return r;
+                    !GameData.AgeOk(timmy, GameData.Movies[_rules[r].Movie])) return r;
             return -1;
         }
 
@@ -364,7 +366,7 @@ namespace MadFact
             comms.ShowNamed("TIMMY'S MOM  (furious)", "INCOMING COMPLAINT", mom, new[]
             {
                 $"Excuse me. EXCUSE ME. Your machine rented '{tape.Title}' to my NINE-YEAR-OLD.",
-                "It's rated R! He slept in our bed for a week the last time he saw a COMMERCIAL for one of these.",
+                $"It's rated {GenreInfo.RatingLabel(tape.Rating)}! He slept in our bed for a week the last time he saw a COMMERCIAL for one of these.",
                 "I want a refund. And I'm telling every parent on the block."
             }, AskWhy);
 

@@ -98,13 +98,20 @@ namespace MadFact
         public static Sprite MovieCover(int index)
         {
             // Priority: a generated poster dropped into Resources/Posters/<slug>.png,
-            // then the atlas art for the five original tapes, then the procedural
-            // gradient poster in the style of the design sketch.
+            // then the procedural gradient poster in the style of the design sketch.
+            // (The atlas covers depict the retired fictional catalog and are unused now
+            // that the shelves stock real films.)
             if (index < 0) index = 0;
             var user = UserArt("Posters", GameData.Movies[Mathf.Min(index, GameData.Movies.Count - 1)].Title);
             if (user != null) return user;
-            if (index <= 4) return Crop("MovieCatalog", "cover_" + index, 30 + index * 281, 92, 258, 500);
             return ProceduralPosters.Cover(index);
+        }
+
+        /// <summary>Covers for the mainframe's fictional stock (the five atlas tapes).</summary>
+        public static Sprite MatrixCover(int index)
+        {
+            index = Mathf.Clamp(index, 0, 4);
+            return Crop("MovieCatalog", "cover_" + index, 30 + index * 281, 92, 258, 500);
         }
 
         public static Sprite MovieSpine(int index)
