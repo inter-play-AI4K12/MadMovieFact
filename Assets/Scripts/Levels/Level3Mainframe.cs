@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -43,7 +44,13 @@ namespace MadFact
         Text _pickerLabel;
         Button[,] _cellBtn;
         int _pickI = -1, _pickJ = -1;
-        int _manualTweaks;   // slider drags before Pellings admits the optimizer was off
+        // A single slider drag fires OnValueChanged dozens of times, so raw event counts
+        // trigger the power-on beat almost instantly. Gate on wall-clock time playing with
+        // stage 2 plus genuinely exploring more than one row/column instead.
+        float _stage2StartTime = -1f;
+        readonly HashSet<int> _rowsSeen = new HashSet<int>(), _colsSeen = new HashSet<int>();
+        const float PowerOnMinSeconds = 35f;
+        const int PowerOnMinDistinct = 3;   // rows+cols combined
         const string FlagStage1Done = "mf_stage1_done";
         const string FlagStage1Intro = "mf_stage1_intro";
         const string FlagPowered = "mf_optimizer_powered";
@@ -301,6 +308,7 @@ namespace MadFact
             _stage2 = GameManager.I.Run.HasFlag(FlagStage1Done);
             if (_stage1Guess == null)
                 _stage1Guess = new int[M.Rows, M.Cols];
+            if (_stage2 && _stage2StartTime < 0f) { _stage2StartTime = Time.unscaledTime; _rowsSeen.Clear(); _colsSeen.Clear(); }
             ApplyStage();
             Deselect();
             RefreshGrid();
@@ -390,6 +398,7 @@ namespace MadFact
             {
                 GameManager.I.Run.SetFlag(FlagStage1Done);
                 _stage2 = true;
+                _stage2StartTime = Time.unscaledTime;
                 ApplyStage();
                 RefreshGrid();
             });
@@ -404,6 +413,8 @@ namespace MadFact
             _editLabel.text = "CUSTOMER: " + M.Customers[i].Name + "\n(four hidden dials)";
             LoadSliders(u);
             SetSlidersInteractable(true);
+            _rowsSeen.Add(i);
+            MaybePowerOn();
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
@@ -416,6 +427,8 @@ namespace MadFact
             _editLabel.text = "MOVIE: " + M.Movies[j].Title + "\n(four hidden dials)";
             LoadSliders(v);
             SetSlidersInteractable(true);
+            _colsSeen.Add(j);
+            MaybePowerOn();
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
@@ -451,13 +464,19 @@ namespace MadFact
             if (_editingRow) M.U[_editIndex][d] = value; else M.V[_editIndex][d] = value;
             _sliderVal[d].text = value.ToString("0.00");
             RefreshGrid();
+            MaybePowerOn();
+        }
 
-            // Let them sweat at Sisyphus's dials a while, then Pellings remembers the switch.
-            if (!_optimizing && !GameManager.I.Run.HasFlag(FlagPowered))
-            {
-                _manualTweaks++;
-                if (_manualTweaks == 10) PowerOnBeat();
-            }
+        /// <summary>
+        /// Fires the power-on beat once the player has genuinely spent time at the dials —
+        /// gated on real elapsed time, not raw slider events (one drag alone shouldn't count).
+        /// </summary>
+        void MaybePowerOn()
+        {
+            if (_optimizing || _stage2StartTime < 0f || GameManager.I.Run.HasFlag(FlagPowered)) return;
+            bool longEnough = Time.unscaledTime - _stage2StartTime >= PowerOnMinSeconds;
+            bool exploredEnough = _rowsSeen.Count + _colsSeen.Count >= PowerOnMinDistinct;
+            if (longEnough && exploredEnough) PowerOnBeat();
         }
 
         void PowerOnBeat()

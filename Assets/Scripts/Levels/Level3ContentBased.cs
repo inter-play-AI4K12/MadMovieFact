@@ -162,8 +162,11 @@ namespace MadFact
         }
 
         // ---- visit script --------------------------------------------------
-        // Kept deliberately short (per Erfan: don't go in-depth here): one intro serve,
-        // one normal Wendell serve, the filter-bubble beat, and the Tibbs finale.
+        // Wendell's filter-bubble arc is spread across five visits, interleaved with
+        // other customers so it reads as a relationship curdling over time rather than
+        // an instant complaint: stoked -> happy -> a little tired -> outright groaning
+        // -> stuck in the loop. Each other-customer visit is a single light beat —
+        // per Erfan, the mechanic itself stays simple; only the pacing got longer.
         List<Visit> BuildVisits() => new List<Visit>
         {
             new Visit
@@ -176,17 +179,53 @@ namespace MadFact
             {
                 Customer = "WENDELL",
                 Arrival = new[] { "Back again! The gizmo knows I like space, right? Show me what it's got." },
-                Note = "> RETURNING: WENDELL\n> history: sci-fi, sci-fi, sci-fi\n> ranking every box..._"
+                Note = "> NEW PROFILE: WENDELL\n> history: sci-fi, sci-fi, sci-fi\n> ranking every box..._"
+            },
+            new Visit
+            {
+                Customer = "EARL",
+                Arrival = new[] { "The machine reads the boxes? Hmph. I read the boxes for free. Real footage, please." },
+                Note = "> NEW PROFILE: EARL\n> history: documentaries only\n> ranking every box..._"
+            },
+            new Visit
+            {
+                Customer = "WENDELL",
+                Arrival = new[] { "Two for two! This little machine's got my number." },
+                Note = "> RETURNING: WENDELL (x2)\n> profile still matches strongly\n> ranking every box..._"
+            },
+            new Visit
+            {
+                Customer = "DOT",
+                Arrival = new[] { "I want stuff blowin' up. That's the whole ask." },
+                Note = "> NEW PROFILE: DOT\n> history: action, action, action\n> ranking every box..._"
+            },
+            new Visit
+            {
+                Customer = "WENDELL",
+                Arrival = new[] { "Me again... the machine only ever shows me the space shelf now. Which — fair. But still." },
+                Note = "> RETURNING: WENDELL (x3)\n> every serve reinforced SCI-FI\n> other genres losing exposure_",
+                EngineProfile = Narrowed("WENDELL", 0.45f),
+                ProfileCaption = "ENGINE PROFILE (NARROWING)",
+                CaptionColor = new Color(0.85f, 0.65f, 0.2f)
+            },
+            new Visit
+            {
+                Customer = "WENDELL",
+                Arrival = new[] { "Oh. Let me guess. Another one with a spaceship on the cover. ...Ugh, NO — okay, fine. Give it here." },
+                Note = "> RETURNING: WENDELL (x4)\n> <color=#E0C266>profile narrowing further</color>\n> diversity: LOW_",
+                EngineProfile = Narrowed("WENDELL", 0.25f),
+                ProfileCaption = "ENGINE PROFILE (NARROWER STILL)",
+                CaptionColor = new Color(0.90f, 0.50f, 0.20f)
             },
             new Visit
             {
                 Customer = "WENDELL",
                 Arrival = new[]
                 {
-                    "Okay, STOP. Every time I come back it's the same space shelf. I'm stuck in a LOOP here!",
+                    "Okay, STOP. Every single time it's the same space tapes. I'm stuck in a LOOP here!",
                     "I know I like space! But is this ALL I am to that thing?!"
                 },
-                Note = "> RETURNING: WENDELL (x2)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
+                Note = "> RETURNING: WENDELL (x5)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
                 EngineProfile = Narrowed("WENDELL", 0.12f),
                 ProfileCaption = "ENGINE PROFILE (OVERFIT!)",
                 CaptionColor = Theme.ErrorRed,
