@@ -22,7 +22,7 @@ namespace MadFact
         [SerializeField] Button _nextBtn;
         [SerializeField] Image _portrait;
         [SerializeField] Text _portraitInitial;
-        [SerializeField] PosterBrowser _browser;
+        PosterBrowser _browser;
 
         LevelScenario _scenario;
         CustomerVisit _visit;
@@ -36,8 +36,6 @@ namespace MadFact
         void Awake()
         {
             if (_root == null) return;
-            if (_browser == null) _browser = UIFactory.FindDeep<PosterBrowser>(transform, "Shelf");
-            if (_browser != null) _browser.OnRecommend = Recommend;
             _nextBtn.onClick.RemoveAllListeners();
             _nextBtn.onClick.AddListener(NextCustomer);
             var leave = UIFactory.FindDeep<Button>(transform, "Leave");
@@ -56,6 +54,7 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(go));
             var lvl = go.AddComponent<Level1Counter>();
             lvl.Build(go.transform);
+            lvl._root.SetActive(false);
             return lvl;
         }
 
@@ -187,7 +186,7 @@ namespace MadFact
             });
 
             _name.text = _cust.Name;
-            _history.text = "HISTORY: " + GenreInfo.Name(_visit.HistoryGenre) + " tapes";
+            _history.text = "RENTS: " + GenreInfo.Name(_visit.HistoryGenre);
             _stated.text = "WANTS: " + GenreInfo.Name(_visit.StatedGenre);
             _quip.text = "“" + _visit.DemandLine + "”";
             _notes.text = BuildInitialNotes(_visit);

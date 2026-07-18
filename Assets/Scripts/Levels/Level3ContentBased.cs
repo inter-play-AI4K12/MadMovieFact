@@ -28,12 +28,12 @@ namespace MadFact
         }
 
         [SerializeField] GameObject _root;
-        [SerializeField] Image _portrait;
-        [SerializeField] Text _name, _quip, _note, _profileCaption, _result;
-        [SerializeField] Image[] _profileFills = new Image[GenreInfo.Count];
-        [SerializeField] Button _nextBtn;
-        [SerializeField] PosterBrowser _browser;
-        [SerializeField] GameObject _suggestRoot;
+        Image _portrait;
+        Text _name, _quip, _note, _profileCaption, _result;
+        readonly Image[] _profileFills = new Image[GenreInfo.Count];
+        Button _nextBtn;
+        PosterBrowser _browser;
+        GameObject _suggestRoot;
         readonly List<Button> _suggestButtons = new List<Button>();
 
         List<Visit> _visits;
@@ -49,25 +49,7 @@ namespace MadFact
         void Awake()
         {
             if (_root == null) return;
-            if (_browser == null) _browser = UIFactory.FindDeep<PosterBrowser>(transform, "Shelf");
-            if (_browser != null)
-            {
-                _browser.OnRecommend = Recommend;
-                _browser.DetailExtra = DetailForMovie;
-            }
-            if (_nextBtn != null)
-            {
-                _nextBtn.onClick.RemoveAllListeners();
-                _nextBtn.onClick.AddListener(NextVisit);
-            }
             Bind("Leave", () => MadFactBootstrap.I.GoStorefront());
-        }
-
-        string DetailForMovie(int movieIndex)
-        {
-            if (_cust == null) return "";
-            int pct = Mathf.RoundToInt(EngineMatch(movieIndex) * 100f);
-            return "ENGINE MATCH: " + pct + "%";
         }
 
         void Bind(string name, UnityEngine.Events.UnityAction action)
@@ -84,6 +66,7 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(go));
             var lvl = go.AddComponent<Level3ContentBased>();
             lvl.Build(go.transform);
+            lvl._root.SetActive(false);
             return lvl;
         }
 
@@ -131,7 +114,12 @@ namespace MadFact
             _browser = PosterBrowser.Create(window.transform, "Shelf");
             UIFactory.Place(UIFactory.RT(_browser.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(292, 384), new Vector2(-12, -40));
             _browser.OnRecommend = Recommend;
-            _browser.DetailExtra = DetailForMovie;
+            _browser.DetailExtra = mi =>
+            {
+                if (_cust == null) return "";
+                int pct = Mathf.RoundToInt(EngineMatch(mi) * 100f);
+                return "ENGINE MATCH: " + pct + "%";
+            };
 
             var leave = UIFactory.Button(window.transform, "Leave", "", () => MadFactBootstrap.I.GoStorefront(), Theme.Face, 16);
             UIFactory.Place(UIFactory.RT(leave.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(26, 22), new Vector2(-8, -7));
@@ -175,6 +163,8 @@ namespace MadFact
         }
 
         // ---- visit script --------------------------------------------------
+        // Kept deliberately short (per Erfan: don't go in-depth here): one intro serve,
+        // one normal Wendell serve, the filter-bubble beat, and the Tibbs finale.
         List<Visit> BuildVisits() => new List<Visit>
         {
             new Visit
@@ -185,12 +175,6 @@ namespace MadFact
             },
             new Visit
             {
-                Customer = "EARL",
-                Arrival = new[] { "The machine reads the boxes? Hmph. I read the boxes for FREE. Real footage, please." },
-                Note = "> NEW PROFILE: EARL\n> history: documentaries only\n> ranking every box..._"
-            },
-            new Visit
-            {
                 Customer = "WENDELL",
                 Arrival = new[] { "Back again! The gizmo knows I like space, right? Show me what it's got." },
                 Note = "> RETURNING: WENDELL\n> history: sci-fi, sci-fi, sci-fi\n> ranking every box..._"
@@ -198,21 +182,12 @@ namespace MadFact
             new Visit
             {
                 Customer = "WENDELL",
-                Arrival = new[] { "Me again... the machine only ever shows me the space shelf now. Which — fair. But still." },
-                Note = "> RETURNING: WENDELL (x2)\n> every serve reinforced SCI-FI\n> other genres losing exposure_",
-                EngineProfile = Narrowed("WENDELL", 0.45f),
-                ProfileCaption = "ENGINE PROFILE (NARROWING)",
-                CaptionColor = new Color(0.85f, 0.65f, 0.2f)
-            },
-            new Visit
-            {
-                Customer = "WENDELL",
                 Arrival = new[]
                 {
-                    "Okay, STOP. Every single time it's the same space tapes. I'm stuck in a LOOP here!",
+                    "Okay, STOP. Every time I come back it's the same space shelf. I'm stuck in a LOOP here!",
                     "I know I like space! But is this ALL I am to that thing?!"
                 },
-                Note = "> RETURNING: WENDELL (x3)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
+                Note = "> RETURNING: WENDELL (x2)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
                 EngineProfile = Narrowed("WENDELL", 0.12f),
                 ProfileCaption = "ENGINE PROFILE (OVERFIT!)",
                 CaptionColor = Theme.ErrorRed,

@@ -66,7 +66,7 @@ namespace MadFact
                 else if (name.StartsWith("M") && int.TryParse(name.Substring(1), out int movie)) icon.sprite = ArtSprites.MovieCover(movie);
                 else if (name.StartsWith("Q") && int.TryParse(name.Substring(1), out int question)) icon.sprite = ArtSprites.VibeIcon(question);
                 else if (name.StartsWith("S") && int.TryParse(name.Substring(1), out int sticker)) icon.sprite = ArtSprites.Sticker(sticker);
-                else if (name.StartsWith("Col") && int.TryParse(name.Substring(3), out int col)) icon.sprite = ArtSprites.MovieCover(col);
+                else if (name.StartsWith("Col") && int.TryParse(name.Substring(3), out int col)) icon.sprite = ArtSprites.MatrixCover(col);
                 else if (name.StartsWith("Row") && int.TryParse(name.Substring(3), out int row))
                     icon.sprite = ArtSprites.CustomerPortrait(GameData.Customers[GameData.MatrixCustomers[row]].Name);
             }

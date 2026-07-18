@@ -9,8 +9,8 @@ namespace MadFact
         [SerializeField] Text _money, _goal, _level;
         [SerializeField] Image _goalIcon;
         [SerializeField] RectTransform _canvas;
-        [SerializeField] Text _trust;
-        [SerializeField] Image _trustFill;
+        Text _trust;
+        Image _trustFill;
         bool _bound;
         GameManager _manager;
 
@@ -27,7 +27,6 @@ namespace MadFact
             _manager = gm;
             if (_canvas == null) _canvas = GetComponentInParent<Canvas>().transform as RectTransform;
             EnsureTrustPlate();
-            ConfigureResponsiveLabels();
             gm.OnMoneyChanged += OnMoney;
             gm.OnPhaseChanged += OnPhase;
             gm.OnSale += OnSale;
@@ -35,26 +34,6 @@ namespace MadFact
             OnMoney(gm.Money, 0);
             OnTrust(gm.Trust, 0);
             OnPhase(gm.Current);
-        }
-
-        void ConfigureResponsiveLabels()
-        {
-            // Keep the persistent bar readable at the small 16:9 resolutions used by
-            // the WebGL player. The detailed recommendation method is already printed
-            // in each level panel, so the HUD can use a compact phase label.
-            if (_level != null)
-            {
-                _level.resizeTextForBestFit = true;
-                _level.resizeTextMinSize = 9;
-                _level.resizeTextMaxSize = 14;
-            }
-
-            if (_goal != null)
-            {
-                _goal.resizeTextForBestFit = true;
-                _goal.resizeTextMinSize = 8;
-                _goal.resizeTextMaxSize = 12;
-            }
         }
 
         void OnDestroy()
@@ -77,10 +56,6 @@ namespace MadFact
         void EnsureTrustPlate()
         {
             if (_trust != null) return;
-            _trust = UIFactory.FindDeep<Text>(transform, "Trust");
-            _trustFill = UIFactory.FindDeep<Image>(transform, "TrustFill");
-            if (_trust != null && _trustFill != null) return;
-
             if (_goal != null)
             {
                 // authored prefabs park the goal text where the plate now lives
@@ -122,8 +97,8 @@ namespace MadFact
             var sign = UIFactory.Text(bar.transform, "Sign", "PELLINGS VIDEO", 18, Theme.TitleText, Theme.Typewriter, TextAnchor.MiddleLeft, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(sign.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(240, 34), new Vector2(84, 0));
 
-            hud._level = UIFactory.Text(bar.transform, "Level", "", 14, Theme.CrtAmber, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(hud._level.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(280, 30), new Vector2(0, -6));
+            hud._level = UIFactory.Text(bar.transform, "Level", "", 11, Theme.CrtAmber, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(hud._level.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(300, 30), new Vector2(0, -6));
 
             var moneyPlate = UIFactory.Bevel(bar.transform, "MoneyPlate", new Color(0.10f, 0.16f, 0.10f), sunken: true);
             UIFactory.Place(UIFactory.RT(moneyPlate.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(150, 30), new Vector2(-12, 0));
@@ -133,15 +108,14 @@ namespace MadFact
             hud._money = UIFactory.Text(moneyPlate.transform, "Money", "$0", 20, Theme.CrtGreen, Theme.Typewriter, TextAnchor.MiddleRight, false, FontStyle.Bold);
             UIFactory.Fill(UIFactory.RT(hud._money.gameObject), 34, 2, 10, 2);
 
-            // The trust meter is authored into the prefab so it remains visible and
-            // editable in the Unity scene. Bind only attaches live game-state events.
+            // goal text; the trust meter is added by EnsureTrustPlate() during Bind
             hud._goal = UIFactory.Text(bar.transform, "Goal", "", 12, Theme.TitleText, Theme.SystemSans, TextAnchor.MiddleRight, false);
-            UIFactory.Place(UIFactory.RT(hud._goal.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(160, 16), new Vector2(-296, 0));
+            // Erfan's wider/taller goal text, shifted left of the trust plate
+            UIFactory.Place(UIFactory.RT(hud._goal.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(210, 22), new Vector2(-296, 0));
             hud._goalIcon = UIFactory.Image(bar.transform, "GoalIcon", Color.white, ArtSprites.Goal(), Image.Type.Simple, false);
             hud._goalIcon.preserveAspect = true;
             hud._goalIcon.gameObject.SetActive(false);
 
-            hud.EnsureTrustPlate();
             if (GameManager.I != null) hud.Bind(GameManager.I);
             return hud;
         }
@@ -184,11 +158,11 @@ namespace MadFact
             switch (p)
             {
                 case Phase.Storefront: _level.text = "— THE STOREFRONT —"; break;
-                case Phase.Level1: _level.text = $"LEVEL 1 · MANUAL · ${GameManager.Level1Goal}"; break;
-                case Phase.Level2: _level.text = $"LEVEL 2 · RULE-BASED · ${GameManager.Level2Goal}"; break;
-                case Phase.Level3: _level.text = "LEVEL 3 · CONTENT-BASED"; break;
-                case Phase.Level4: _level.text = "LEVEL 4 · COLLABORATIVE"; break;
-                case Phase.Level5: _level.text = "LEVEL 5 · MARKET GAP"; break;
+                case Phase.Level1: _level.text = "LEVEL 1 · MANUAL RECOMMENDATION"; break;
+                case Phase.Level2: _level.text = "LEVEL 2 · RULE-BASED RECOMMENDATION"; break;
+                case Phase.Level3: _level.text = "LEVEL 3 · CONTENT-BASED RECOMMENDATION"; break;
+                case Phase.Level4: _level.text = "LEVEL 4 · COLLABORATIVE FILTERING"; break;
+                case Phase.Level5: _level.text = "LEVEL 5 · MARKET GAP RESEARCH"; break;
                 case Phase.Win: _level.text = "★ BLOCKBUSTER ★"; break;
             }
             RefreshGoal();
@@ -196,10 +170,14 @@ namespace MadFact
 
         void RefreshGoal()
         {
-            // The goal is folded into the compact center label. Keeping a second
-            // free-floating sentence here caused it to overlap that label at WebGL
-            // resolutions, while the detailed objective remains in each level panel.
-            _goal.text = "";
+            var gm = GameManager.I;
+            switch (gm.Current)
+            {
+                case Phase.Level1: _goal.text = $"goal: ${GameManager.Level1Goal} to upgrade"; break;
+                case Phase.Level2: _goal.text = $"goal: ${GameManager.Level2Goal} to automate"; break;
+                case Phase.Level3: _goal.text = "goal: serve the line by the box"; break;
+                default: _goal.text = ""; break;
+            }
             _goalIcon.gameObject.SetActive(false);
         }
 

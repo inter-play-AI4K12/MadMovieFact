@@ -18,53 +18,13 @@ namespace MadFact
         /// <summary>Optional extra detail line (e.g. the content engine's MATCH % readout).</summary>
         public Func<int, string> DetailExtra;
 
-        [SerializeField] Genre _genre = Genre.SciFi;
-        [SerializeField] GameObject _gridRoot, _detailRoot;
-        [SerializeField] Text _genreLabel, _emptyLabel;
+        Genre _genre = Genre.SciFi;
+        GameObject _gridRoot, _detailRoot;
+        Text _genreLabel, _emptyLabel;
         int _detailIndex = -1;
         bool _locked;
 
         public int DetailIndex => _detailIndex;
-
-        void Awake()
-        {
-            // The browser shell and its initial shelf are authored into the prefab.
-            // Reconnect transient UnityEvent listeners after deserialization instead of
-            // rebuilding the whole browser when a scene starts.
-            if (_gridRoot == null) _gridRoot = UIFactory.FindDeep<Transform>(transform, "Grid")?.gameObject;
-            if (_detailRoot == null) _detailRoot = UIFactory.FindDeep<Transform>(transform, "Detail")?.gameObject;
-            if (_genreLabel == null) _genreLabel = UIFactory.FindDeep<Text>(transform, "GenreName");
-            if (_emptyLabel == null) _emptyLabel = UIFactory.FindDeep<Text>(transform, "Empty");
-
-            BindButton("GPrev", () => CycleGenre(-1));
-            BindButton("GNext", () => CycleGenre(1));
-            BindVisiblePosterButtons();
-        }
-
-        void BindButton(string objectName, UnityEngine.Events.UnityAction action)
-        {
-            var button = UIFactory.FindDeep<Button>(transform, objectName);
-            if (button == null) return;
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(action);
-        }
-
-        void BindVisiblePosterButtons()
-        {
-            if (_gridRoot == null) return;
-            foreach (Transform child in _gridRoot.transform)
-            {
-                if (!child.name.StartsWith("Poster") ||
-                    !int.TryParse(child.name.Substring("Poster".Length), out int movieIndex))
-                    continue;
-
-                var button = child.GetComponent<Button>();
-                if (button == null) continue;
-                int capturedIndex = movieIndex;
-                button.onClick.RemoveAllListeners();
-                button.onClick.AddListener(() => { if (!_locked) OpenDetail(capturedIndex); });
-            }
-        }
 
         public static PosterBrowser Create(Transform parent, string name = "PosterBrowser")
         {

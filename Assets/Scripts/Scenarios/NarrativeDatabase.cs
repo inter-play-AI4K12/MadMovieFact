@@ -10,9 +10,9 @@ namespace MadFact
         public static readonly string[] IntroOldDude =
         {
             "So. You actually showed up to claim the place. PELLINGS VIDEO. My life's work.",
-            "Forty years I matched folks to tapes by hand. My back's done. The shop's yours now, kid.",
-            "Problem is... the line never stops growing, and nobody can guess what people want.",
-            "Figure it out. Match the customer to the tape. Make me proud. And make some money."
+            "Forty years I matched folks to tapes BY HAND. My spine is now shaped like a question mark. The shop's yours, kid.",
+            "Here's the problem: the line never stops growing, and people have NO idea what they actually want. They just know when you get it wrong.",
+            "Figure it out. Match the customer to the tape. Make me proud. And make some money — the lights run on it."
         };
 
         public static string[] Level1GoalOldDude(int money) => new[]
@@ -54,7 +54,8 @@ namespace MadFact
         public static readonly string[] Level4GoalOldDude =
         {
             "You see that cluster? Rates EVERYTHING we stock a one or a two.",
-            "Look at the math — their vibe is high SPOOKY and high FUNNY. Spook-comedy!",
+            "And look at the dials the machine learned for them — nobody ever labeled those knobs, but two of them are pinned HIGH.",
+            "I've stocked shelves for forty years, kid. I know what those two dials are: SPOOKY and FUNNY. Spook-comedy!",
             "We never stocked a single one. That's not a problem, kid. That's a GOLDMINE.",
             "We've got the budget. Go to the corkboard and MAKE the movie they're starving for."
         };

@@ -8,9 +8,10 @@ using MadFact.Telemetry;
 namespace MadFact
 {
     /// <summary>
-    /// Coordinates the scene-authored storefront, HUD, dialogue box, and level view.
-    /// Production scenes own their visible UI hierarchy; runtime construction is an
-    /// explicit compatibility fallback rather than the normal setup path.
+    /// Coordinates the scene-authored storefront, HUD, dialogue box, and level views.
+    /// Scenes own the environment shell (storefront, HUD, comms); the level panels
+    /// themselves are rebuilt from code at startup so their layout and wiring always
+    /// match the current source, even when a scene's authored instance has drifted.
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public class MadFactBootstrap : MonoBehaviour
@@ -29,8 +30,6 @@ namespace MadFact
         public bool Level1Cleared, Level2Cleared, Level3Cleared, Level4Cleared;
         [Tooltip("-1 = normal full-game intro, 0 = storefront hub, 1..5 = start directly in that dedicated level scene.")]
         public int StartPhaseOverride = -1;
-        [SerializeField, Tooltip("Compatibility only. When enabled, missing scene UI is built at runtime. Production scenes should leave this disabled.")]
-        bool _allowRuntimeFallback;
         int _currentLevel = 1;
         bool _built;
 
@@ -52,71 +51,43 @@ namespace MadFact
             EnsureManagers();
             EnsureCanvasAndEventSystem();
 
-            if (_allowRuntimeFallback) CreateMissingRuntimeContent();
-            if (!ValidateAuthoredScene()) return;
-
             RuntimeSkin.Apply(_canvas.transform);
 
-            // Level 1 deliberately keeps the original store. Staging supplied dedicated
-            // art for Levels 2-4, which the split scenes now select at runtime.
-            Storefront.SetEra(StartPhaseOverride);
+            // The environment shell may be scene-authored; anything missing is built here.
+            if (Storefront == null) Storefront = StorefrontView.Create(_canvas.transform);
+            if (Hud == null) Hud = Hud.Create(_canvas.transform);
+            if (Comms == null) Comms = CommsBox.Create(_canvas.transform);
 
-            // Dedicated production scenes set StartPhaseOverride so designers can open a
-            // level scene and immediately see/play that level in context. The legacy
-            // all-in-one scene leaves this at -1 and runs the full intro/hub flow.
-            // Authored level roots are intentionally visible in Edit Mode. Normalize their
+            // Levels are iterating quickly in code. Rebuild the ones this scene needs from
+            // script — authored instances are art shells whose layout/wiring may predate
+            // the current source (poster browser, engine picks, scenario beats...).
+            RebuildLevels();
+
+            // Authored level roots are intentionally visible in Edit Mode. Normalize
             // runtime state before selecting the one that belongs to this phase.
             CloseAllLevels();
             if (StartPhaseOverride >= 0) StartDedicatedScene(StartPhaseOverride);
             else Intro();
         }
 
-        void CreateMissingRuntimeContent()
+        /// <summary>Destroy authored level instances and build only what this scene needs.</summary>
+        void RebuildLevels()
         {
-            if (Storefront == null) Storefront = StorefrontView.Create(_canvas.transform);
-            if (Hud == null) Hud = Hud.Create(_canvas.transform);
-            if (Comms == null) Comms = CommsBox.Create(_canvas.transform);
+            bool all = StartPhaseOverride == -1;
 
-            // Build only the level required by this scene. The old behaviour created all
-            // five levels even when a dedicated scene needed just one of them.
-            if ((StartPhaseOverride == -1 || StartPhaseOverride == 1) && L1 == null)
-                L1 = Level1Counter.Create(_canvas.transform);
-            if ((StartPhaseOverride == -1 || StartPhaseOverride == 2) && L2 == null)
-                L2 = Level2Robot.Create(_canvas.transform);
-            if ((StartPhaseOverride == -1 || StartPhaseOverride == 3) && L3Content == null)
-                L3Content = Level3ContentBased.Create(_canvas.transform);
-            if ((StartPhaseOverride == -1 || StartPhaseOverride == 4) && L3 == null)
-                L3 = Level3Mainframe.Create(_canvas.transform);
-            if ((StartPhaseOverride == -1 || StartPhaseOverride == 5) && L4 == null)
-                L4 = Level4Corkboard.Create(_canvas.transform);
-        }
+            if (L1 != null) Destroy(L1.gameObject);
+            if (L2 != null) Destroy(L2.gameObject);
+            if (L3Content != null) Destroy(L3Content.gameObject);
+            if (L3 != null) Destroy(L3.gameObject);
+            if (L4 != null) Destroy(L4.gameObject);
 
-        bool ValidateAuthoredScene()
-        {
-            bool valid = true;
-            valid &= Require(Storefront, nameof(Storefront));
-            valid &= Require(Hud, nameof(Hud));
-            valid &= Require(Comms, nameof(Comms));
+            L1 = (all || StartPhaseOverride == 1) ? Level1Counter.Create(_canvas.transform) : null;
+            L2 = (all || StartPhaseOverride == 2) ? Level2Robot.Create(_canvas.transform) : null;
+            L3Content = (all || StartPhaseOverride == 3) ? Level3ContentBased.Create(_canvas.transform) : null;
+            L3 = (all || StartPhaseOverride == 4) ? Level3Mainframe.Create(_canvas.transform) : null;
+            L4 = (all || StartPhaseOverride == 5) ? Level4Corkboard.Create(_canvas.transform) : null;
 
-            if (StartPhaseOverride == -1 || StartPhaseOverride == 1) valid &= Require(L1, nameof(L1));
-            if (StartPhaseOverride == -1 || StartPhaseOverride == 2) valid &= Require(L2, nameof(L2));
-            if (StartPhaseOverride == -1 || StartPhaseOverride == 3) valid &= Require(L3Content, nameof(L3Content));
-            if (StartPhaseOverride == -1 || StartPhaseOverride == 4) valid &= Require(L3, nameof(L3));
-            if (StartPhaseOverride == -1 || StartPhaseOverride == 5) valid &= Require(L4, nameof(L4));
-
-            if (!valid)
-            {
-                Debug.LogError($"{name} is missing required scene-authored UI. Add the matching prefab to the Canvas and assign it on MadFactBootstrap. Runtime fallback is intentionally disabled for production scenes.", this);
-                enabled = false;
-            }
-            return valid;
-        }
-
-        bool Require(Object value, string fieldName)
-        {
-            if (value != null) return true;
-            Debug.LogError($"Missing MadFactBootstrap.{fieldName} in scene '{SceneManager.GetActiveScene().name}'.", this);
-            return false;
+            BringHudToFront();
         }
 
         // ---- Scene plumbing ----------------------------------------------
@@ -187,7 +158,7 @@ namespace MadFact
             CloseAllLevels();
             BringHudToFront();
             GameManager.I.GoTo(Phase.Storefront);
-            Storefront.SetEra(_currentLevel);
+            Storefront.SetEra(_currentLevel);   // the shop itself upgrades between levels
 
             switch (_currentLevel)
             {
@@ -246,23 +217,24 @@ namespace MadFact
             }
 
             GameManager.I.PrepareStandaloneLevel(_currentLevel);
+            Storefront.SetEra(_currentLevel);
             CloseAllLevels();
             EnterCurrentLevel();
         }
 
         void EnterCurrentLevel()
         {
-            // The Storefront hub deliberately contains no level view. When the player
-            // enters from that scene, hand off to the matching authored level scene.
-            // The persistent GameManager carries the active run across the load.
-            bool levelIsAuthoredHere =
+            // The Storefront hub scene deliberately contains no level view. When the player
+            // enters from there, hand off to the matching authored level scene — the
+            // persistent GameManager carries the active run across the load.
+            bool levelIsBuiltHere =
                 (_currentLevel == 1 && L1 != null) ||
                 (_currentLevel == 2 && L2 != null) ||
                 (_currentLevel == 3 && L3Content != null) ||
                 (_currentLevel == 4 && L3 != null) ||
                 (_currentLevel == 5 && L4 != null);
 
-            if (!levelIsAuthoredHere)
+            if (!levelIsBuiltHere)
             {
                 GameManager.I.PrepareStandaloneLevel(_currentLevel);
                 SceneManager.LoadScene(LevelSceneCatalog.PathForLevel(_currentLevel));
@@ -320,8 +292,7 @@ namespace MadFact
         {
             LogLevelCompleted(4);
             _currentLevel = 5;
-            Comms.Show(Speaker.OldDude, NarrativeDatabase.Level4GoalOldDude,
-                ContinueAfterLevelGoal);
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.Level4GoalOldDude, ContinueAfterLevelGoal);
         }
 
         void ContinueAfterLevelGoal()

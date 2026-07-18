@@ -94,16 +94,14 @@ namespace MadFact
 
             // poster (the board where stickers go)
             var posterFrame = UIFactory.Bevel(_root.transform, "PosterFrame", new Color(0.95f, 0.93f, 0.86f));
-            // Center the poster between the two 220 px side panels. The previous
-            // left offset placed its title and lower controls underneath Analysis.
-            UIFactory.Place(UIFactory.RT(posterFrame.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(420, 380), Vector2.zero);
+            UIFactory.Place(UIFactory.RT(posterFrame.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(380, 380), Vector2.zero);
             var pin = UIFactory.Image(posterFrame.transform, "Pin", new Color(0.85f, 0.2f, 0.2f), Theme.Disc, Image.Type.Simple, false);
             UIFactory.Place(UIFactory.RT(pin.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(16, 16), new Vector2(0, -2));
             var posterBg = UIFactory.Image(posterFrame.transform, "PosterBg", new Color(0.12f, 0.10f, 0.16f));
             UIFactory.Fill(UIFactory.RT(posterBg.gameObject), 12, 12, 12, 40);
             _board = UIFactory.RT(posterBg.gameObject);
             var ptitle = UIFactory.Text(posterFrame.transform, "PT", "YOUR FEATURE FILM", 16, new Color(0.15f, 0.1f, 0.05f), Theme.Typewriter, TextAnchor.LowerCenter, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(ptitle.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(380, 30), new Vector2(0, 8));
+            UIFactory.Place(UIFactory.RT(ptitle.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(340, 30), new Vector2(0, 8));
 
             BuildAnalysis(_root.transform);
             BuildPalette(_root.transform);
@@ -168,22 +166,18 @@ namespace MadFact
             var panel = UIFactory.Bevel(root, "Palette", Theme.Face);
             UIFactory.Place(UIFactory.RT(panel.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(220, 400), new Vector2(-20, 0));
             UIFactory.Place(UIFactory.RT(UIFactory.Text(panel.transform, "h", "CUTOUTS & STICKERS\n(click to pin to poster)", 13, Theme.Ink, Theme.SystemSans, TextAnchor.UpperCenter, true, FontStyle.Bold).gameObject),
-                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(200, 36), new Vector2(0, -6));
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(200, 48), new Vector2(0, -4));
 
             for (int i = 0; i < Palette.Length; i++)
             {
                 int ci = i;
                 var d = Palette[i];
                 float x = (i % 2 == 0) ? -50 : 50;
-                float y = -54 - (i / 2) * 56;
+                float y = -58 - (i / 2) * 56;
                 var b = UIFactory.Button(panel.transform, "S" + i, d.Label, () => AddSticker(ci), d.Color, 11, Theme.Typewriter, Color.white);
                 UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(94, 50), new Vector2(x, y));
                 UIFactory.ButtonIcon(b, ArtSprites.Sticker(i), 38f);
-                var label = b.GetComponentInChildren<Text>();
-                label.fontSize = 9;
-                label.resizeTextForBestFit = true;
-                label.resizeTextMinSize = 6;
-                label.resizeTextMaxSize = 9;
+                b.GetComponentInChildren<Text>().fontSize = 7;
             }
         }
 
@@ -191,7 +185,9 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
+            _won = false;               // re-entering re-arms the greenlight
             MadFactBootstrap.I.Storefront.SetLine(0);
+            RecomputeMatch();
         }
         public void Close() => _root.SetActive(false);
 
@@ -254,14 +250,18 @@ namespace MadFact
 
             float match = _placed.Count == 0 ? 0f : Cosine(sum, _gap);
             int pct = Mathf.RoundToInt(match * 100f);
-            _matchText.text = "MATCH " + pct + "%";
             var mf = UIFactory.RT(_matchFill.gameObject);
             mf.anchorMax = new Vector2(match, 1);
             _matchFill.color = match > 0.85f ? Theme.Cash : match > 0.6f ? Theme.Coin : Theme.ErrorRed;
 
             bool ok = match >= 0.88f && _placed.Count >= 3;
+            // always say what's missing — a dead button with no explanation reads as broken
+            _matchText.text = ok ? "MATCH " + pct + "% — GO!"
+                : _placed.Count < 3 ? "MATCH " + pct + "% (pin 3+ cutouts)"
+                : "MATCH " + pct + "% (need 88%)";
             _greenlight.interactable = ok && !_won;
-            _greenlight.GetComponentInChildren<Text>().color = ok ? Color.white : Theme.InkSoft;
+            UIFactory.SetButtonLabel(_greenlight, ok ? "GREENLIGHT" : "NEED 88% MATCH");
+            _greenlight.GetComponentInChildren<Text>().color = ok ? Color.white : new Color(0.64f, 0.64f, 0.58f);
         }
 
         static float Cosine(Latent a, Latent b)
