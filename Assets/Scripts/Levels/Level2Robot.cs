@@ -25,6 +25,9 @@ namespace MadFact
         [SerializeField] Text _genreSel, _movieSel, _rulesText, _log, _summary;
         [SerializeField] Image _genreIcon, _movieIcon;
         [SerializeField] Button _runBtn;
+        Image _previewPoster;
+        Text _previewTitle, _previewRating;
+        readonly Image[] _previewBars = new Image[GenreInfo.Count];
         bool _running;
         bool _complainedOnce;   // the robot's "my rules are rigid" speech plays only once
         bool _incidentPause;    // batch is frozen while the age-rating scene plays out
@@ -35,8 +38,10 @@ namespace MadFact
         void Awake()
         {
             if (_root == null) return;
-            Bind("GSel", () => CycleGenre(1));
-            Bind("MSel", () => CycleMovie(1));
+            Bind("GPrev", () => CycleGenre(-1));
+            Bind("GNext", () => CycleGenre(1));
+            Bind("MPrev", () => CycleMovie(-1));
+            Bind("MNext", () => CycleMovie(1));
             Bind("Add", AddRule);
             Bind("Clr", ClearRules);
             Bind("Run", RunBatch);
@@ -78,19 +83,37 @@ namespace MadFact
             var builder = UIFactory.Bevel(chassis.transform, "Builder", Theme.Face, sunken: true);
             UIFactory.Place(UIFactory.RT(builder.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(420, 150), new Vector2(18, -46));
 
-            UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i1", "IF  CUSTOMER WANTS:", 14, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
-                new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 22), new Vector2(12, -12));
-            var gSel = UIFactory.Button(builder.transform, "GSel", "", () => CycleGenre(1), Theme.Plastic, 14, Theme.SystemSans);
-            UIFactory.Place(UIFactory.RT(gSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 28), new Vector2(210, -10));
-            _genreIcon = UIFactory.ButtonIcon(gSel, ArtSprites.GenreIcon(_selGenre), 22f);
-            _genreSel = gSel.GetComponentInChildren<Text>();
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i1", "IF THEY WANT:", 13, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(12, -12));
+            var gPrev = UIFactory.Button(builder.transform, "GPrev", "", () => CycleGenre(-1), Theme.Face, 12);
+            UIFactory.Place(UIFactory.RT(gPrev.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 28), new Vector2(184, -10));
+            UIFactory.ButtonIcon(gPrev, ArtSprites.Back(), 16f, true);
+            var gSel = UIFactory.Bevel(builder.transform, "GSel", Theme.Plastic, sunken: true, raycast: false);
+            UIFactory.Place(UIFactory.RT(gSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(160, 28), new Vector2(212, -10));
+            _genreIcon = UIFactory.Image(gSel.transform, "Icon", Color.white, ArtSprites.GenreIcon(_selGenre), Image.Type.Simple, false);
+            _genreIcon.preserveAspect = true;
+            UIFactory.Place(UIFactory.RT(_genreIcon.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(20, 20), new Vector2(6, 0));
+            _genreSel = UIFactory.Text(gSel.transform, "T", "", 12, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+            UIFactory.Fill(UIFactory.RT(_genreSel.gameObject), 28, 2, 4, 2);
+            var gNext = UIFactory.Button(builder.transform, "GNext", "", () => CycleGenre(1), Theme.Face, 12);
+            UIFactory.Place(UIFactory.RT(gNext.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 28), new Vector2(376, -10));
+            UIFactory.ButtonIcon(gNext, ArtSprites.Next(), 16f, true);
 
-            UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i2", "THEN  RECOMMEND TAPE:", 14, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
-                new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 22), new Vector2(12, -48));
-            var mSel = UIFactory.Button(builder.transform, "MSel", "", () => CycleMovie(1), Theme.Plastic, 11, Theme.SystemSans);
-            UIFactory.Place(UIFactory.RT(mSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 28), new Vector2(210, -46));
-            _movieIcon = UIFactory.ButtonIcon(mSel, ArtSprites.MovieCover(_selMovie), 22f);
-            _movieSel = mSel.GetComponentInChildren<Text>();
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i2", "THEN HAND OUT:", 13, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(12, -48));
+            var mPrev = UIFactory.Button(builder.transform, "MPrev", "", () => CycleMovie(-1), Theme.Face, 12);
+            UIFactory.Place(UIFactory.RT(mPrev.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 28), new Vector2(184, -46));
+            UIFactory.ButtonIcon(mPrev, ArtSprites.Back(), 16f, true);
+            var mSel = UIFactory.Bevel(builder.transform, "MSel", Theme.Plastic, sunken: true, raycast: false);
+            UIFactory.Place(UIFactory.RT(mSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(160, 28), new Vector2(212, -46));
+            _movieIcon = UIFactory.Image(mSel.transform, "Icon", Color.white, ArtSprites.MovieCover(_selMovie), Image.Type.Simple, false);
+            _movieIcon.preserveAspect = true;
+            UIFactory.Place(UIFactory.RT(_movieIcon.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(20, 24), new Vector2(6, 0));
+            _movieSel = UIFactory.Text(mSel.transform, "T", "", 10, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleCenter, true);
+            UIFactory.Fill(UIFactory.RT(_movieSel.gameObject), 28, 2, 4, 2);
+            var mNext = UIFactory.Button(builder.transform, "MNext", "", () => CycleMovie(1), Theme.Face, 12);
+            UIFactory.Place(UIFactory.RT(mNext.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 28), new Vector2(376, -46));
+            UIFactory.ButtonIcon(mNext, ArtSprites.Next(), 16f, true);
 
             var addBtn = UIFactory.Button(builder.transform, "Add", "ADD RULE", AddRule, Theme.Cash, 14, Theme.SystemSans, Theme.TitleText);
             UIFactory.Place(UIFactory.RT(addBtn.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 30), new Vector2(12, -90));
@@ -107,15 +130,43 @@ namespace MadFact
             _rulesText = UIFactory.Text(rulesPanel.transform, "Rules", "", 13, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
             UIFactory.Place(UIFactory.RT(_rulesText.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(400, 170), new Vector2(10, -26));
 
-            // ---- DOS output (right) ----
+            // ---- Tape preview (right, top): what the selected rule would hand out ----
+            var preview = UIFactory.Bevel(chassis.transform, "Preview", Theme.Face, sunken: true);
+            UIFactory.Place(UIFactory.RT(preview.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(420, 168), new Vector2(-18, -46));
+            _previewPoster = UIFactory.Image(preview.transform, "PvPoster", Color.white, null, Image.Type.Simple, false);
+            _previewPoster.preserveAspect = true;
+            UIFactory.Place(UIFactory.RT(_previewPoster.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(92, 128), new Vector2(28, -20));
+            _previewTitle = UIFactory.Text(preview.transform, "PvTitle", "", 12, Theme.Ink, Theme.SystemSans, TextAnchor.UpperLeft, true, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_previewTitle.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(140, 34), new Vector2(128, -22));
+            _previewRating = UIFactory.Text(preview.transform, "PvRating", "", 10, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_previewRating.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(140, 16), new Vector2(128, -56));
+            // 8 compact genre-fit bars, two columns of four
+            for (int g = 0; g < GenreInfo.Count; g++)
+            {
+                int col = g / 4, row = g % 4;
+                float x = 128 + col * 138;
+                float y = -78 - row * 20;
+                var lbl = UIFactory.Text(preview.transform, "pvl" + g, GenreInfo.Names[g], 8, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperLeft, false);
+                UIFactory.Place(UIFactory.RT(lbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(66, 14), new Vector2(x, y));
+                var bg = UIFactory.Image(preview.transform, "pvb" + g, new Color(0, 0, 0, 0.22f), null, Image.Type.Simple, false);
+                UIFactory.Place(UIFactory.RT(bg.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(58, 8), new Vector2(x + 68, y - 3));
+                var fill = UIFactory.Image(bg.transform, "pvf" + g, GenreInfo.Colors[g], null, Image.Type.Simple, false);
+                var frt = UIFactory.RT(fill.gameObject);
+                frt.anchorMin = Vector2.zero; frt.anchorMax = new Vector2(0f, 1f);
+                frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
+                _previewBars[g] = fill;
+            }
+
+            // ---- DOS output (right, bottom): the batch run's money and ratings ----
             var crt = UIFactory.Bevel(chassis.transform, "CRT", new Color(0.04f, 0.09f, 0.05f), sunken: true);
-            UIFactory.Place(UIFactory.RT(crt.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(420, 358), new Vector2(-18, -46));
-            _log = UIFactory.Text(crt.transform, "Log", "C:\\STORE> _\n", 13, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
-            UIFactory.Fill(UIFactory.RT(_log.gameObject), 12, 10, 12, 52); // bottom gap = summary strip
-            _summary = UIFactory.Text(crt.transform, "Sum", "", 13, Theme.CrtAmber, Theme.Typewriter, TextAnchor.LowerLeft, true, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(crt.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(420, 184), new Vector2(-18, -220));
+            crt.gameObject.AddComponent<RectMask2D>();   // terminal-style tail: old lines clip off the top
+            _log = UIFactory.Text(crt.transform, "Log", "C:\\STORE> _\n", 11, Theme.CrtGreen, Theme.Typewriter, TextAnchor.LowerLeft, true);
+            UIFactory.Fill(UIFactory.RT(_log.gameObject), 12, 8, 12, 46); // bottom gap = summary strip
+            _summary = UIFactory.Text(crt.transform, "Sum", "", 12, Theme.CrtAmber, Theme.Typewriter, TextAnchor.LowerLeft, true, FontStyle.Bold);
             var srt = UIFactory.RT(_summary.gameObject);
             srt.anchorMin = new Vector2(0, 0); srt.anchorMax = new Vector2(1, 0); srt.pivot = new Vector2(0.5f, 0);
-            srt.sizeDelta = new Vector2(-24, 44); srt.anchoredPosition = new Vector2(0, 6);
+            srt.sizeDelta = new Vector2(-24, 40); srt.anchoredPosition = new Vector2(0, 4);
 
             // ---- bottom buttons ----
             _runBtn = UIFactory.Button(chassis.transform, "Run", "RUN BATCH", RunBatch, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
@@ -137,10 +188,27 @@ namespace MadFact
         {
             var m = GameData.Movies[_selMovie];
             _genreSel.text = GenreInfo.Name(_selGenre);
-            _movieSel.text = m.Title + " [" + GenreInfo.RatingLabel(m.Rating) + "]";
+            _movieSel.text = m.Short;
             if (_genreIcon != null) _genreIcon.sprite = ArtSprites.GenreIcon(_selGenre);
             if (_movieIcon != null) _movieIcon.sprite = ArtSprites.MovieCover(_selMovie);
+            RefreshPreview(m);
             if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        /// <summary>The right-hand preview: poster, rating sticker, and genre-fit bars.</summary>
+        void RefreshPreview(MovieData m)
+        {
+            if (_previewPoster == null) return;
+            _previewPoster.sprite = ArtSprites.MovieCover(_selMovie);
+            _previewTitle.text = m.TitleWithYear;
+            _previewRating.text = "RATED " + GenreInfo.RatingLabel(m.Rating);
+            _previewRating.color = m.Rating >= AgeRating.PG13 ? Theme.ErrorRed : Theme.InkSoft;
+            for (int g = 0; g < GenreInfo.Count; g++)
+            {
+                if (_previewBars[g] == null) continue;
+                var frt = UIFactory.RT(_previewBars[g].gameObject);
+                frt.anchorMax = new Vector2(Mathf.Clamp01(m.Features[g]), 1f);
+            }
         }
 
         void AddRule()

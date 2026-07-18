@@ -43,8 +43,10 @@ namespace MadFact
         Text _pickerLabel;
         Button[,] _cellBtn;
         int _pickI = -1, _pickJ = -1;
+        int _manualTweaks;   // slider drags before Pellings admits the optimizer was off
         const string FlagStage1Done = "mf_stage1_done";
         const string FlagStage1Intro = "mf_stage1_intro";
+        const string FlagPowered = "mf_optimizer_powered";
 
         const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 116, ColHeadH = 40;
 
@@ -280,7 +282,7 @@ namespace MadFact
             _hint = UIFactory.Text(screen.transform, "Hint", "Tip: fixing one customer often breaks another. Feel the friction, then hit OPTIMIZE.", 12, Theme.CrtGreenDim, Theme.Typewriter, TextAnchor.MiddleLeft, true);
             UIFactory.Place(UIFactory.RT(_hint.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(460, 30), new Vector2(20, 50));
 
-            _resetBtn = UIFactory.Button(screen.transform, "Reset", "RESET TASTES", ResetTastes, Theme.CrtBgSoft, 13, Theme.Typewriter, Theme.CrtGreen);
+            _resetBtn = UIFactory.Button(screen.transform, "Reset", "RESET", ResetTastes, Theme.CrtBgSoft, 13, Theme.Typewriter, Theme.CrtGreen);
             UIFactory.Place(UIFactory.RT(_resetBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(150, 34), new Vector2(-180, 16));
             UIFactory.ButtonIcon(_resetBtn, ArtSprites.Reset(), 24f);
 
@@ -319,15 +321,18 @@ namespace MadFact
 
         void ApplyStage()
         {
+            bool powered = GameManager.I.Run.HasFlag(FlagPowered);
             if (_sliderPanel != null) _sliderPanel.SetActive(_stage2);
             if (_pickerRoot != null) _pickerRoot.SetActive(!_stage2);
             if (_lossBox != null) _lossBox.SetActive(_stage2);
-            if (_optimizeBtn != null) _optimizeBtn.gameObject.SetActive(_stage2);
+            if (_optimizeBtn != null) _optimizeBtn.gameObject.SetActive(_stage2 && powered);
             if (_resetBtn != null) _resetBtn.gameObject.SetActive(_stage2);
             if (_hint != null)
-                _hint.text = _stage2
-                    ? "STAGE 2 — four unlabeled dials per row and column. Fixing one customer often breaks another. Feel the friction, then hit OPTIMIZE."
-                    : "STAGE 1 — five ratings are missing from the ledger. Fill each ? by reading the rows and columns around it.";
+                _hint.text = !_stage2
+                    ? "STAGE 1 — five ratings are missing from the ledger. Fill each ? by reading the rows and columns around it."
+                    : powered
+                        ? "STAGE 2 — the optimizer is powered. Hit OPTIMIZE and watch it guess-and-check every dial."
+                        : "STAGE 2 — four unlabeled dials per row and column. Grab a row or a tape and tune the board by hand.";
         }
 
         // ---- Stage 1: fill in the blanks ----------------------------------
@@ -379,8 +384,8 @@ namespace MadFact
             {
                 $"Vault copy says: {correct} of {blanks} within one star. " + (correct >= 4 ? "Sharp eyes, kid." : correct >= 2 ? "Not bad for a first shift." : "Rough — but watch what comes next."),
                 "Notice HOW you guessed: you compared ROWS. Similar customers rate similarly. That's COLLABORATIVE FILTERING, done by hand.",
-                "Now the machine's turn. It gives every customer and every tape four hidden dials — no names, no labels, just numbers.",
-                "It tunes them until the board agrees with the ledger. What the dials MEAN, it figures out on its own. STAGE 2 — go."
+                "Now — every customer and every tape gets four hidden dials. No names, no labels. Nobody knows what they mean. Not even me.",
+                "Your job: tune them until the board agrees with the ledger. Grab a row, drag a dial, watch the numbers. Off you go."
             }, () =>
             {
                 GameManager.I.Run.SetFlag(FlagStage1Done);
@@ -446,6 +451,30 @@ namespace MadFact
             if (_editingRow) M.U[_editIndex][d] = value; else M.V[_editIndex][d] = value;
             _sliderVal[d].text = value.ToString("0.00");
             RefreshGrid();
+
+            // Let them sweat at Sisyphus's dials a while, then Pellings remembers the switch.
+            if (!_optimizing && !GameManager.I.Run.HasFlag(FlagPowered))
+            {
+                _manualTweaks++;
+                if (_manualTweaks == 10) PowerOnBeat();
+            }
+        }
+
+        void PowerOnBeat()
+        {
+            var comms = MadFactBootstrap.I.Comms;
+            comms.Show(Speaker.OldDude, new[]
+            {
+                "Wait. Hold on. Kid. Have you been spinning those dials YOURSELF this whole time?",
+                "Oh no. Oh, that's my fault. I forgot to POWER ON the optimizer. The part of the machine that does the machine part.",
+                "It does exactly what you've been doing — nudge a dial, check the error, keep what helped — except a few thousand times a minute, without lunch breaks.",
+                "Flipping the big switch... NOW. Hit OPTIMIZE and watch it work. You've earned the sit-down."
+            }, () =>
+            {
+                GameManager.I.Run.SetFlag(FlagPowered);
+                ApplyStage();
+                if (AudioTension.I != null) AudioTension.I.Whir();
+            });
         }
 
         void ResetTastes()
@@ -544,20 +573,40 @@ namespace MadFact
             _optimizing = true;
             _optimizeBtn.interactable = false; _resetBtn.interactable = false;
             SetSlidersInteractable(false);
-            Deselect();
-            _hint.text = "OPTIMIZING — gradient descent balancing every cell at once...";
             if (AudioTension.I != null) AudioTension.I.Whir();
 
-            const int maxSteps = 300;
-            for (int step = 0; step < maxSteps; step++)
+            // The show: the machine visibly does what the player was doing — it walks
+            // the board row by row, column by column, twisting each set of dials a
+            // little, checking the error, keeping what helps. Guess and check, fast.
+            string[] verbs = { "nudging", "twisting", "testing", "wiggling", "second-guessing", "re-tuning" };
+            const int passes = 56;          // focus shifts across rows/columns
+            const int stepsPerPass = 5;     // gradient steps shown per focus
+            for (int p = 0; p < passes; p++)
             {
-                M.StepGradient(0.004f);   // tuned: stable convergence (~110 steps to <0.05)
-                RefreshGrid();
-                if (step % 24 == 0 && AudioTension.I != null) AudioTension.I.Whir();
+                bool onRow = (p % 2) == 0;
+                int idx = (p / 2) % (onRow ? M.Rows : M.Cols);
+                _editingRow = onRow; _editIndex = idx;
+                HighlightSelection();
+                string focus = onRow ? M.Customers[idx].Name : M.Movies[idx].Short;
+                _editLabel.text = (onRow ? "CUSTOMER: " : "TAPE: ") + focus + "\n(machine at the dials)";
+                _hint.text = $"MACHINE: {verbs[p % verbs.Length]} {focus}'s dials — guess, check, keep what helps.  ERROR {M.MeanError():0.00}";
+
+                for (int s = 0; s < stepsPerPass; s++)
+                {
+                    M.StepGradient(0.004f);   // tuned: stable convergence
+                    // show THIS row/column's dials physically moving
+                    _suppressSliderEvents = true;
+                    var vec = onRow ? M.U[idx] : M.V[idx];
+                    for (int d = 0; d < 4; d++) { _sliders[d].value = vec[d]; _sliderVal[d].text = vec[d].ToString("0.00"); }
+                    _suppressSliderEvents = false;
+                    RefreshGrid();
+                    yield return new WaitForSecondsRealtime(0.04f);
+                }
+                if (p % 6 == 0 && AudioTension.I != null) AudioTension.I.Whir();
                 if (M.MeanError() < 0.04f) break;
-                yield return new WaitForSecondsRealtime(0.018f);
             }
 
+            Deselect();
             // reveal hidden predictions
             _revealed = true;
             RefreshGrid();

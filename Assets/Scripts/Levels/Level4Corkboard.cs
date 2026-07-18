@@ -184,7 +184,9 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
+            _won = false;               // re-entering re-arms the greenlight
             MadFactBootstrap.I.Storefront.SetLine(0);
+            RecomputeMatch();
         }
         public void Close() => _root.SetActive(false);
 
@@ -232,13 +234,17 @@ namespace MadFact
 
             float match = _placed.Count == 0 ? 0f : Cosine(sum, _gap);
             int pct = Mathf.RoundToInt(match * 100f);
-            _matchText.text = "MATCH " + pct + "%";
             var mf = UIFactory.RT(_matchFill.gameObject);
             mf.anchorMax = new Vector2(match, 1);
             _matchFill.color = match > 0.85f ? Theme.Cash : match > 0.6f ? Theme.Coin : Theme.ErrorRed;
 
             bool ok = match >= 0.88f && _placed.Count >= 3;
+            // always say what's missing — a dead button with no explanation reads as broken
+            _matchText.text = ok ? "MATCH " + pct + "% — GO!"
+                : _placed.Count < 3 ? "MATCH " + pct + "% (pin 3+ cutouts)"
+                : "MATCH " + pct + "% (need 88%)";
             _greenlight.interactable = ok && !_won;
+            UIFactory.SetButtonLabel(_greenlight, ok ? "GREENLIGHT" : "NEED 88% MATCH");
             _greenlight.GetComponentInChildren<Text>().color = ok ? Color.white : new Color(0.64f, 0.64f, 0.58f);
         }
 

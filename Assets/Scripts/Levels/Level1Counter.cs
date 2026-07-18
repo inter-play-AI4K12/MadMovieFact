@@ -178,7 +178,7 @@ namespace MadFact
             _cust = _visit.Customer;
 
             _name.text = _cust.Name;
-            _history.text = "HISTORY: " + GenreInfo.Name(_visit.HistoryGenre) + " tapes";
+            _history.text = "RENTS: " + GenreInfo.Name(_visit.HistoryGenre);
             _stated.text = "WANTS: " + GenreInfo.Name(_visit.StatedGenre);
             _quip.text = "“" + _visit.DemandLine + "”";
             _notes.text = BuildInitialNotes(_visit);
