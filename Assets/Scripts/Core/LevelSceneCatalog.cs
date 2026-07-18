@@ -7,6 +7,7 @@ namespace MadFact
     /// </summary>
     public static class LevelSceneCatalog
     {
+        public const string ParticipantSetup = "Assets/Scenes/ParticipantSetup.unity";
         public const string MainMenu = "Assets/Scenes/MainMenu.unity";
         public const string FullGame = "Assets/Scenes/MadMovieFact.unity";
         public const string Storefront = "Assets/Scenes/Storefront.unity";

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -34,6 +35,7 @@ namespace MadFact
             Bind(_level4, () => LoadLevel(4));
             Bind(_level5, () => LoadLevel(5));
             Bind(_quit, Quit);
+            MadFactLokiLogger.Instance?.Log("main_menu_opened", "Main menu opened");
         }
 
         bool ValidateAuthoredMenu()
@@ -59,6 +61,8 @@ namespace MadFact
         {
             EnsureGameManagers();
             GameManager.I.ResetForNewGame();
+            MadFactLokiLogger.Instance?.Log("game_started", "Full game started",
+                new { start_mode = "full_game" });
             // The split, authored scenes are now the canonical game flow. Storefront
             // presents the intro and then advances through the dedicated level scenes.
             SceneManager.LoadScene(LevelSceneCatalog.Storefront);
@@ -68,6 +72,8 @@ namespace MadFact
         {
             EnsureGameManagers();
             GameManager.I.PrepareStandaloneLevel(Mathf.Max(1, level));
+            MadFactLokiLogger.Instance?.Log("game_started", "Game started from level select",
+                new { start_mode = "level_select", level_id = level });
             SceneManager.LoadScene(LevelSceneCatalog.PathForLevel(level));
         }
 
@@ -79,6 +85,7 @@ namespace MadFact
 
         void Quit()
         {
+            MadFactSessionManager.Instance?.EndSession("main_menu_quit");
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else

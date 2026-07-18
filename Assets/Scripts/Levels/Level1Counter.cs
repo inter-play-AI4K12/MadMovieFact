@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -177,6 +178,13 @@ namespace MadFact
             _scenario = ScenarioDatabase.NextLevel1Manual(GameManager.I.Run);
             _visit = _scenario.Visit;
             _cust = _visit.Customer;
+            MadFactLokiLogger.Instance?.Log("interaction_started", "Customer interaction started", new
+            {
+                interaction_id = _scenario.Id,
+                level_id = 1,
+                customer_id = _cust.Name,
+                return_visit = _visit.ReturnVisit
+            });
 
             _name.text = _cust.Name;
             _history.text = "HISTORY: " + GenreInfo.Name(_visit.HistoryGenre) + " tapes";
@@ -233,6 +241,12 @@ namespace MadFact
             string ans = w > 0.66f ? "“Oh yes, absolutely!”" : w > 0.33f ? "“Eh, it's fine I guess.”" : "“Ugh, no thank you.”";
             _notes.text += $"Q: {_qText[qi]}\n   {ans}\n";
             if (AudioTension.I != null) AudioTension.I.Beep();
+            MadFactLokiLogger.Instance?.Log("hint_requested", "Player asked a customer question", new
+            {
+                interaction_id = _scenario.Id,
+                question_id = TelemetryJson.ToSnakeCase(_qAxis[qi].ToString()),
+                questions_remaining = _questionsLeft
+            });
             UpdateQLeft();
         }
 
@@ -263,6 +277,23 @@ namespace MadFact
             Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
             var tier = GameManager.I.RecordSale(error, pop);
             GameManager.I.Run.RecordRecommendation(_scenario, movie, tier, satisfaction, _questionsAsked);
+            MadFactLokiLogger.Instance?.Log("movie_recommended", "Player recommended a movie to a customer", new
+            {
+                interaction_id = _scenario.Id,
+                level_id = 1,
+                customer_id = _cust.Name,
+                movie_id = movie.Title,
+                satisfaction,
+                sale_tier = tier.ToString(),
+                questions_asked = _questionsAsked,
+                money_after = GameManager.I.Money
+            });
+            MadFactLokiLogger.Instance?.Log("interaction_completed", "Customer interaction completed", new
+            {
+                interaction_id = _scenario.Id,
+                outcome = tier.ToString(),
+                satisfaction
+            });
             string stars = new string('★', Mathf.RoundToInt(satisfaction)) + new string('·', 5 - Mathf.RoundToInt(satisfaction));
             _result.text = $"{Economy.TierLabel(tier)}  —  {movie.Title}  [{stars}]";
             _result.color = Economy.TierColor(tier);
