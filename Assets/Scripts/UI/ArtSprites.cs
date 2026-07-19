@@ -18,8 +18,29 @@ namespace MadFact
             { "THE TIBBS TWINS", 7 }, { "MORTICIA", 8 }, { "GIGGLES", 9 }
         };
 
+        // Explicit assignments for characters whose portraits live as individual
+        // Resources assets instead of inside the original character-card atlas.
+        static readonly Dictionary<string, string> CustomerPortraitAssets = new Dictionary<string, string>
+        {
+            { "TIMMY", "timmy" },
+            { "ROSA", "rosa" },
+            { "EARL", "earl" },
+            { "BABS", "babs" },
+            { "VICTOR", "victor" },
+            { "THE NGUYEN KIDS", "the_nguyen_kids" },
+            { "TIMMY'S MOM", "timmy_s_mom" },
+            { "GIBBS", "gibbs" },
+            { "INDIE IRIS", "indie_iris" }
+        };
+
         public static Sprite CustomerPortrait(string name)
         {
+            if (CustomerPortraitAssets.TryGetValue(name, out string assetName))
+            {
+                var assignedPortrait = UserArt("Portraits", assetName);
+                if (assignedPortrait != null) return assignedPortrait;
+            }
+
             if (!CustomerIndices.TryGetValue(name, out int index))
                 return ProceduralPortraits.Card(name);
             int col = index % 5;
