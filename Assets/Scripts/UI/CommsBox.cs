@@ -14,8 +14,6 @@ namespace MadFact
     /// </summary>
     public class CommsBox : MonoBehaviour
     {
-        const float BodyLineSpacing = 1.25f;
-
         [SerializeField] Image _portrait;
         [SerializeField] Text _name, _body;
         [SerializeField] Image _titleBar;
@@ -36,7 +34,6 @@ namespace MadFact
 
         void Awake()
         {
-            ApplyBodyTypography();
             if (_next == null) return;
             _next.onClick.RemoveAllListeners();
             _next.onClick.AddListener(Advance);
@@ -88,7 +85,7 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(_name.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(650, 20), new Vector2(144, -40));
 
             _body = UIFactory.Text(root, "Body", "", 17, Theme.TitleText, Theme.Typewriter, TextAnchor.UpperLeft, true);
-            _body.lineSpacing = BodyLineSpacing;
+            _body.lineSpacing = 1.25f;
             UIFactory.Place(UIFactory.RT(_body.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(640, 92), new Vector2(144, -66));
 
             _next = UIFactory.Button(root, "Next", "NEXT", Advance, Theme.Face, 14);
@@ -100,15 +97,6 @@ namespace MadFact
             var clicker = root.gameObject.AddComponent<Button>();
             clicker.transition = Selectable.Transition.None;
             clicker.onClick.AddListener(OnBoxClick);
-        }
-
-        /// <summary>
-        /// Dynamic OS fonts have different ascent/descent metrics in WebGL. An explicit
-        /// line advance keeps wrapped dialogue readable instead of letting glyph rows touch.
-        /// </summary>
-        void ApplyBodyTypography()
-        {
-            if (_body != null) _body.lineSpacing = BodyLineSpacing;
         }
 
         public void Show(Speaker who, string[] lines, Action onComplete = null)

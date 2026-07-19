@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -482,6 +483,23 @@ namespace MadFact
             Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
             var tier = GameManager.I.RecordSale(error, pop);
             GameManager.I.Run.RecordRecommendation("l3_visit_" + _visitIndex, _cust.Name, Phase.Level3, movie, tier, satisfaction);
+            MadFactLokiLogger.Instance?.Log("movie_recommended", "Player accepted a content-based movie recommendation", new
+            {
+                interaction_id = "l3_visit_" + _visitIndex,
+                level_id = 3,
+                customer_id = _cust.Name,
+                movie_id = movie.Title,
+                engine_match_percent = enginePct,
+                satisfaction,
+                sale_tier = tier.ToString(),
+                filter_bubble_break = _visit.RequireBubbleBreak
+            });
+            MadFactLokiLogger.Instance?.Log("interaction_completed", "Content-based recommendation completed", new
+            {
+                interaction_id = "l3_visit_" + _visitIndex,
+                outcome = tier.ToString(),
+                engine_match_percent = enginePct
+            });
 
             string stars = new string('★', Mathf.RoundToInt(satisfaction)) + new string('·', 5 - Mathf.RoundToInt(satisfaction));
             _result.text = $"ENGINE {enginePct}%  →  {Economy.TierLabel(tier)}  [{stars}]";

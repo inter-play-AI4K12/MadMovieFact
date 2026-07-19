@@ -3,6 +3,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -249,6 +250,13 @@ namespace MadFact
                 case 4: GameManager.I.GoTo(Phase.Level4); L3.Open(); break;
                 case 5: GameManager.I.GoTo(Phase.Level5); L4.Open(); break;
             }
+            MadFactLokiLogger.Instance?.Log("level_started", "Level started", new
+            {
+                level_id = _currentLevel,
+                phase = GameManager.I.Current.ToString(),
+                money = GameManager.I.Money,
+                trust = GameManager.I.Trust
+            });
             BringHudToFront();
         }
 
@@ -259,6 +267,7 @@ namespace MadFact
 
         public void OnLevel1Goal()
         {
+            LogLevelCompleted(1);
             _currentLevel = 2;
             Comms.Show(Speaker.OldDude, NarrativeDatabase.Level1GoalOldDude(GameManager.I.Money),
                 () => Comms.Show(Speaker.Robot, NarrativeDatabase.Level1GoalRobot, ContinueAfterLevelGoal));
@@ -266,6 +275,7 @@ namespace MadFact
 
         public void OnLevel2Goal()
         {
+            LogLevelCompleted(2);
             _currentLevel = 3;
             Comms.Show(Speaker.Robot, NarrativeDatabase.Level2GoalRobot,
                 () => Comms.Show(Speaker.OldDude, NarrativeDatabase.Level2GoalOldDude, ContinueAfterLevelGoal));
@@ -273,12 +283,14 @@ namespace MadFact
 
         public void OnContentBasedGoal()
         {
+            LogLevelCompleted(3);
             _currentLevel = 4;
             Comms.Show(Speaker.OldDude, NarrativeDatabase.ContentBasedCompleteOldDude, ContinueAfterLevelGoal);
         }
 
         public void OnLevel4Goal()
         {
+            LogLevelCompleted(4);
             _currentLevel = 5;
             Comms.Show(Speaker.OldDude, NarrativeDatabase.Level4GoalOldDude, ContinueAfterLevelGoal);
         }
@@ -295,8 +307,26 @@ namespace MadFact
 
         public void OnGreenlit()
         {
+            LogLevelCompleted(5);
+            MadFactLokiLogger.Instance?.Log("game_completed", "Player completed MadFact", new
+            {
+                money = GameManager.I.Money,
+                trust = GameManager.I.Trust,
+                recommendations = GameManager.I.Run.Recommendations.Count
+            });
             GameManager.I.GoTo(Phase.Win);
             Comms.Show(Speaker.OldDude, NarrativeDatabase.GreenlitOldDude, ShowWin);
+        }
+
+        void LogLevelCompleted(int level)
+        {
+            MadFactLokiLogger.Instance?.Log("level_completed", "Level completed", new
+            {
+                level_id = level,
+                money = GameManager.I.Money,
+                trust = GameManager.I.Trust,
+                recommendations = GameManager.I.Run.Recommendations.Count
+            });
         }
 
         void ShowWin()

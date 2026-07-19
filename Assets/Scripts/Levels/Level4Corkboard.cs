@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -194,6 +195,13 @@ namespace MadFact
         {
             var d = Palette[defIndex];
             _placed.Add(d);
+            MadFactLokiLogger.Instance?.Log("market_gap_value_added",
+                "Player added a market-gap concept", new
+                {
+                    level_id = 5,
+                    concept = d.Label.Replace("\n", " "),
+                    concept_count = _placed.Count
+                });
 
             var rng = Random.insideUnitCircle * 110f;
             var card = UIFactory.Bevel(_board, "Sticker", new Color(0.97f, 0.95f, 0.88f));
@@ -215,7 +223,15 @@ namespace MadFact
             int placedIdx = _placed.Count - 1;
             var drag = card.gameObject.AddComponent<DraggableSticker>();
             drag.board = _board;
-            x.onClick.AddListener(() => { _placed.Remove(d); Destroy(card.gameObject); RecomputeMatch(); });
+            x.onClick.AddListener(() =>
+            {
+                _placed.Remove(d);
+                MadFactLokiLogger.Instance?.Log("market_gap_value_removed",
+                    "Player removed a market-gap concept",
+                    new { level_id = 5, concept = d.Label.Replace("\n", " "), concept_count = _placed.Count });
+                Destroy(card.gameObject);
+                RecomputeMatch();
+            });
 
             if (AudioTension.I != null) AudioTension.I.Beep();
             RecomputeMatch();
@@ -262,6 +278,13 @@ namespace MadFact
             _greenlight.interactable = false;
             if (AudioTension.I != null) { AudioTension.I.ChaChing(); AudioTension.I.Clunk(); }
             GameManager.I.AddMoney(1000);
+            MadFactLokiLogger.Instance?.Log("choice_selected", "Player greenlit a market-gap movie", new
+            {
+                level_id = 5,
+                choice_id = "greenlight",
+                concept_count = _placed.Count,
+                money_after = GameManager.I.Money
+            });
             MadFactBootstrap.I.OnGreenlit();
         }
     }

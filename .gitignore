@@ -46,10 +46,18 @@ crashlytics-build.properties
 # ---------------- AI tooling & secrets (DO NOT PUBLISH) ----------------
 # Contains the ai-game.dev cloud bearer token:
 .mcp.json
+.env
+.env.*
+!.env.example
 UserSettings/
 .claude/
 .agents/
 .codex/
+
+# Optional Loki credential file resolved from Application.persistentDataPath.
+# Kept here as defense-in-depth if a developer temporarily places a copy locally.
+madfact.telemetry.local.json
+*.telemetry.local.json
 
 # ---------------- Large unrelated sample asset packs (not used by MadFact) ----------------
 /Assets/Furniture Mega Pack/

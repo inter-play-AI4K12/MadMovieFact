@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -35,10 +36,25 @@ namespace MadFact
             var options = withInfoOption
                 ? new[] { "YES — more data, more money", "NO — not like this", "Wait. What exactly would we collect?" }
                 : new[] { "YES — more data, more money", "NO — not like this" };
+            MadFactLokiLogger.Instance?.Log("choice_presented",
+                "Privacy trade-off choice presented", new
+                {
+                    interaction_id = "privacy_data_broker",
+                    question_id = "collect_more_member_data",
+                    option_count = options.Length,
+                    disclosure_seen = !withInfoOption
+                });
 
             comms.AskChoiceNamed("GIBBS  (data broker)", "UNSOLICITED BUSINESS PROPOSAL", gibbs,
                 "Collect more member data to increase profits?", options, pick =>
                 {
+                    MadFactLokiLogger.Instance?.Log("choice_selected",
+                        "Player answered the privacy trade-off", new
+                        {
+                            interaction_id = "privacy_data_broker",
+                            question_id = "collect_more_member_data",
+                            choice_id = pick == 0 ? "collect_data" : pick == 1 ? "decline" : "request_details"
+                        });
                     if (withInfoOption && pick == 2)
                     {
                         comms.ShowNamed("GIBBS  (data broker)", "FULL DISCLOSURE, HEH", gibbs, new[]
@@ -93,6 +109,13 @@ namespace MadFact
                 "Keep the money — it'll blow over"
             }, pick =>
             {
+                MadFactLokiLogger.Instance?.Log("choice_selected",
+                    "Player chose whether to repair the privacy harm", new
+                    {
+                        interaction_id = "privacy_data_broker",
+                        question_id = "repair_privacy_harm",
+                        choice_id = pick == 0 ? "shred_and_apologize" : "keep_data_and_money"
+                    });
                 if (pick == 0)
                 {
                     GameManager.I.AddMoney(-DirtyMoney);

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -33,6 +34,8 @@ namespace MadFact
         int _editIndex = -1;
         bool _optimizing;
         bool _suppressSliderEvents;
+        readonly float[] _lastTelemetryValue = { float.NaN, float.NaN, float.NaN, float.NaN };
+        readonly float[] _lastTelemetryTime = { -999f, -999f, -999f, -999f };
 
         // ---- two-stage flow ----------------------------------------------
         // Stage 1: the student fills the blank cells of the ground-truth ledger by
@@ -415,6 +418,13 @@ namespace MadFact
             SetSlidersInteractable(true);
             _rowsSeen.Add(i);
             MaybePowerOn();
+            MadFactLokiLogger.Instance?.Log("collaborative_filter_entity_selected",
+                "Player selected a customer taste vector", new
+                {
+                    level_id = 4,
+                    entity_type = "customer",
+                    entity_id = M.Customers[i].Name
+                });
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
@@ -429,6 +439,13 @@ namespace MadFact
             SetSlidersInteractable(true);
             _colsSeen.Add(j);
             MaybePowerOn();
+            MadFactLokiLogger.Instance?.Log("collaborative_filter_entity_selected",
+                "Player selected a movie feature vector", new
+                {
+                    level_id = 4,
+                    entity_type = "movie",
+                    entity_id = M.Movies[j].Title
+                });
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
@@ -461,10 +478,30 @@ namespace MadFact
         void OnSlider(int d, float value)
         {
             if (_suppressSliderEvents || _editIndex < 0) return;
+            float previous = _editingRow ? M.U[_editIndex][d] : M.V[_editIndex][d];
             if (_editingRow) M.U[_editIndex][d] = value; else M.V[_editIndex][d] = value;
             _sliderVal[d].text = value.ToString("0.00");
             RefreshGrid();
             MaybePowerOn();
+
+            if (Time.unscaledTime - _lastTelemetryTime[d] >= 0.2f ||
+                float.IsNaN(_lastTelemetryValue[d]) ||
+                Mathf.Abs(value - _lastTelemetryValue[d]) >= 0.15f)
+            {
+                _lastTelemetryTime[d] = Time.unscaledTime;
+                _lastTelemetryValue[d] = value;
+                MadFactLokiLogger.Instance?.Log("collaborative_filter_value_changed",
+                    "Player changed a collaborative filtering value", new
+                    {
+                        level_id = 4,
+                        entity_type = _editingRow ? "customer" : "movie",
+                        entity_id = _editingRow ? M.Customers[_editIndex].Name : M.Movies[_editIndex].Title,
+                        dimension = Latent.Names[d],
+                        previous_value = previous,
+                        new_value = value,
+                        mean_error = M.MeanError()
+                    });
+            }
         }
 
         /// <summary>
@@ -501,6 +538,9 @@ namespace MadFact
             M.ResetCustomerTaste();
             if (_editingRow && _editIndex >= 0) LoadSliders(M.U[_editIndex]);
             RefreshGrid();
+            MadFactLokiLogger.Instance?.Log("collaborative_filter_values_reset",
+                "Player reset collaborative filtering customer values",
+                new { level_id = 4, mean_error = M.MeanError() });
             if (AudioTension.I != null) AudioTension.I.Whir();
         }
 
@@ -584,6 +624,9 @@ namespace MadFact
         void RunOptimizer()
         {
             if (_optimizing) return;
+            MadFactLokiLogger.Instance?.Log("optimizer_started",
+                "Player started the collaborative filtering optimizer",
+                new { level_id = 4, initial_mean_error = M.MeanError() });
             StartCoroutine(OptimizeRoutine());
         }
 
@@ -641,6 +684,9 @@ namespace MadFact
 
             _optimizing = false;
             _resetBtn.interactable = true;
+            MadFactLokiLogger.Instance?.Log("optimizer_completed",
+                "Collaborative filtering optimizer completed",
+                new { level_id = 4, final_mean_error = M.MeanError(), payout });
 
             // Money on the table attracts vultures: Gibbs makes his pitch mid-level,
             // right when the machine has just proven how profitable personalization is.

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
+using MadFact.Telemetry;
 
 namespace MadFact
 {
@@ -214,9 +215,23 @@ namespace MadFact
         void AddRule()
         {
             _rules.Add(new Rule { Stated = _selGenre, Movie = _selMovie });
+            MadFactLokiLogger.Instance?.Log("rule_configured", "Player added a recommendation rule", new
+            {
+                level_id = 2,
+                stated_genre = GenreInfo.Name(_selGenre),
+                movie_id = GameData.Movies[_selMovie].Title,
+                rule_count = _rules.Count
+            });
             RefreshRules();
         }
-        void ClearRules() { _rules.Clear(); RefreshRules(); }
+        void ClearRules()
+        {
+            int removed = _rules.Count;
+            _rules.Clear();
+            MadFactLokiLogger.Instance?.Log("rule_set_cleared", "Player cleared recommendation rules",
+                new { level_id = 2, rules_removed = removed });
+            RefreshRules();
+        }
 
         void RefreshRules()
         {
@@ -265,6 +280,8 @@ namespace MadFact
         {
             _running = true;
             _runBtn.interactable = false;
+            MadFactLokiLogger.Instance?.Log("interaction_started", "Robot recommendation batch started",
+                new { interaction_id = "level_2_batch", level_id = 2, rule_count = _rules.Count });
             _summary.text = "";
             _log.text = "C:\\STORE> RUN AUTOSERVE.BAT\n";
 
@@ -339,6 +356,16 @@ namespace MadFact
                     float err = 5f - sat;
                     var tier = Economy.Tier(err);
                     int pay = Economy.Pay(tier);
+                    MadFactLokiLogger.Instance?.Log("movie_recommended", "Robot recommended a movie to a customer", new
+                    {
+                        interaction_id = "level_2_batch",
+                        level_id = 2,
+                        customer_id = cust.Name,
+                        movie_id = movie.Title,
+                        satisfaction = sat,
+                        sale_tier = tier.ToString(),
+                        automated = true
+                    });
                     earned += pay;
                     if (tier == SaleTier.Perfect) perfect++; else if (tier == SaleTier.Close) close++; else terrible++;
                     if (AudioTension.I != null)
@@ -367,6 +394,17 @@ namespace MadFact
 
             _running = false;
             _runBtn.interactable = true;
+            MadFactLokiLogger.Instance?.Log("interaction_completed", "Robot recommendation batch completed", new
+            {
+                interaction_id = "level_2_batch",
+                level_id = 2,
+                customers = batch,
+                earned,
+                perfect,
+                close,
+                terrible,
+                effectiveness = acc
+            });
 
             // verdict
             if (_rules.Count > 0)

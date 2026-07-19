@@ -87,7 +87,7 @@ This makes both workflows valid:
 | `Storefront.unity` | VHS shop hub, customer queue, narrative dialogue, and level entrances. |
 | `Level01_ManualRecommendation.unity` | Read customer files, ask limited questions, and recommend a tape manually. |
 | `Level02_RuleBasedRecommendation.unity` | Program UNIT B-EIGE with rigid `IF genre THEN movie` rules and run customer batches. |
-| `Level03_ContentBasedRecommendation.unity` | Introduces matching explicit item features to stated needs; the full mechanic is still planned. |
+| `Level03_ContentBasedRecommendation.unity` | Rank the full catalog from customer and box features, then confront filter bubbles and feature-model limits. |
 | `Level04_CollaborativeFiltering.unity` | Explore a Customers × Movies matrix, latent-vibe sliders, prediction error, and gradient descent. |
 | `Level05_MarketGapResearch.unity` | Use the learned market gap to assemble and greenlight a new movie poster. |
 | `MadMovieFact.unity` | Compatibility/all-in-one composition scene; retained for reference, but disabled in Build Settings. |
@@ -106,8 +106,10 @@ The main menu and gameplay screens are visible and editable before entering Play
   hierarchy.
 
 Runtime creation is retained for content that is genuinely dynamic, including changing queue
-members, sale feedback, dialogue state, and stickers placed by the player. `RuntimeSkin` reconnects
-runtime-sliced atlas sprites and OS fonts that Unity cannot serialize reliably into prefabs.
+members, selected poster details, ranked suggestions, sale feedback, dialogue choices, and stickers
+placed by the player. The poster-browser shell and its initial shelf remain authored in the prefabs.
+`RuntimeSkin` reconnects runtime-sliced atlas sprites and OS fonts that Unity cannot serialize
+reliably into prefabs.
 
 Useful editor commands are available under the **MadFact** menu:
 
@@ -115,6 +117,7 @@ Useful editor commands are available under the **MadFact** menu:
 - **Rebuild Authored Main Menu**
 - **Refresh Editor UI Preview**
 - **Refresh Authored Level Prefabs**
+- **Validate Authored Level Prefabs**
 - **Normalize Dedicated Scene UI Order**
 - **Repair Dedicated Level Scene Slots**
 - **Bake Serializable Preview Fonts**
@@ -129,27 +132,30 @@ recommendation approach.
 
 ### Level 1 — Manual recommendation
 
-Each customer has a visit-specific history, demand, notes, and hidden preferences. The player spends
-a limited number of clarifying questions, recommends one of five VHS tapes, and earns or loses money
-based on the match.
+Each customer has a visit-specific history, demand, notes, age, and hidden preferences. The player
+spends a limited number of clarifying questions, browses a genre-organized shelf of 17 VHS tapes,
+reads age ratings and eight-dimensional box features, and earns or loses money based on the match.
 
 ### Level 2 — Rule-based recommendation
 
 The player creates brittle genre-to-movie rules and runs them against a batch of customers. The CRT
-log reports perfect sales, close matches, and refunds, making the limitations of hand-authored rules
-visible.
+log reports perfect sales, close matches, and refunds. A rule that hands an R-rated tape to Timmy
+turns the abstract limitation into a concrete oversight lesson and lets the player add an age rule.
 
 ### Level 3 — Content-based recommendation
 
-This level introduces direct comparison of movie attributes with a customer's stated needs. Its
-dedicated scene and progression route are implemented; the final interactive mechanic is still to be
-filled in.
+The TASTE-MATCH 3000 builds genre profiles from rental history, scores the full shelf from the
+features printed on each box, and generates ranked suggestions. Returning customers expose a filter
+bubble, while a high-scoring but disappointing recommendation demonstrates that a content model can
+only reason about the features it was given.
 
 ### Level 4 — Collaborative filtering
 
 The mainframe displays known and predicted ratings for a Customers × Movies matrix. Four latent
 dimensions—Space-y, Spooky, Funny, and Explosions—can be adjusted manually. The optimizer runs real
-gradient descent to reduce total prediction error and expose missing ratings.
+gradient descent to reduce total prediction error and expose missing ratings. Its success also
+triggers a privacy decision with Gibbs and a popularity-bias complaint from Indie Iris; money, trust,
+and narrative flags retain the consequences.
 
 ### Level 5 — Market-gap research and movie making
 
@@ -158,11 +164,13 @@ cutouts on a corkboard, matches the target latent profile, and greenlights the r
 
 ## State and scenario model
 
-- `CustomerData` contains a customer's persistent identity and true taste.
+- `CustomerData` contains a customer's persistent identity, age, genre profile, and true taste.
+- `MovieData` contains its genre, age rating, visible feature vector, and hidden latent vibe.
 - `CustomerVisit` contains one appearance: recent history, stated demand, notes, and return context.
 - `LevelScenario` connects a visit to success and failure follow-up dialogue.
 - `RunState` remembers visits, recommendations, satisfaction, decisions, and story flags.
-- `GameManager` owns persistent money, phase, unlocks, matrix state, and the active run.
+- `GameManager` owns persistent money, community trust, phase, unlocks, matrix state, and the active
+  run.
 
 This supports returning customers and consequence dialogue without introducing a large quest system.
 
