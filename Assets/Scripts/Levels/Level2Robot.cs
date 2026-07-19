@@ -146,7 +146,7 @@ namespace MadFact
                 int col = g / 4, row = g % 4;
                 float x = 128 + col * 138;
                 float y = -78 - row * 20;
-                var lbl = UIFactory.Text(preview.transform, "pvl" + g, GenreInfo.Names[g], 8, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperLeft, false);
+                var lbl = UIFactory.Text(preview.transform, "pvl" + g, GenreInfo.Names[g], 10, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperLeft, false);
                 UIFactory.Place(UIFactory.RT(lbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(66, 14), new Vector2(x, y));
                 var bg = UIFactory.Image(preview.transform, "pvb" + g, new Color(0, 0, 0, 0.22f), null, Image.Type.Simple, false);
                 UIFactory.Place(UIFactory.RT(bg.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(58, 8), new Vector2(x + 68, y - 3));
@@ -410,10 +410,24 @@ namespace MadFact
                         continue;
                     }
 
+                    // customers remember what they've already been handed even if the
+                    // robot doesn't — a repeat rule can quietly walk into a refund.
+                    if (GameManager.I.Run.HasServed(cust.Name, movie.Title) && UnityEngine.Random.value < 0.5f)
+                    {
+                        terrible++; earned += Economy.Refund;
+                        GameManager.I.AddTrust(-5);
+                        if (AudioTension.I != null) AudioTension.I.Buzzer();
+                        line = $"> <color=#F05A66>✕</color> {cust.Name}: already has '{movie.Title}' — REFUND {Money(Economy.Refund)}";
+                        _log.text += line + "\n";
+                        yield return new WaitForSecondsRealtime(0.18f);
+                        continue;
+                    }
+
                     float sat = GameData.TrueRating(cust, movie);
                     float err = 5f - sat;
                     var tier = Economy.Tier(err);
                     int pay = Economy.Pay(tier);
+                    GameManager.I.Run.RecordRecommendation("level_2_batch", cust.Name, Phase.Level2, movie, tier, sat);
                     MadFactLokiLogger.Instance?.Log("movie_recommended", "Robot recommended a movie to a customer", new
                     {
                         interaction_id = "level_2_batch",

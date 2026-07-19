@@ -135,7 +135,7 @@ namespace MadFact
                 poster.preserveAspect = true;
                 UIFactory.Place(UIFactory.RT(poster.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(80, 112), new Vector2(0, 0));
 
-                var label = UIFactory.Text(cell.transform, "T", m.Title, 9, Theme.Ink, Theme.Typewriter, TextAnchor.UpperCenter, true);
+                var label = UIFactory.Text(cell.transform, "T", m.Title, 10, Theme.Ink, Theme.Typewriter, TextAnchor.UpperCenter, true);
                 UIFactory.Place(UIFactory.RT(label.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(88, 26), new Vector2(0, 0));
             }
         }
@@ -178,7 +178,7 @@ namespace MadFact
                 float x = -136 + col * 140;
                 float y = barsTop - row * 17;
 
-                var lbl = UIFactory.Text(_detailRoot.transform, "fl" + g, GenreInfo.Names[g], 8, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperLeft, false, FontStyle.Italic);
+                var lbl = UIFactory.Text(_detailRoot.transform, "fl" + g, GenreInfo.Names[g], 10, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperLeft, false, FontStyle.Italic);
                 UIFactory.Place(UIFactory.RT(lbl.gameObject), new Vector2(0.5f, 1), new Vector2(0, 1), new Vector2(72, 14), new Vector2(x, y - 2));
 
                 var bg = UIFactory.Image(_detailRoot.transform, "fb" + g, new Color(0, 0, 0, 0.18f), null, Image.Type.Simple, false);

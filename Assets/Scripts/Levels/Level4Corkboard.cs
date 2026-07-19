@@ -177,7 +177,7 @@ namespace MadFact
                 var b = UIFactory.Button(panel.transform, "S" + i, d.Label, () => AddSticker(ci), d.Color, 11, Theme.Typewriter, Color.white);
                 UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(94, 50), new Vector2(x, y));
                 UIFactory.ButtonIcon(b, ArtSprites.Sticker(i), 38f);
-                b.GetComponentInChildren<Text>().fontSize = 7;
+                b.GetComponentInChildren<Text>().fontSize = 9;
             }
         }
 
@@ -213,7 +213,7 @@ namespace MadFact
             var pic = UIFactory.Image(card.transform, "Pic", Color.white, ArtSprites.Sticker(defIndex), Image.Type.Simple, false);
             pic.preserveAspect = true;
             UIFactory.Place(UIFactory.RT(pic.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(74, 60), new Vector2(0, -5));
-            var cap = UIFactory.Text(card.transform, "Cap", d.Label.Replace("\n", " "), 9, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, true);
+            var cap = UIFactory.Text(card.transform, "Cap", d.Label.Replace("\n", " "), 11, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, true);
             UIFactory.Place(UIFactory.RT(cap.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(80, 24), new Vector2(0, 4));
 
             // remove button

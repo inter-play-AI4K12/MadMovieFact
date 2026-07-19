@@ -318,7 +318,7 @@ namespace MadFact
                 UIFactory.Place(UIFactory.RT(match.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 16), new Vector2(58, -36));
 
                 var why = UIFactory.Text(card.transform, "W",
-                    $"why: {GenreInfo.Name(overlap.genre)} {overlap.p:0.0}×{overlap.b:0.0}", 9, Theme.CommsGray, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Italic);
+                    $"why: {GenreInfo.Name(overlap.genre)} {overlap.p:0.0}×{overlap.b:0.0}", 10, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Italic);
                 UIFactory.Place(UIFactory.RT(why.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(190, 14), new Vector2(58, -54));
 
                 // remove the default empty label's raycast confusion — keep as is (label is empty)

@@ -49,11 +49,12 @@ namespace MadFact
         int _pickI = -1, _pickJ = -1;
         // A single slider drag fires OnValueChanged dozens of times, so raw event counts
         // trigger the power-on beat almost instantly. Gate on wall-clock time playing with
-        // stage 2 plus genuinely exploring more than one row/column instead.
+        // stage 2 plus a real count of distinct dials actually touched instead.
         float _stage2StartTime = -1f;
-        readonly HashSet<int> _rowsSeen = new HashSet<int>(), _colsSeen = new HashSet<int>();
-        const float PowerOnMinSeconds = 35f;
-        const int PowerOnMinDistinct = 3;   // rows+cols combined
+        readonly HashSet<int> _slidersSeen = new HashSet<int>();
+        const float PowerOnMinSeconds = 60f;
+        const int PowerOnMinSliders = 10;   // distinct (entity, dimension) dials changed
+        const int MainframeStageBase = 100; // first of three post-optimizer payout stages
         const string FlagStage1Done = "mf_stage1_done";
         const string FlagStage1Intro = "mf_stage1_intro";
         const string FlagPowered = "mf_optimizer_powered";
@@ -176,7 +177,7 @@ namespace MadFact
                 var b = UIFactory.Button(gridRoot.transform, "Col" + j, M.Movies[j].Short.Replace(" ", "\n"), () => SelectCol(cj), Theme.CrtBgSoft, 11, Theme.Typewriter, Theme.CrtGreen);
                 UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(CellW, ColHeadH - 2), new Vector2(RowHeadW + j * (CellW + GapX), 0));
                 UIFactory.ButtonIcon(b, ArtSprites.MatrixCover(j), 14f);
-                b.GetComponentInChildren<Text>().fontSize = 7;
+                b.GetComponentInChildren<Text>().fontSize = 9;
                 _colBtn[j] = b;
                 _colSel[j] = UIFactory.Image(b.transform, "Sel", new Color(1, 1, 0.4f, 0.25f), null, Image.Type.Simple, false);
                 UIFactory.Fill(UIFactory.RT(_colSel[j].gameObject)); _colSel[j].gameObject.SetActive(false);
@@ -311,7 +312,7 @@ namespace MadFact
             _stage2 = GameManager.I.Run.HasFlag(FlagStage1Done);
             if (_stage1Guess == null)
                 _stage1Guess = new int[M.Rows, M.Cols];
-            if (_stage2 && _stage2StartTime < 0f) { _stage2StartTime = Time.unscaledTime; _rowsSeen.Clear(); _colsSeen.Clear(); }
+            if (_stage2 && _stage2StartTime < 0f) { _stage2StartTime = Time.unscaledTime; _slidersSeen.Clear(); }
             ApplyStage();
             Deselect();
             RefreshGrid();
@@ -395,7 +396,7 @@ namespace MadFact
             {
                 $"Vault copy says: {correct} of {blanks} within one star. " + (correct >= 4 ? "Sharp eyes, kid." : correct >= 2 ? "Not bad for a first shift." : "Rough — but watch what comes next."),
                 "Notice HOW you guessed: you compared ROWS. Similar customers rate similarly. That's COLLABORATIVE FILTERING, done by hand.",
-                "Now — every customer and every tape gets four hidden dials. No names, no labels. Nobody knows what they mean. Not even me.",
+                "Now — every customer and every tape gets four hidden dials. No names, no labels. The MACHINE doesn't know what they mean — it just crunches numbers.",
                 "Your job: tune them until the board agrees with the ledger. Grab a row, drag a dial, watch the numbers. Off you go."
             }, () =>
             {
@@ -416,7 +417,6 @@ namespace MadFact
             _editLabel.text = "CUSTOMER: " + M.Customers[i].Name + "\n(four hidden dials)";
             LoadSliders(u);
             SetSlidersInteractable(true);
-            _rowsSeen.Add(i);
             MaybePowerOn();
             MadFactLokiLogger.Instance?.Log("collaborative_filter_entity_selected",
                 "Player selected a customer taste vector", new
@@ -437,7 +437,6 @@ namespace MadFact
             _editLabel.text = "MOVIE: " + M.Movies[j].Title + "\n(four hidden dials)";
             LoadSliders(v);
             SetSlidersInteractable(true);
-            _colsSeen.Add(j);
             MaybePowerOn();
             MadFactLokiLogger.Instance?.Log("collaborative_filter_entity_selected",
                 "Player selected a movie feature vector", new
@@ -481,6 +480,9 @@ namespace MadFact
             float previous = _editingRow ? M.U[_editIndex][d] : M.V[_editIndex][d];
             if (_editingRow) M.U[_editIndex][d] = value; else M.V[_editIndex][d] = value;
             _sliderVal[d].text = value.ToString("0.00");
+            // one distinct dial (this entity + this dimension) counts once no matter how
+            // many OnValueChanged events the drag that touched it fired.
+            _slidersSeen.Add((_editingRow ? 1000 : 0) + _editIndex * 4 + d);
             RefreshGrid();
             MaybePowerOn();
 
@@ -505,15 +507,16 @@ namespace MadFact
         }
 
         /// <summary>
-        /// Fires the power-on beat once the player has genuinely spent time at the dials —
-        /// gated on real elapsed time, not raw slider events (one drag alone shouldn't count).
+        /// Fires the power-on beat only once the player has genuinely spent time at the
+        /// dials by BOTH measures — real elapsed time AND a real count of distinct dials
+        /// touched — firing at whichever of the two is satisfied second.
         /// </summary>
         void MaybePowerOn()
         {
             if (_optimizing || _stage2StartTime < 0f || GameManager.I.Run.HasFlag(FlagPowered)) return;
             bool longEnough = Time.unscaledTime - _stage2StartTime >= PowerOnMinSeconds;
-            bool exploredEnough = _rowsSeen.Count + _colsSeen.Count >= PowerOnMinDistinct;
-            if (longEnough && exploredEnough) PowerOnBeat();
+            bool enoughSliders = _slidersSeen.Count >= PowerOnMinSliders;
+            if (longEnough && enoughSliders) PowerOnBeat();
         }
 
         void PowerOnBeat()
@@ -674,13 +677,12 @@ namespace MadFact
             RefreshGrid();
             if (AudioTension.I != null) { AudioTension.I.Silence(); AudioTension.I.Clunk(); }
 
-            // revenue skyrockets
-            yield return new WaitForSecondsRealtime(0.4f);
-            int payout = 320;
-            Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.6f);
-            GameManager.I.AddMoney(payout);
-            GameManager.I.RecordSale(0f, pop); // cha-ching + popup
-            _hint.text = $"BALANCED. Empty cells filled with predictions. +${payout} batch revenue!";
+            // The till keeps climbing through the rest of the sequence in three spaced-out
+            // beats, each grown off CURRENT trust — so whatever the player just did (like
+            // the Gibbs choice below) is felt immediately in the next payout instead of
+            // sitting invisibly in a meter nobody's watching.
+            yield return new WaitForSecondsRealtime(1.0f);
+            int payout = GrowMainframePayout(MainframeStageBase, "BALANCED. Empty cells filled with predictions.");
 
             _optimizing = false;
             _resetBtn.interactable = true;
@@ -690,22 +692,43 @@ namespace MadFact
 
             // Money on the table attracts vultures: Gibbs makes his pitch mid-level,
             // right when the machine has just proven how profitable personalization is.
-            yield return new WaitForSecondsRealtime(0.8f);
+            yield return new WaitForSecondsRealtime(2.5f);
             bool pitching = true;
             PrivacyScenario.Play(MadFactBootstrap.I.Comms, () => pitching = false);
             yield return new WaitUntil(() => !pitching);
 
-            // highlight the underserved cluster, then hand off to Level 5 — but first
-            // the crowd's math shows its other face: popularity bias.
-            yield return new WaitForSecondsRealtime(1.0f);
-            HighlightUnderserved();
-            yield return new WaitForSecondsRealtime(0.6f);
+            // whatever just happened with Gibbs is already baked into trust by now — grow
+            // the SAME running total off it, so accepting his offer visibly caps how much
+            // the machine earns next instead of just moving a number nobody sees again.
+            yield return new WaitForSecondsRealtime(0.8f);
+            payout = GrowMainframePayout(payout, "The machine keeps compounding what it learned.");
+
+            // the crowd's math shows its other face next: popularity bias, via Iris's
+            // complaint.
+            yield return new WaitForSecondsRealtime(2.5f);
             if (!MadFactBootstrap.I.Level4Cleared)
             {
                 MadFactBootstrap.I.Level4Cleared = true;
-                PopularityBiasScene(() => MadFactBootstrap.I.OnLevel4Goal());
+                PopularityBiasScene(() =>
+                {
+                    GrowMainframePayout(payout, "Still climbing.");
+                    StartCoroutine(FinishLevel4Goal());
+                });
             }
             else _optimizeBtn.interactable = true;
+        }
+
+        /// <summary>
+        /// The underserved-cluster highlight comes AFTER Iris's scene fully resolves,
+        /// timed to land with "you see that cluster?" — not sitting unexplained through
+        /// a scene that isn't about it — with a beat first so the last payout is legible
+        /// before the hint bar changes underneath it.
+        /// </summary>
+        IEnumerator FinishLevel4Goal()
+        {
+            yield return new WaitForSecondsRealtime(1.2f);
+            HighlightUnderserved();
+            MadFactBootstrap.I.OnLevel4Goal();
         }
 
         /// <summary>
@@ -753,6 +776,23 @@ namespace MadFact
                     };
                 comms.Show(Speaker.OldDude, verdict, then);
             })));
+        }
+
+        /// <summary>
+        /// Grows a running payout by a factor read from CURRENT trust — 0.7x at zero trust
+        /// up to 1.7x at full trust — and pays it out with the usual cha-ching + popup.
+        /// Trust is read live (not captured once) so a swing from the Gibbs choice between
+        /// stages changes what the NEXT stage earns, not just some invisible meter.
+        /// </summary>
+        int GrowMainframePayout(int previous, string message)
+        {
+            float factor = 0.7f + GameManager.I.Trust / 100f;
+            int payout = Mathf.Max(1, Mathf.RoundToInt(previous * factor));
+            Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.6f);
+            GameManager.I.AddMoney(payout);
+            GameManager.I.RecordSale(0f, pop); // cha-ching + popup
+            _hint.text = $"{message} +${payout}  (trust {GameManager.I.Trust}%)";
+            return payout;
         }
 
         void HighlightUnderserved()

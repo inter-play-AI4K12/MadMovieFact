@@ -365,16 +365,26 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(dim.gameObject));
             _winPanel = dim.gameObject;
             var card = UIFactory.DialogWindow(dim.transform, "Card", Theme.Face);
-            UIFactory.Place(UIFactory.RT(card.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(560, 320), Vector2.zero);
+            UIFactory.Place(UIFactory.RT(card.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(560, 380), Vector2.zero);
             UIFactory.Place(UIFactory.RT(UIFactory.Text(card.transform, "t", "★  BLOCKBUSTER GREENLIT  ★", 22, Theme.TitleText, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold).gameObject),
                 new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(500, 32), new Vector2(0, -6));
             UIFactory.Place(UIFactory.RT(UIFactory.Text(card.transform, "b",
-                $"You inherited a failing store and rebuilt it with math.\n\nFinal balance:  ${GameManager.I.Money}\n\nManual  →  Rules  →  Content  →  Collaborative Filtering  →  Insight\n\nYou didn't just compute the error. You FELT it.",
+                "You inherited a failing store and rebuilt it with math.\n\nManual  →  Rules  →  Content  →  Collaborative Filtering  →  Insight\n\nYou didn't just compute the error. You FELT it.",
                 16, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperCenter, true).gameObject),
-                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(500, 190), new Vector2(0, -54));
-            var back = UIFactory.Button(card.transform, "Back", "RETURN TO STORE", () => { _winPanel.SetActive(false); _currentLevel = 5; GoStorefront(); }, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
-            UIFactory.Place(UIFactory.RT(back.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(220, 40), new Vector2(0, 24));
-            UIFactory.ButtonIcon(back, ArtSprites.Back(), 28f);
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(500, 130), new Vector2(0, -46));
+
+            // this IS the end of the run — no button back to a playable hub, just the
+            // numbers the whole game was building toward.
+            var statsBox = UIFactory.Bevel(card.transform, "Stats", Theme.FaceShade, sunken: true);
+            UIFactory.Place(UIFactory.RT(statsBox.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(500, 110), new Vector2(0, 20));
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "h", "FINAL RESULTS", 12, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperCenter, false, FontStyle.Bold).gameObject),
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(460, 18), new Vector2(0, -8));
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "trust", $"TRUST\n{GameManager.I.Trust}", 18, Theme.TitleText, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
+                new Vector2(0f, 0.5f), new Vector2(0.33f, 0.5f), new Vector2(0, 60), new Vector2(0, -6));
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "money", $"NET MONEY\n${GameManager.I.Money}", 18, Theme.Cash, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
+                new Vector2(0.33f, 0.5f), new Vector2(0.67f, 0.5f), new Vector2(0, 60), new Vector2(0, -6));
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "recs", $"RECOMMENDATIONS\n{GameManager.I.Run.Recommendations.Count}", 18, Theme.InkSoft, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
+                new Vector2(0.67f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0, 60), new Vector2(0, -6));
         }
     }
 }
