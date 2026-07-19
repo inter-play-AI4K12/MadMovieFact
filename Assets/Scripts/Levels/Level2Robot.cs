@@ -29,6 +29,8 @@ namespace MadFact
         Image _previewPoster;
         Text _previewTitle, _previewRating;
         readonly Image[] _previewBars = new Image[GenreInfo.Count];
+        PosterBrowser _moviePicker;
+        GameObject _pickerOverlay;
         bool _running;
         bool _complainedOnce;   // the robot's "my rules are rigid" speech plays only once
         bool _incidentPause;    // batch is frozen while the age-rating scene plays out
@@ -41,8 +43,7 @@ namespace MadFact
             if (_root == null) return;
             Bind("GPrev", () => CycleGenre(-1));
             Bind("GNext", () => CycleGenre(1));
-            Bind("MPrev", () => CycleMovie(-1));
-            Bind("MNext", () => CycleMovie(1));
+            Bind("MSel", OpenMoviePicker);
             Bind("Add", AddRule);
             Bind("Clr", ClearRules);
             Bind("Run", RunBatch);
@@ -102,19 +103,18 @@ namespace MadFact
 
             UIFactory.Place(UIFactory.RT(UIFactory.Text(builder.transform, "i2", "THEN HAND OUT:", 13, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold).gameObject),
                 new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(12, -48));
-            var mPrev = UIFactory.Button(builder.transform, "MPrev", "", () => CycleMovie(-1), Theme.Face, 12);
-            UIFactory.Place(UIFactory.RT(mPrev.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 28), new Vector2(184, -46));
-            UIFactory.ButtonIcon(mPrev, ArtSprites.Back(), 16f, true);
-            var mSel = UIFactory.Bevel(builder.transform, "MSel", Theme.Plastic, sunken: true, raycast: false);
-            UIFactory.Place(UIFactory.RT(mSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(160, 28), new Vector2(212, -46));
+            // A 47-title catalog is unbrowsable with prev/next arrows, so this chip opens
+            // a full scrollable picker (genre carousel + poster grid + detail) instead.
+            var mSel = UIFactory.Button(builder.transform, "MSel", "", OpenMoviePicker, Theme.Plastic, 12, Theme.SystemSans);
+            UIFactory.Place(UIFactory.RT(mSel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(218, 28), new Vector2(184, -46));
             _movieIcon = UIFactory.Image(mSel.transform, "Icon", Color.white, ArtSprites.MovieCover(_selMovie), Image.Type.Simple, false);
             _movieIcon.preserveAspect = true;
             UIFactory.Place(UIFactory.RT(_movieIcon.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(20, 24), new Vector2(6, 0));
             _movieSel = UIFactory.Text(mSel.transform, "T", "", 10, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleCenter, true);
-            UIFactory.Fill(UIFactory.RT(_movieSel.gameObject), 28, 2, 4, 2);
-            var mNext = UIFactory.Button(builder.transform, "MNext", "", () => CycleMovie(1), Theme.Face, 12);
-            UIFactory.Place(UIFactory.RT(mNext.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 28), new Vector2(376, -46));
-            UIFactory.ButtonIcon(mNext, ArtSprites.Next(), 16f, true);
+            UIFactory.Fill(UIFactory.RT(_movieSel.gameObject), 28, 2, 26, 2);
+            var browseIcon = UIFactory.Image(mSel.transform, "Browse", Color.white, ArtSprites.Next(), Image.Type.Simple, false);
+            browseIcon.preserveAspect = true;
+            UIFactory.Place(UIFactory.RT(browseIcon.gameObject), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(16, 16), new Vector2(-6, 0));
 
             var addBtn = UIFactory.Button(builder.transform, "Add", "ADD RULE", AddRule, Theme.Cash, 14, Theme.SystemSans, Theme.TitleText);
             UIFactory.Place(UIFactory.RT(addBtn.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 30), new Vector2(12, -90));
@@ -123,13 +123,12 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(clrBtn.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(120, 30), new Vector2(210, -90));
             UIFactory.ButtonIcon(clrBtn, ArtSprites.Clear(), 22f);
 
-            // ---- Rules list ----
-            var rulesPanel = UIFactory.Bevel(chassis.transform, "RulesPanel", new Color(0.06f, 0.10f, 0.06f), sunken: true);
-            UIFactory.Place(UIFactory.RT(rulesPanel.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(420, 200), new Vector2(18, -204));
-            UIFactory.Place(UIFactory.RT(UIFactory.Text(rulesPanel.transform, "rl", "PROGRAM:", 13, Theme.CrtGreenDim, Theme.Typewriter, TextAnchor.UpperLeft, false).gameObject),
-                new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, 18), new Vector2(10, -6));
-            _rulesText = UIFactory.Text(rulesPanel.transform, "Rules", "", 13, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
-            UIFactory.Place(UIFactory.RT(_rulesText.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(400, 170), new Vector2(10, -26));
+            // ---- Rules list (scrollable — a full ruleset can run past the visible area) ----
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(chassis.transform, "rl", "PROGRAM:", 13, Theme.CrtGreenDim, Theme.Typewriter, TextAnchor.UpperLeft, false).gameObject),
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, 18), new Vector2(28, -208));
+            var (rulesScroll, rulesContent) = UIFactory.VScroll(chassis.transform, "RulesPanel", new Color(0.06f, 0.10f, 0.06f));
+            UIFactory.Place(UIFactory.RT(rulesScroll.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(420, 178), new Vector2(18, -226));
+            _rulesText = UIFactory.Text(rulesContent.transform, "Rules", "", 13, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
 
             // ---- Tape preview (right, top): what the selected rule would hand out ----
             var preview = UIFactory.Bevel(chassis.transform, "Preview", Theme.Face, sunken: true);
@@ -178,12 +177,59 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(leave.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(26, 22), new Vector2(-10, -10));
             UIFactory.ButtonIcon(leave, ArtSprites.Close(), 18f, true);
 
+            BuildMoviePickerOverlay(_root.transform);
+
             RefreshSelectors();
             RefreshRules();
         }
 
+        /// <summary>Full scrollable genre/poster/detail browser for picking a rule's tape.</summary>
+        void BuildMoviePickerOverlay(Transform root)
+        {
+            _pickerOverlay = UIFactory.Image(root, "PickerOverlay", new Color(0, 0, 0, 0.6f)).gameObject;
+            UIFactory.Fill(UIFactory.RT(_pickerOverlay));
+
+            var window = UIFactory.DialogWindow(_pickerOverlay.transform, "PickerWindow", Theme.Face);
+            UIFactory.Place(UIFactory.RT(window.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(560, 460), Vector2.zero);
+
+            var title = UIFactory.Text(window.transform, "T", "CHOOSE A TAPE FOR THIS RULE", 15, Theme.TitleText, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(title.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(440, 24), new Vector2(0, -14));
+
+            _moviePicker = PosterBrowser.Create(window.transform, "MoviePicker");
+            UIFactory.Place(UIFactory.RT(_moviePicker.gameObject), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(500, 386), new Vector2(0, -16));
+            _moviePicker.RecommendLabel = "USE THIS TAPE";
+            _moviePicker.OnRecommend = OnMoviePicked;
+
+            var close = UIFactory.Button(window.transform, "Close", "", ClosePicker, Theme.Face, 16);
+            UIFactory.Place(UIFactory.RT(close.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(26, 22), new Vector2(-10, -10));
+            UIFactory.ButtonIcon(close, ArtSprites.Close(), 18f, true);
+
+            _pickerOverlay.SetActive(false);
+        }
+
+        void OpenMoviePicker()
+        {
+            if (_pickerOverlay == null) return;
+            _pickerOverlay.SetActive(true);
+            _pickerOverlay.transform.SetAsLastSibling();
+            _moviePicker.SetGenre(_selGenre);   // convenience default; still fully browsable
+            if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        void ClosePicker()
+        {
+            _pickerOverlay.SetActive(false);
+            if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        void OnMoviePicked(int index)
+        {
+            _selMovie = index;
+            RefreshSelectors();
+            ClosePicker();
+        }
+
         void CycleGenre(int d) { _selGenre = (Genre)(((int)_selGenre + d + GenreInfo.Count) % GenreInfo.Count); RefreshSelectors(); }
-        void CycleMovie(int d) { _selMovie = (_selMovie + d + GameData.Movies.Count) % GameData.Movies.Count; RefreshSelectors(); }
 
         void RefreshSelectors()
         {
@@ -285,12 +331,20 @@ namespace MadFact
             _summary.text = "";
             _log.text = "C:\\STORE> RUN AUTOSERVE.BAT\n";
 
+            if (_rules.Count == 0)
+            {
+                // No rules means the robot refuses every single order — that's already
+                // reflected in the per-customer refunds below, but it should ALSO cost
+                // trust: "the rules aren't enough" is a lesson about the till, not just it.
+                _log.text += "<color=#F05A66>NO RULES PROGRAMMED — every order refused.</color>\n";
+                GameManager.I.AddTrust(-10);
+            }
+
             int batch = GameManager.I.TrustScaledCustomers(12);
             if (batch < 12)
                 _log.text += $"<color=#E0C266>trust is low — only {batch} customers in line</color>\n";
 
             var pool = BatchPool();
-            var rng = new System.Random();
             int earned = 0, perfect = 0, close = 0, terrible = 0;
             float potential = 0f;
 
@@ -301,9 +355,13 @@ namespace MadFact
 
             for (int n = 0; n < batch; n++)
             {
+                // UnityEngine.Random (not System.Random with its default TickCount seed,
+                // which can collide across rapid successive batch runs and make "random"
+                // customers repeat identically batch after batch) — genuinely re-rolled
+                // every call, so re-running the batch actually re-randomizes who shows up.
                 CustomerData cust = (n == kidSlot)
                     ? GameData.CustomerByName("TIMMY")
-                    : pool[rng.Next(pool.Count)];
+                    : pool[UnityEngine.Random.Range(0, pool.Count)];
                 potential += Economy.PerfectPay;
 
                 int matchRule = -1;

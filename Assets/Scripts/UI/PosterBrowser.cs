@@ -17,6 +17,9 @@ namespace MadFact
         public Action<int> OnRecommend;
         /// <summary>Optional extra detail line (e.g. the content engine's MATCH % readout).</summary>
         public Func<int, string> DetailExtra;
+        /// <summary>Label on the commit button — callers picking a tape for a purpose other
+        /// than serving a customer (e.g. programming a rule) can rename it.</summary>
+        public string RecommendLabel = "RECOMMEND";
 
         Genre _genre = Genre.SciFi;
         GameObject _gridRoot, _detailRoot;
@@ -203,7 +206,7 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(back.gameObject), new Vector2(0.5f, 1), new Vector2(0, 1), new Vector2(88, 28), new Vector2(-140, extraY - 18));
             UIFactory.ButtonIcon(back, ArtSprites.Back(), 18f);
 
-            var rec = UIFactory.Button(_detailRoot.transform, "Recommend", "RECOMMEND", () =>
+            var rec = UIFactory.Button(_detailRoot.transform, "Recommend", RecommendLabel, () =>
             {
                 if (_locked) return;
                 int picked = _detailIndex;

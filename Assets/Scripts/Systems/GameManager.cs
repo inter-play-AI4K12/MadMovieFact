@@ -16,6 +16,13 @@ namespace MadFact
         public RunState Run { get; private set; }
         public bool HasActiveRun { get; private set; }
 
+        // The money balance at the moment the player most recently opened the current
+        // level. Bankruptcy restarts the level by rolling Money back to this baseline
+        // rather than wiping the whole run.
+        public int LevelEntryMoney { get; set; }
+        public event Action OnBankrupt;
+        bool _bankrupt;
+
         // Community trust in the store (0-100). Mishandled customers and shady data
         // practices push it down; low trust visibly thins the customer line.
         public const int StartTrust = 70;
@@ -103,12 +110,25 @@ namespace MadFact
             int delta = value - Money;
             Money = value;
             OnMoneyChanged?.Invoke(Money, delta);
+            CheckBankruptcy();
         }
 
         public void AddMoney(int delta)
         {
             Money += delta;
             OnMoneyChanged?.Invoke(Money, delta);
+            CheckBankruptcy();
+        }
+
+        /// <summary>
+        /// Fires OnBankrupt once per negative crossing. Listeners (MadFactBootstrap) restart
+        /// the current level on the next frame — never synchronously, since this can be
+        /// called from deep inside a level's own batch/sale coroutine.
+        /// </summary>
+        void CheckBankruptcy()
+        {
+            if (Money < 0 && !_bankrupt) { _bankrupt = true; OnBankrupt?.Invoke(); }
+            else if (Money >= 0) { _bankrupt = false; }
         }
 
         /// <summary>Record a recommendation sale with the given match error. Returns the tier.</summary>
@@ -119,6 +139,7 @@ namespace MadFact
             Money += pay;
             OnMoneyChanged?.Invoke(Money, pay);
             OnSale?.Invoke(tier, pay, screenPos);
+            CheckBankruptcy();
 
             var au = AudioTension.I;
             if (au != null)

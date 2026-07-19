@@ -254,17 +254,12 @@ namespace MadFact
             if (_recommended) return;
             var movie = GameData.Movies[mi];
 
-            // no double-dipping: a customer never takes home the same tape twice
-            if (GameManager.I.Run.HasServed(_cust.Name, movie.Title))
-            {
-                if (AudioTension.I != null) AudioTension.I.Beep();
-                MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
-                    { $"'{movie.Title}'? I already RENTED that one from you. Got anything else?" });
-                return;
-            }
+            // no double-dipping: a repeat is allowed, but it tanks the sale and costs
+            // a little trust rather than silently no-op'ing — the customer notices.
+            bool repeat = GameManager.I.Run.HasServed(_cust.Name, movie.Title);
 
             _recommended = true;
-            float satisfaction = GameData.TrueRating(_cust, movie); // 1..5
+            float satisfaction = repeat ? 1f : GameData.TrueRating(_cust, movie); // 1..5
             float error = 5f - satisfaction;                        // 0 = perfect
 
             foreach (var b in _questionButtons) b.interactable = false;
@@ -275,6 +270,7 @@ namespace MadFact
             // payout at the register position (top-centre-ish)
             Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
             var tier = GameManager.I.RecordSale(error, pop);
+            if (repeat) GameManager.I.AddTrust(-5);
             GameManager.I.Run.RecordRecommendation(_scenario, movie, tier, satisfaction, _questionsAsked);
             MadFactLokiLogger.Instance?.Log("movie_recommended", "Player recommended a movie to a customer", new
             {
@@ -294,10 +290,18 @@ namespace MadFact
                 satisfaction
             });
             string stars = new string('★', Mathf.RoundToInt(satisfaction)) + new string('·', 5 - Mathf.RoundToInt(satisfaction));
-            _result.text = $"{Economy.TierLabel(tier)}  —  {movie.Title}  [{stars}]";
-            _result.color = Economy.TierColor(tier);
+            _result.text = repeat ? $"ALREADY RENTED  —  {movie.Title}  [{stars}]" : $"{Economy.TierLabel(tier)}  —  {movie.Title}  [{stars}]";
+            _result.color = repeat ? Theme.ErrorRed : Economy.TierColor(tier);
 
             _served++;
+
+            if (repeat)
+            {
+                MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
+                    { $"'{movie.Title}'? I already RENTED that one from you. Come on, I want something NEW." },
+                    () => AfterRecommend(tier));
+                return;
+            }
 
             // Mr. Pellings breaks in ONCE, after the very first sale, to teach the lesson:
             // taste is a set of features, and matching them is the whole job. Chain into

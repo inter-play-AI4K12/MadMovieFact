@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -113,6 +114,33 @@ namespace MadFact
             if (AudioTension.I == null) new GameObject("Audio").AddComponent<AudioTension>();
             if (MusicManager.I == null) new GameObject("Music").AddComponent<MusicManager>();
             if (Object.FindAnyObjectByType<AudioListener>() == null) AudioTension.I.gameObject.AddComponent<AudioListener>();
+            GameManager.I.OnBankrupt -= OnBankrupt;
+            GameManager.I.OnBankrupt += OnBankrupt;
+        }
+
+        void OnBankrupt() => StartCoroutine(BankruptcyFlow());
+
+        /// <summary>
+        /// Waits a frame so whichever coroutine pushed Money negative (a batch run, a sale)
+        /// finishes its own synchronous work first, then rolls back to this level's entry
+        /// balance and restarts it fresh.
+        /// </summary>
+        IEnumerator BankruptcyFlow()
+        {
+            yield return null;
+            MadFactLokiLogger.Instance?.Log("level_bankrupt", "Player went bankrupt and the level restarted", new
+            {
+                level_id = _currentLevel,
+                money_before_reset = GameManager.I.Money,
+                reset_to = GameManager.I.LevelEntryMoney
+            });
+            GameManager.I.SetMoney(GameManager.I.LevelEntryMoney);
+            Comms.Show(Speaker.OldDude, new[]
+            {
+                "Whoa — hold it. We just went BANKRUPT, kid. Negative dollars. That's not a real number of dollars to have.",
+                "Deep breath. We're resetting the till back to where you walked in and running this level again.",
+                "Same problem, clean slate. Go get 'em."
+            }, () => { CloseAllLevels(); EnterCurrentLevel(); });
         }
 
         void EnsureCanvasAndEventSystem()
@@ -242,6 +270,7 @@ namespace MadFact
             }
 
             if (AudioTension.I != null) AudioTension.I.Whir();
+            GameManager.I.LevelEntryMoney = GameManager.I.Money;
             switch (_currentLevel)
             {
                 case 1: GameManager.I.GoTo(Phase.Level1); L1.Open(); break;

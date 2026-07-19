@@ -447,12 +447,23 @@ namespace MadFact
             if (_recommended || _locked) return;
             var movie = GameData.Movies[mi];
 
-            // no repeats, ever — the engine already filters these; the shelf must too
+            // The engine already filters served titles out of its own top picks, so a
+            // repeat can only happen via the manual shelf browser. Allow it, but it's a
+            // bad sale and a trust hit rather than a free no-op — same rule as Level 1.
             if (GameManager.I.Run.HasServed(_cust.Name, movie.Title))
             {
-                if (AudioTension.I != null) AudioTension.I.Beep();
+                _recommended = true;
+                SetLocked(true);
+                if (AudioTension.I != null) AudioTension.I.Buzzer();
+                var pop0 = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
+                var repeatTier = GameManager.I.RecordSale(4f, pop0); // forced-terrible error
+                GameManager.I.AddTrust(-5);
+                GameManager.I.Run.RecordRecommendation("l3_visit_" + _visitIndex, _cust.Name, Phase.Level3, movie, repeatTier, 1f);
+                _result.text = $"ALREADY SEEN  —  {movie.Title}";
+                _result.color = Theme.ErrorRed;
                 MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
-                    { $"'{movie.Title}'? I've already SEEN that one. That's kind of the whole problem." });
+                    { $"'{movie.Title}'? I've already SEEN that one. That's kind of the whole problem." },
+                    () => _nextBtn.gameObject.SetActive(true));
                 return;
             }
 

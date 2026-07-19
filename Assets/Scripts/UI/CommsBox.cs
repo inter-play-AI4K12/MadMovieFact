@@ -21,6 +21,7 @@ namespace MadFact
         [SerializeField] Button _next;
         [SerializeField] Image _nextIcon;
         [SerializeField] Text _nextLabel;
+        Button _skip;
 
         readonly Queue<string> _queue = new Queue<string>();
         Speaker _speaker;
@@ -92,6 +93,12 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(_next.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(124, 34), new Vector2(-16, 14));
             _nextIcon = UIFactory.ButtonIcon(_next, ArtSprites.Next(), 20f);
             _nextLabel = _next.GetComponentInChildren<Text>();
+
+            // "I wanted to skip" — a visible escape hatch that dumps the rest of the
+            // current dialogue instantly, for players who don't want to click through
+            // every line. Hidden during a choice prompt, which needs an actual answer.
+            _skip = UIFactory.Button(root, "Skip", "SKIP »", SkipAll, Theme.FaceDark, 12, Theme.SystemSans, Theme.CommsGray);
+            UIFactory.Place(UIFactory.RT(_skip.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(94, 26), new Vector2(-146, 22));
 
             // whole-box click also advances typing
             var clicker = root.gameObject.AddComponent<Button>();
@@ -194,6 +201,7 @@ namespace MadFact
             _body.fontStyle = FontStyle.Bold;
             _body.color = Theme.CrtAmber;
             _next.gameObject.SetActive(false);
+            if (_skip != null) _skip.gameObject.SetActive(false);
 
             ClearChoices();
             _choiceRoot = UIFactory.Node(transform, "Choices");
@@ -249,6 +257,7 @@ namespace MadFact
             if (AudioTension.I != null) AudioTension.I.Clunk();
             ClearChoices();
             _next.gameObject.SetActive(true);
+            if (_skip != null) _skip.gameObject.SetActive(true);
             var rt = (RectTransform)transform;
             rt.sizeDelta = new Vector2(rt.sizeDelta.x, 188);
             Hide();
@@ -258,6 +267,16 @@ namespace MadFact
         void ClearChoices()
         {
             if (_choiceRoot != null) { Destroy(_choiceRoot); _choiceRoot = null; }
+        }
+
+        /// <summary>Instantly ends the current dialogue (not choice prompts) and fires onComplete.</summary>
+        void SkipAll()
+        {
+            if (!gameObject.activeSelf) return;
+            _queue.Clear();
+            _typing = false;
+            Hide();
+            _onComplete?.Invoke();
         }
 
         public void Hide() { gameObject.SetActive(false); }
