@@ -106,8 +106,8 @@ namespace MadFact
 
             var pf = UIFactory.Bevel(folder.transform, "Portrait", Theme.Manila, sunken: true);
             UIFactory.Place(UIFactory.RT(pf.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, 80), new Vector2(18, -16));
+            pf.gameObject.AddComponent<RectMask2D>();
             _portrait = UIFactory.Image(pf.transform, "P", Color.white, Theme.Disc);
-            _portrait.preserveAspect = true;
             UIFactory.Fill(UIFactory.RT(_portrait.gameObject), 8, 8, 8, 8);
             _portraitInitial = UIFactory.Text(pf.transform, "PI", "", 30, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleCenter, false, FontStyle.Bold);
             UIFactory.Fill(UIFactory.RT(_portraitInitial.gameObject));
@@ -194,6 +194,7 @@ namespace MadFact
             bool hasPortrait = portrait != Theme.Disc;
             _portrait.sprite = portrait;
             _portrait.color = hasPortrait ? Color.white : _cust.Shirt;
+            UIFactory.CoverFit(_portrait);
             _portraitInitial.gameObject.SetActive(!hasPortrait);
             _portraitInitial.text = _cust.Name.Substring(0, 1);
 

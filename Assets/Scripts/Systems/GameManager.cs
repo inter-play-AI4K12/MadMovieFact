@@ -29,11 +29,37 @@ namespace MadFact
         public int Trust { get; private set; } = StartTrust;
         public event Action<int, int> OnTrustChanged;   // (newTotal, delta)
 
+        // Mirrors LevelEntryMoney/OnBankrupt: trust bottoming out at 0 restarts the
+        // level too — an empty-trust store can't sell anything, same as a negative till.
+        public int LevelEntryTrust { get; set; }
+        public event Action OnTrustCollapsed;
+        bool _trustCollapsed;
+
         public void AddTrust(int delta)
         {
             int before = Trust;
             Trust = Mathf.Clamp(Trust + delta, 0, 100);
             if (Trust != before) OnTrustChanged?.Invoke(Trust, Trust - before);
+            CheckTrustCollapse();
+        }
+
+        public void SetTrust(int value)
+        {
+            int before = Trust;
+            Trust = Mathf.Clamp(value, 0, 100);
+            if (Trust != before) OnTrustChanged?.Invoke(Trust, Trust - before);
+            CheckTrustCollapse();
+        }
+
+        /// <summary>
+        /// Fires OnTrustCollapsed once per zero crossing. Listeners (MadFactBootstrap) restart
+        /// the current level on the next frame — never synchronously, since this can be called
+        /// from deep inside a level's own batch/sale coroutine.
+        /// </summary>
+        void CheckTrustCollapse()
+        {
+            if (Trust <= 0 && !_trustCollapsed) { _trustCollapsed = true; OnTrustCollapsed?.Invoke(); }
+            else if (Trust > 0) { _trustCollapsed = false; }
         }
 
         /// <summary>How many customers actually show up, given current trust.</summary>

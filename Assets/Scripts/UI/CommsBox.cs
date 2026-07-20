@@ -78,8 +78,8 @@ namespace MadFact
             // portrait frame (sunken)
             var pf = UIFactory.Bevel(root, "PortraitFrame", Theme.FaceDark, sunken: true);
             UIFactory.Place(UIFactory.RT(pf.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(112, 118), new Vector2(16, -38));
+            pf.gameObject.AddComponent<RectMask2D>();
             _portrait = UIFactory.Image(pf.transform, "Portrait", Color.white);
-            _portrait.preserveAspect = true;
             UIFactory.Fill(UIFactory.RT(_portrait.gameObject), 4, 4, 4, 4);
 
             _name = UIFactory.Text(root, "Name", "", 14, Theme.CrtAmber, Theme.SystemSans, TextAnchor.UpperLeft, false, FontStyle.Bold);
@@ -139,6 +139,7 @@ namespace MadFact
                     _instant = true;
                     break;
             }
+            UIFactory.CoverFit(_portrait);
             NextLine();
         }
 
@@ -156,6 +157,7 @@ namespace MadFact
             _body.font = Theme.Typewriter;
             _portrait.sprite = ArtSprites.CustomerPortrait(customer.Name);
             _portrait.color = Color.white;
+            UIFactory.CoverFit(_portrait);
             _titleText.text = "CUSTOMER FOLLOW-UP";
             _instant = false;
             NextLine();
@@ -176,6 +178,7 @@ namespace MadFact
             _body.font = Theme.Typewriter;
             _portrait.sprite = portrait;
             _portrait.color = Color.white;
+            UIFactory.CoverFit(_portrait);
             _titleText.text = titleBar;
             _instant = false;
             NextLine();
@@ -248,6 +251,7 @@ namespace MadFact
             _body.font = Theme.Typewriter;
             _portrait.sprite = portrait;
             _portrait.color = Color.white;
+            UIFactory.CoverFit(_portrait);
             _titleText.text = titleBar;
             AskChoice(question, options, onPick);
         }

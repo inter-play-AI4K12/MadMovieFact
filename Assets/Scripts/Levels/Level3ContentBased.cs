@@ -133,8 +133,8 @@ namespace MadFact
 
             var pf = UIFactory.Bevel(panel.transform, "PortraitFrame", Theme.FaceDark, sunken: true);
             UIFactory.Place(UIFactory.RT(pf.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(72, 78), new Vector2(12, -12));
+            pf.gameObject.AddComponent<RectMask2D>();
             _portrait = UIFactory.Image(pf.transform, "P", Color.white);
-            _portrait.preserveAspect = true;
             UIFactory.Fill(UIFactory.RT(_portrait.gameObject), 4, 4, 4, 4);
 
             _name = UIFactory.Text(panel.transform, "Name", "", 15, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
@@ -380,6 +380,7 @@ namespace MadFact
             _quip.text = "“" + _cust.Quip + "”";
             _note.text = _visit.Note;
             _portrait.sprite = ArtSprites.CustomerPortrait(_cust.Name);
+            UIFactory.CoverFit(_portrait);
             _profileCaption.text = _visit.ProfileCaption;
             _profileCaption.color = _visit.CaptionColor == default ? Theme.Ink : _visit.CaptionColor;
 

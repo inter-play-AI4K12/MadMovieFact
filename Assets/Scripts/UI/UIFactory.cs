@@ -139,6 +139,30 @@ namespace MadFact
             return t;
         }
 
+        /// <summary>
+        /// Scales an already-placed Image's sprite to COVER its current box — zooming in
+        /// and cropping the overflow — instead of preserveAspect's shrink-to-fit, which
+        /// letterboxes generated character art (real backgrounds baked around the subject)
+        /// down to a small figure floating in a sea of dead space. Call this AFTER the
+        /// sprite is assigned, since it reads the sprite's own pixel dimensions. The
+        /// image's parent must clip (RectMask2D) or the crop will visibly overflow.
+        /// </summary>
+        public static void CoverFit(Image img)
+        {
+            if (img.sprite == null) return;
+            var rt = img.rectTransform;
+            Vector2 box = rt.rect.size;
+            Vector2 src = img.sprite.rect.size;
+            if (box.x <= 0f || box.y <= 0f || src.x <= 0f || src.y <= 0f) return;
+
+            float scale = Mathf.Max(box.x / src.x, box.y / src.y);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = src * scale;
+            rt.anchoredPosition = Vector2.zero;
+            img.preserveAspect = false;
+        }
+
         /// <summary>Add a supplied pixel-art icon to a button without changing its interaction.</summary>
         public static Image ButtonIcon(Button button, Sprite sprite, float size = 20f, bool iconOnly = false)
         {

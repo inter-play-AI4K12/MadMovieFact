@@ -116,6 +116,8 @@ namespace MadFact
             if (Object.FindAnyObjectByType<AudioListener>() == null) AudioTension.I.gameObject.AddComponent<AudioListener>();
             GameManager.I.OnBankrupt -= OnBankrupt;
             GameManager.I.OnBankrupt += OnBankrupt;
+            GameManager.I.OnTrustCollapsed -= OnTrustCollapsed;
+            GameManager.I.OnTrustCollapsed += OnTrustCollapsed;
         }
 
         void OnBankrupt() => StartCoroutine(BankruptcyFlow());
@@ -140,6 +142,31 @@ namespace MadFact
                 "Whoa — hold it. We just went BANKRUPT, kid. Negative dollars. That's not a real number of dollars to have.",
                 "Deep breath. We're resetting the till back to where you walked in and running this level again.",
                 "Same problem, clean slate. Go get 'em."
+            }, () => { CloseAllLevels(); EnterCurrentLevel(); });
+        }
+
+        void OnTrustCollapsed() => StartCoroutine(TrustCollapseFlow());
+
+        /// <summary>
+        /// Mirrors BankruptcyFlow for the trust meter: waits a frame so whichever coroutine
+        /// dropped Trust to zero finishes its own synchronous work first, then rolls back to
+        /// this level's entry trust and restarts it fresh.
+        /// </summary>
+        IEnumerator TrustCollapseFlow()
+        {
+            yield return null;
+            MadFactLokiLogger.Instance?.Log("level_trust_collapsed", "Trust hit zero and the level restarted", new
+            {
+                level_id = _currentLevel,
+                trust_before_reset = GameManager.I.Trust,
+                reset_to = GameManager.I.LevelEntryTrust
+            });
+            GameManager.I.SetTrust(GameManager.I.LevelEntryTrust);
+            Comms.Show(Speaker.OldDude, new[]
+            {
+                "Whoa — hold it. Trust just hit ZERO, kid. Nobody in this town believes a word we say anymore.",
+                "Deep breath. We're resetting trust back to where you walked in and running this level again.",
+                "Same problem, clean slate. Watch the customers this time."
             }, () => { CloseAllLevels(); EnterCurrentLevel(); });
         }
 
@@ -271,6 +298,7 @@ namespace MadFact
 
             if (AudioTension.I != null) AudioTension.I.Whir();
             GameManager.I.LevelEntryMoney = GameManager.I.Money;
+            GameManager.I.LevelEntryTrust = GameManager.I.Trust;
             switch (_currentLevel)
             {
                 case 1: GameManager.I.GoTo(Phase.Level1); L1.Open(); break;
@@ -379,12 +407,15 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(statsBox.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(500, 110), new Vector2(0, 20));
             UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "h", "FINAL RESULTS", 12, Theme.InkSoft, Theme.SystemSans, TextAnchor.UpperCenter, false, FontStyle.Bold).gameObject),
                 new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(460, 18), new Vector2(0, -8));
+            // UIFactory.Place takes ONE anchor point (used for both min/max) plus a FIXED
+            // size — it doesn't do stretch regions. Three columns need three fixed-width
+            // boxes centered at explicit x-offsets, not a fractional anchor split.
             UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "trust", $"TRUST\n{GameManager.I.Trust}", 18, Theme.TitleText, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
-                new Vector2(0f, 0.5f), new Vector2(0.33f, 0.5f), new Vector2(0, 60), new Vector2(0, -6));
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(150, 60), new Vector2(-165, -6));
             UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "money", $"NET MONEY\n${GameManager.I.Money}", 18, Theme.Cash, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
-                new Vector2(0.33f, 0.5f), new Vector2(0.67f, 0.5f), new Vector2(0, 60), new Vector2(0, -6));
-            UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "recs", $"RECOMMENDATIONS\n{GameManager.I.Run.Recommendations.Count}", 18, Theme.InkSoft, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
-                new Vector2(0.67f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0, 60), new Vector2(0, -6));
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(150, 60), new Vector2(0, -6));
+            UIFactory.Place(UIFactory.RT(UIFactory.Text(statsBox.transform, "recs", $"RECS SERVED\n{GameManager.I.Run.Recommendations.Count}", 18, Theme.InkSoft, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold).gameObject),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(150, 60), new Vector2(165, -6));
         }
     }
 }

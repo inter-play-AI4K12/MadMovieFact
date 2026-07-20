@@ -677,11 +677,13 @@ namespace MadFact
             RefreshGrid();
             if (AudioTension.I != null) { AudioTension.I.Silence(); AudioTension.I.Clunk(); }
 
-            // The till keeps climbing through the rest of the sequence in three spaced-out
-            // beats, each grown off CURRENT trust — so whatever the player just did (like
+            // The till keeps climbing through the rest of the sequence in three payout
+            // stages, each grown off CURRENT trust — so whatever the player just did (like
             // the Gibbs choice below) is felt immediately in the next payout instead of
-            // sitting invisibly in a meter nobody's watching.
-            yield return new WaitForSecondsRealtime(1.0f);
+            // sitting invisibly in a meter nobody's watching. Each stage is followed by a
+            // genuine ~12s observation window, not just a beat — long enough to actually
+            // read the money and trust numbers, not just glimpse them changing.
+            yield return new WaitForSecondsRealtime(1.5f);
             int payout = GrowMainframePayout(MainframeStageBase, "BALANCED. Empty cells filled with predictions.");
 
             _optimizing = false;
@@ -690,9 +692,10 @@ namespace MadFact
                 "Collaborative filtering optimizer completed",
                 new { level_id = 4, final_mean_error = M.MeanError(), payout });
 
+            yield return ObservationPause(12f);
+
             // Money on the table attracts vultures: Gibbs makes his pitch mid-level,
             // right when the machine has just proven how profitable personalization is.
-            yield return new WaitForSecondsRealtime(2.5f);
             bool pitching = true;
             PrivacyScenario.Play(MadFactBootstrap.I.Comms, () => pitching = false);
             yield return new WaitUntil(() => !pitching);
@@ -700,12 +703,12 @@ namespace MadFact
             // whatever just happened with Gibbs is already baked into trust by now — grow
             // the SAME running total off it, so accepting his offer visibly caps how much
             // the machine earns next instead of just moving a number nobody sees again.
-            yield return new WaitForSecondsRealtime(0.8f);
+            yield return new WaitForSecondsRealtime(0.6f);
             payout = GrowMainframePayout(payout, "The machine keeps compounding what it learned.");
+            yield return ObservationPause(12f);
 
             // the crowd's math shows its other face next: popularity bias, via Iris's
             // complaint.
-            yield return new WaitForSecondsRealtime(2.5f);
             if (!MadFactBootstrap.I.Level4Cleared)
             {
                 MadFactBootstrap.I.Level4Cleared = true;
@@ -721,14 +724,29 @@ namespace MadFact
         /// <summary>
         /// The underserved-cluster highlight comes AFTER Iris's scene fully resolves,
         /// timed to land with "you see that cluster?" — not sitting unexplained through
-        /// a scene that isn't about it — with a beat first so the last payout is legible
-        /// before the hint bar changes underneath it.
+        /// a scene that isn't about it — with an observation window first so the last
+        /// payout is actually read before the hint bar changes underneath it.
         /// </summary>
         IEnumerator FinishLevel4Goal()
         {
-            yield return new WaitForSecondsRealtime(1.2f);
+            yield return ObservationPause(10f);
             HighlightUnderserved();
             MadFactBootstrap.I.OnLevel4Goal();
+        }
+
+        /// <summary>
+        /// Holds whatever message is already on the hint bar for a beat, then switches to
+        /// an explicit "go look at your stats" prompt for the rest of the window. A long
+        /// silent pause with nothing moving on screen reads as the game hanging unless
+        /// something on screen explains that the wait is deliberate.
+        /// </summary>
+        IEnumerator ObservationPause(float totalSeconds, float promptAfter = 4f)
+        {
+            float firstLeg = Mathf.Min(promptAfter, totalSeconds);
+            yield return new WaitForSecondsRealtime(firstLeg);
+            _hint.text = "Take a moment — check your MONEY and TRUST above.";
+            float remaining = totalSeconds - firstLeg;
+            if (remaining > 0f) yield return new WaitForSecondsRealtime(remaining);
         }
 
         /// <summary>
