@@ -163,5 +163,26 @@ namespace MadFact
                 if (r.CustomerName == customerName && r.MovieTitle == movieTitle) return true;
             return false;
         }
+
+        /// <summary>
+        /// Removes progress earned inside one failed level while preserving records from
+        /// earlier levels. Used when bankruptcy restarts the current level from its start.
+        /// </summary>
+        public void ResetPhase(Phase phase, string scenarioTrackId = null, bool clearFlags = false)
+        {
+            Recommendations.RemoveAll(record => record.Phase == phase);
+            if (!string.IsNullOrEmpty(scenarioTrackId))
+                _scenarioCursorByTrack.Remove(scenarioTrackId);
+            if (clearFlags) _flags.Clear();
+
+            _visitsByCustomer.Clear();
+            _lastSatisfactionByCustomer.Clear();
+            foreach (var record in Recommendations)
+            {
+                _visitsByCustomer.TryGetValue(record.CustomerName, out int visits);
+                _visitsByCustomer[record.CustomerName] = visits + 1;
+                _lastSatisfactionByCustomer[record.CustomerName] = record.Satisfaction;
+            }
+        }
     }
 }

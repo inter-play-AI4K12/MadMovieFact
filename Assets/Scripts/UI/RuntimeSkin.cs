@@ -14,20 +14,39 @@ namespace MadFact
         {
             foreach (var text in root.GetComponentsInChildren<Text>(true))
             {
-                if (text.font == null)
+                // Authored prefabs use Unity's built-in font only as an Edit Mode preview.
+                // Replace that preview at runtime too; otherwise it remains visibly softer
+                // than the larger OS-font atlases used by dynamically created controls.
+                if (text.font == null || text.font == Theme.Fallback)
                     text.font = text.GetComponentInParent<Button>() != null ? Theme.SystemSans : Theme.Typewriter;
             }
 
             foreach (var image in root.GetComponentsInChildren<Image>(true))
             {
                 if (image.sprite != null) continue;
+
+                // Procedural sprites cannot be serialized into authored prefabs. Restore
+                // only artwork whose role is unambiguous. Generic bevel panels must stay
+                // flat: Theme.Raised uses a low-PPU 9-slice whose borders expand into
+                // large dark rectangles at runtime even though the prefab looks clean.
+                bool isWindowFrame = image.transform.Find("WindowBody") != null;
                 if (image.GetComponent<Button>() != null)
                 {
-                    image.sprite = image.GetComponent<CommsBox>() != null ? ArtSprites.PanelChrome() : ArtSprites.ButtonChrome();
+                    image.sprite = image.GetComponent<CommsBox>() != null || isWindowFrame
+                        ? ArtSprites.PanelChrome()
+                        : ArtSprites.ButtonChrome();
+                    image.type = Image.Type.Sliced;
+                }
+                else if (isWindowFrame)
+                {
+                    image.sprite = ArtSprites.PanelChrome();
                     image.type = Image.Type.Sliced;
                 }
                 else if (image.type == Image.Type.Sliced)
-                    image.sprite = Theme.Raised;
+                {
+                    image.sprite = Theme.Solid;
+                    image.type = Image.Type.Simple;
+                }
                 else
                     image.sprite = Theme.Solid;
             }
@@ -57,18 +76,29 @@ namespace MadFact
                 string name = button.gameObject.name;
                 if (name == "Leave") icon.sprite = ArtSprites.Close();
                 else if (name == "Enter" || name == "Run") icon.sprite = ArtSprites.Play();
-                else if (name == "Next") icon.sprite = ArtSprites.Next();
+                else if (name == "GPrev")
+                {
+                    icon.sprite = ArtSprites.Back();
+                    icon.color = Theme.Ink;
+                }
+                else if (name == "GNext")
+                {
+                    icon.sprite = ArtSprites.Next();
+                    icon.color = Theme.Ink;
+                }
                 else if (name == "Add") icon.sprite = ArtSprites.Add();
                 else if (name == "Clr") icon.sprite = ArtSprites.Clear();
                 else if (name == "Reset") icon.sprite = ArtSprites.Reset();
                 else if (name == "Optimize") icon.sprite = ArtSprites.Optimize();
                 else if (name == "Green") icon.sprite = ArtSprites.Confirm();
                 else if (name.StartsWith("M") && int.TryParse(name.Substring(1), out int movie)) icon.sprite = ArtSprites.MovieCover(movie);
-                else if (name.StartsWith("Q") && int.TryParse(name.Substring(1), out int question)) icon.sprite = ArtSprites.VibeIcon(question);
+                else if (name.StartsWith("Q") && int.TryParse(name.Substring(1), out int question))
+                    icon.sprite = Level1Counter.QuestionIcon(question);
                 else if (name.StartsWith("S") && int.TryParse(name.Substring(1), out int sticker)) icon.sprite = ArtSprites.Sticker(sticker);
                 else if (name.StartsWith("Col") && int.TryParse(name.Substring(3), out int col)) icon.sprite = ArtSprites.MatrixCover(col);
                 else if (name.StartsWith("Row") && int.TryParse(name.Substring(3), out int row))
                     icon.sprite = ArtSprites.CustomerPortrait(GameData.Customers[GameData.MatrixCustomers[row]].Name);
+
             }
         }
 
@@ -82,9 +112,7 @@ namespace MadFact
             // the editor preview.
             foreach (var browser in root.GetComponentsInChildren<PosterBrowser>(true))
             {
-                SetButtonIcon(browser.transform, "GPrev", ArtSprites.Back());
-                SetButtonIcon(browser.transform, "GNext", ArtSprites.Next());
-
+                browser.ApplySimpleNavigationStyle();
                 foreach (Transform child in browser.GetComponentsInChildren<Transform>(true))
                 {
                     if (!child.name.StartsWith("Poster") ||
@@ -103,6 +131,33 @@ namespace MadFact
                 var m = UIFactory.FindDeep<Button>(root, "MSel");
                 if (g != null) UIFactory.FindDeep<Image>(g.transform, "Icon").sprite = ArtSprites.GenreIcon(Genre.SciFi);
                 if (m != null) UIFactory.FindDeep<Image>(m.transform, "Icon").sprite = ArtSprites.MovieCover(0);
+                var browse = UIFactory.FindDeep<Image>(root, "Browse");
+                if (browse != null)
+                {
+                    browse.sprite = ArtSprites.Next();
+                    browse.color = Theme.TitleText;
+                }
+
+                var pickerWindow = UIFactory.FindDeep<Transform>(root, "PickerWindow");
+                if (pickerWindow != null)
+                {
+                    var pickerTitle = UIFactory.FindDeep<Text>(pickerWindow, "T");
+                    if (pickerTitle != null) pickerTitle.color = Theme.Ink;
+                    var close = UIFactory.FindDeep<Button>(pickerWindow, "Close");
+                    if (close != null)
+                    {
+                        var icon = UIFactory.FindDeep<Image>(close.transform, "Icon");
+                        if (icon != null) icon.gameObject.SetActive(false);
+                        var label = close.GetComponentInChildren<Text>(true);
+                        if (label != null)
+                        {
+                            label.text = "CLOSE";
+                            label.color = Theme.Ink;
+                            label.rectTransform.offsetMin = new Vector2(4, 2);
+                            label.rectTransform.offsetMax = new Vector2(-4, -2);
+                        }
+                    }
+                }
             }
         }
 

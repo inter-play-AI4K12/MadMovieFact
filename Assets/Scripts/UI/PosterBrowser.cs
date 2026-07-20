@@ -22,12 +22,30 @@ namespace MadFact
         public string RecommendLabel = "RECOMMEND";
 
         Genre _genre = Genre.SciFi;
-        GameObject _gridRoot, _detailRoot;
-        Text _genreLabel, _emptyLabel;
+        [SerializeField] GameObject _gridRoot, _detailRoot;
+        [SerializeField] Text _genreLabel, _emptyLabel;
+        [SerializeField] Button _previousGenre, _nextGenre;
         int _detailIndex = -1;
         bool _locked;
 
         public int DetailIndex => _detailIndex;
+
+        void Awake()
+        {
+            // UnityEvent delegates created by the code builder are not serialized into a
+            // prefab. Reconnect the authored browser and rebuild its live poster buttons.
+            if (_gridRoot == null) _gridRoot = UIFactory.FindDeep<Transform>(transform, "Grid")?.gameObject;
+            if (_detailRoot == null) _detailRoot = UIFactory.FindDeep<Transform>(transform, "Detail")?.gameObject;
+            if (_genreLabel == null) _genreLabel = UIFactory.FindDeep<Text>(transform, "GenreName");
+            if (_emptyLabel == null) _emptyLabel = UIFactory.FindDeep<Text>(transform, "Empty");
+            if (_previousGenre == null) _previousGenre = UIFactory.FindDeep<Button>(transform, "GPrev");
+            if (_nextGenre == null) _nextGenre = UIFactory.FindDeep<Button>(transform, "GNext");
+
+            ApplySimpleNavigationStyle();
+            BindNavigation();
+            if (_gridRoot != null && _detailRoot != null && _genreLabel != null && _emptyLabel != null)
+                RebuildGrid();
+        }
 
         public static PosterBrowser Create(Transform parent, string name = "PosterBrowser")
         {
@@ -40,19 +58,21 @@ namespace MadFact
         void Build(Transform root)
         {
             // ---- genre carousel header ----
-            var prev = UIFactory.Button(root, "GPrev", "", () => CycleGenre(-1), Theme.Face, 12);
-            UIFactory.Place(UIFactory.RT(prev.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, 24), new Vector2(0, 0));
-            UIFactory.ButtonIcon(prev, ArtSprites.Back(), 18f, true);
+            _previousGenre = UIFactory.Button(root, "GPrev", "<", () => CycleGenre(-1), Theme.Face, 14,
+                Theme.SystemSans, Theme.Ink);
+            UIFactory.Place(UIFactory.RT(_previousGenre.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(38, 26), new Vector2(0, 0));
 
             _genreLabel = UIFactory.Text(root, "GenreName", GenreInfo.Name(_genre), 15, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
             var glr = UIFactory.RT(_genreLabel.gameObject);
             glr.anchorMin = new Vector2(0, 1); glr.anchorMax = new Vector2(1, 1);
             glr.pivot = new Vector2(0.5f, 1);
-            glr.sizeDelta = new Vector2(-60, 24); glr.anchoredPosition = new Vector2(0, 0);
+            glr.sizeDelta = new Vector2(-88, 26); glr.anchoredPosition = new Vector2(0, 0);
 
-            var next = UIFactory.Button(root, "GNext", "", () => CycleGenre(1), Theme.Face, 12);
-            UIFactory.Place(UIFactory.RT(next.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(26, 24), new Vector2(0, 0));
-            UIFactory.ButtonIcon(next, ArtSprites.Next(), 18f, true);
+            _nextGenre = UIFactory.Button(root, "GNext", ">", () => CycleGenre(1), Theme.Face, 14,
+                Theme.SystemSans, Theme.Ink);
+            UIFactory.Place(UIFactory.RT(_nextGenre.gameObject), new Vector2(1, 1), new Vector2(1, 1),
+                new Vector2(38, 26), new Vector2(0, 0));
 
             // ---- grid + detail containers fill the rest ----
             _gridRoot = UIFactory.Node(root, "Grid");
@@ -61,12 +81,50 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(_detailRoot), 0, 28, 0, 0);
             _detailRoot.SetActive(false);
 
-            _emptyLabel = UIFactory.Text(root, "Empty", "— this shelf is empty —", 13, Theme.InkSoft, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Italic);
+            _emptyLabel = UIFactory.Text(root, "Empty", "This shelf is empty.", 13, Theme.InkSoft, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Italic);
             var elr = UIFactory.RT(_emptyLabel.gameObject);
             UIFactory.Fill(elr, 0, 28, 0, 0);
             _emptyLabel.gameObject.SetActive(false);
 
             RebuildGrid();
+        }
+
+        void BindNavigation()
+        {
+            if (_previousGenre != null)
+            {
+                _previousGenre.onClick.RemoveAllListeners();
+                _previousGenre.onClick.AddListener(() => CycleGenre(-1));
+            }
+            if (_nextGenre != null)
+            {
+                _nextGenre.onClick.RemoveAllListeners();
+                _nextGenre.onClick.AddListener(() => CycleGenre(1));
+            }
+        }
+
+        /// <summary>
+        /// Keeps older authored picker prefabs clean after loading. Earlier versions
+        /// serialized icon children that could become white placeholder rectangles.
+        /// </summary>
+        public void ApplySimpleNavigationStyle()
+        {
+            SimplifyNavigationButton(_previousGenre, "<");
+            SimplifyNavigationButton(_nextGenre, ">");
+        }
+
+        static void SimplifyNavigationButton(Button button, string label)
+        {
+            if (button == null) return;
+            var icon = UIFactory.FindDeep<Image>(button.transform, "Icon");
+            if (icon != null) icon.gameObject.SetActive(false);
+            var text = button.GetComponentInChildren<Text>(true);
+            if (text == null) return;
+            text.text = label;
+            text.color = Theme.Ink;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.rectTransform.offsetMin = new Vector2(4, 2);
+            text.rectTransform.offsetMax = new Vector2(-4, -2);
         }
 
         // ---- navigation ----------------------------------------------------
@@ -204,7 +262,6 @@ namespace MadFact
 
             var back = UIFactory.Button(_detailRoot.transform, "Back", "BACK", () => { CloseDetail(); RebuildGrid(); }, Theme.Face, 12);
             UIFactory.Place(UIFactory.RT(back.gameObject), new Vector2(0.5f, 1), new Vector2(0, 1), new Vector2(88, 28), new Vector2(-140, extraY - 18));
-            UIFactory.ButtonIcon(back, ArtSprites.Back(), 18f);
 
             var rec = UIFactory.Button(_detailRoot.transform, "Recommend", RecommendLabel, () =>
             {
@@ -214,7 +271,6 @@ namespace MadFact
                 OnRecommend?.Invoke(picked);
             }, Theme.Cash, 12, Theme.SystemSans, Theme.TitleText);
             UIFactory.Place(UIFactory.RT(rec.gameObject), new Vector2(0.5f, 1), new Vector2(0, 1), new Vector2(140, 28), new Vector2(-44, extraY - 18));
-            UIFactory.ButtonIcon(rec, ArtSprites.MovieTape(), 20f);
             rec.interactable = !_locked;
         }
 

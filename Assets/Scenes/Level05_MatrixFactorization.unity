@@ -788,8 +788,7 @@ MonoBehaviour:
   Level2Cleared: 0
   Level3Cleared: 0
   Level4Cleared: 0
-  StartPhaseOverride: 4
-  _allowRuntimeFallback: 0
+  StartPhaseOverride: 5
   _canvas: {fileID: 424338267}
 --- !u!1001 &938098817
 PrefabInstance:

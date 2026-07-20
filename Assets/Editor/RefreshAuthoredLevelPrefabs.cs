@@ -19,8 +19,9 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Scenes/Level01_ManualRecommendation.unity",
         "Assets/Scenes/Level02_RuleBasedRecommendation.unity",
         "Assets/Scenes/Level03_ContentBasedRecommendation.unity",
-        "Assets/Scenes/Level04_CollaborativeFiltering.unity",
-        "Assets/Scenes/Level05_MarketGapResearch.unity"
+        "Assets/Scenes/Level04_GroundTruthMatrix.unity",
+        "Assets/Scenes/Level05_MatrixFactorization.unity",
+        "Assets/Scenes/Level06_MarketGapResearch.unity"
     };
 
     static readonly string[] SharedUiScenePaths =
@@ -30,8 +31,9 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Scenes/Level01_ManualRecommendation.unity",
         "Assets/Scenes/Level02_RuleBasedRecommendation.unity",
         "Assets/Scenes/Level03_ContentBasedRecommendation.unity",
-        "Assets/Scenes/Level04_CollaborativeFiltering.unity",
-        "Assets/Scenes/Level05_MarketGapResearch.unity"
+        "Assets/Scenes/Level04_GroundTruthMatrix.unity",
+        "Assets/Scenes/Level05_MatrixFactorization.unity",
+        "Assets/Scenes/Level06_MarketGapResearch.unity"
     };
 
     static readonly string[] AuthoredUiPrefabPaths =
@@ -49,7 +51,16 @@ public static class RefreshAuthoredLevelPrefabs
     static RefreshAuthoredLevelPrefabs()
     {
         EditorApplication.delayCall += RefreshEditorPreview;
+        EditorApplication.delayCall += EnsureHudPrefabCurrent;
         EditorSceneManager.sceneOpened += OnSceneOpened;
+    }
+
+    static void EnsureHudPrefabCurrent()
+    {
+        if (Application.isPlaying) return;
+        var hud = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HUD.prefab");
+        if (hud != null && UIFactory.FindDeep<Transform>(hud.transform, "BackToMenu") == null)
+            RefreshHud();
     }
 
     static void OnSceneOpened(Scene scene, OpenSceneMode mode)
@@ -87,20 +98,73 @@ public static class RefreshAuthoredLevelPrefabs
                 "Assets/Prefabs/UI/HUD.prefab");
             Save(CommsBox.Create(stagingRoot.transform).gameObject,
                 "Assets/Prefabs/UI/DialogueBox.prefab");
-            Save(Level1Counter.Create(stagingRoot.transform).gameObject,
+            var level1 = Level1Counter.Create(stagingRoot.transform);
+            SaveVisibleLevel(level1.gameObject, "Level1Counter",
                 "Assets/Prefabs/Levels/Level1Counter.prefab");
-            Save(Level2Robot.Create(stagingRoot.transform).gameObject,
+
+            var level2 = Level2Robot.Create(stagingRoot.transform);
+            SaveVisibleLevel(level2.gameObject, "Level2Robot",
                 "Assets/Prefabs/Levels/Level2Robot.prefab");
-            Save(Level3ContentBased.Create(stagingRoot.transform).gameObject,
+
+            var level3Content = Level3ContentBased.Create(stagingRoot.transform);
+            SaveVisibleLevel(level3Content.gameObject, "Level3ContentBased",
                 "Assets/Prefabs/Levels/Level3ContentBased.prefab");
-            Save(Level3Mainframe.Create(stagingRoot.transform).gameObject,
+
+            var level3Mainframe = Level3Mainframe.Create(stagingRoot.transform);
+            SaveVisibleLevel(level3Mainframe.gameObject, "Level3Mainframe",
                 "Assets/Prefabs/Levels/Level3Mainframe.prefab");
-            Save(Level4Corkboard.Create(stagingRoot.transform).gameObject,
+
+            var level4 = Level4Corkboard.Create(stagingRoot.transform);
+            SaveVisibleLevel(level4.gameObject, "Level4Corkboard",
                 "Assets/Prefabs/Levels/Level4Corkboard.prefab");
 
             BakeSerializablePreviewFonts();
             AssetDatabase.SaveAssets();
             Debug.Log("Refreshed all authored MadFact UI prefabs from their current builders.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stagingRoot);
+        }
+    }
+
+    /// <summary>
+    /// Refreshes only Level 1 while its customer-question UI is being iterated. This keeps
+    /// unrelated authored prefabs and their scene overrides completely untouched.
+    /// </summary>
+    [MenuItem("MadFact/Refresh Authored Level 1 Prefab")]
+    public static void RefreshLevel1()
+    {
+        var stagingRoot = new GameObject("__Level1PrefabStagingRoot", typeof(RectTransform));
+        stagingRoot.hideFlags = HideFlags.HideAndDontSave;
+
+        try
+        {
+            var level = Level1Counter.Create(stagingRoot.transform);
+            var visualRoot = UIFactory.FindDeep<Transform>(level.transform, "Level1Counter");
+            if (visualRoot != null) visualRoot.gameObject.SetActive(true);
+            Save(level.gameObject, "Assets/Prefabs/Levels/Level1Counter.prefab");
+            AssetDatabase.SaveAssets();
+            Debug.Log("Refreshed the authored Level 1 prefab from its current builder.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stagingRoot);
+        }
+    }
+
+    /// <summary>Refreshes only the shared HUD without touching any level prefab.</summary>
+    [MenuItem("MadFact/Refresh Authored HUD Prefab")]
+    public static void RefreshHud()
+    {
+        var stagingRoot = new GameObject("__HudPrefabStagingRoot", typeof(RectTransform));
+        stagingRoot.hideFlags = HideFlags.HideAndDontSave;
+
+        try
+        {
+            Save(Hud.Create(stagingRoot.transform).gameObject, "Assets/Prefabs/UI/HUD.prefab");
+            AssetDatabase.SaveAssets();
+            Debug.Log("Refreshed the authored HUD prefab from its current builder.");
         }
         finally
         {
@@ -132,6 +196,11 @@ public static class RefreshAuthoredLevelPrefabs
         var dialogueBody = Require(dialogue.transform, "Body").GetComponent<Text>();
         if (dialogueBody == null || dialogueBody.lineSpacing < 1.2f)
             throw new System.InvalidOperationException("Dialogue body line spacing must remain at least 1.2.");
+        if (dialogue.GetComponent<DialogueFocus>() == null)
+            throw new System.InvalidOperationException("DialogueBox must expose the DialogueFocus component in the Inspector.");
+        Require(dialogue.transform, "Next");
+        Require(dialogue.transform, "Skip");
+        Require(hud.transform, "BackToMenu");
         Require(hud.transform, "Trust");
         Require(hud.transform, "TrustFill");
 
@@ -163,13 +232,72 @@ public static class RefreshAuthoredLevelPrefabs
         for (int i = 0; i < GenreInfo.Count; i++)
             Require(level3Content.transform, "pf" + i);
 
-        var log = Require(level2.transform, "Log").GetComponent<RectTransform>();
-        var summary = Require(level2.transform, "Sum").GetComponent<RectTransform>();
-        RequireApproximately(log.offsetMin, new Vector2(12, 52), "Level 2 CRT log inset");
-        RequireApproximately(summary.sizeDelta, new Vector2(-24, 44), "Level 2 summary size");
-        RequireApproximately(summary.anchoredPosition, new Vector2(0, 6), "Level 2 summary position");
+        ValidateLevel2Prefab(level2);
 
         Debug.Log("Validated visible authored roots for all levels and detailed Level 1/2 layouts.");
+    }
+
+    [MenuItem("MadFact/Validate Authored Level 2")]
+    public static void ValidateLevel2()
+    {
+        ValidateLevel2Prefab(Load("Assets/Prefabs/Levels/Level2Robot.prefab"));
+        Debug.Log("Validated authored Level 2 movie browser, preview, and runtime references.");
+    }
+
+    static void ValidateLevel2Prefab(GameObject level2)
+    {
+        RequireActive(level2.transform, "Level2Robot");
+
+        var pickerOverlay = Require(level2.transform, "PickerOverlay");
+        var moviePicker = Require(pickerOverlay, "MoviePicker");
+        if (moviePicker.GetComponent<PosterBrowser>() == null)
+            throw new System.InvalidOperationException("Level 2 movie picker must use the authored PosterBrowser.");
+
+        Require(level2.transform, "MSel");
+        Require(level2.transform, "Close");
+        Require(level2.transform, "PvPoster");
+        Require(level2.transform, "PvTitle");
+        Require(level2.transform, "PvRating");
+        for (int i = 0; i < GenreInfo.Count; i++)
+            Require(level2.transform, "pvf" + i);
+
+        var robot = level2.GetComponent<Level2Robot>();
+        if (robot == null)
+            throw new System.InvalidOperationException("Level 2 prefab is missing its Level2Robot component.");
+        var serializedRobot = new SerializedObject(robot);
+        RequireSerializedReference(serializedRobot, "_previewPoster");
+        RequireSerializedReference(serializedRobot, "_previewTitle");
+        RequireSerializedReference(serializedRobot, "_previewRating");
+        RequireSerializedReference(serializedRobot, "_moviePicker");
+        RequireSerializedReference(serializedRobot, "_pickerOverlay");
+        var previewBars = serializedRobot.FindProperty("_previewBars");
+        if (previewBars == null || !previewBars.isArray || previewBars.arraySize != GenreInfo.Count)
+            throw new System.InvalidOperationException("Level 2 must serialize all eight movie preview bars.");
+        for (int i = 0; i < previewBars.arraySize; i++)
+            if (previewBars.GetArrayElementAtIndex(i).objectReferenceValue == null)
+                throw new System.InvalidOperationException($"Level 2 preview bar {i} is not serialized.");
+
+        var logViewport = Require(level2.transform, "LogViewport");
+        var logScroll = logViewport.GetComponent<ScrollRect>();
+        var log = Require(logViewport, "Log").GetComponent<RectTransform>();
+        var summary = Require(level2.transform, "Sum").GetComponent<RectTransform>();
+        if (logScroll == null || logScroll.viewport != logViewport.GetComponent<RectTransform>() ||
+            logScroll.content != log)
+            throw new System.InvalidOperationException("Level 2 CRT results must use its authored vertical ScrollRect.");
+        if (log.GetComponent<ContentSizeFitter>() == null)
+            throw new System.InvalidOperationException("Level 2 CRT log must resize to fit all batch results.");
+        RequireApproximately(logViewport.GetComponent<RectTransform>().offsetMin,
+            new Vector2(12, 46), "Level 2 CRT log viewport inset");
+        RequireApproximately(summary.sizeDelta, new Vector2(-24, 40), "Level 2 summary size");
+        RequireApproximately(summary.anchoredPosition, new Vector2(0, 4), "Level 2 summary position");
+    }
+
+    static void RequireSerializedReference(SerializedObject serializedObject, string propertyName)
+    {
+        var property = serializedObject.FindProperty(propertyName);
+        if (property == null || property.objectReferenceValue == null)
+            throw new System.InvalidOperationException(
+                $"{serializedObject.targetObject.name}.{propertyName} is not serialized.");
     }
 
     /// <summary>
@@ -303,6 +431,22 @@ public static class RefreshAuthoredLevelPrefabs
         PrefabUtility.SaveAsPrefabAsset(source, assetPath, out bool success);
         if (!success)
             throw new System.InvalidOperationException($"Could not refresh prefab at {assetPath}.");
+    }
+
+    static void SaveVisibleLevel(GameObject source, string visualRootName, string assetPath)
+    {
+        Transform visualRoot = null;
+        foreach (var candidate in source.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate == source.transform || candidate.name != visualRootName) continue;
+            visualRoot = candidate;
+            break;
+        }
+        if (visualRoot == null)
+            throw new System.InvalidOperationException(
+                $"Missing visual root '{visualRootName}' under generated level '{source.name}'.");
+        visualRoot.gameObject.SetActive(true);
+        Save(source, assetPath);
     }
 
     /// <summary>

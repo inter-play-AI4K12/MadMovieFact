@@ -9,62 +9,49 @@ namespace MadFact
     {
         public static readonly string[] IntroOldDude =
         {
-            "So. You actually showed up to claim the place. PELLINGS VIDEO. My life's work.",
-            "Forty years I matched folks to tapes BY HAND. My spine is now shaped like a question mark. The shop's yours, kid.",
-            "Here's the problem: the line never stops growing, and people have NO idea what they actually want. They just know when you get it wrong.",
-            "Figure it out. Match the customer to the tape. Make me proud. And make some money — the lights run on it."
+            "Welcome to PELLINGS VIDEO. I matched people to tapes by hand for forty years, and now the shop is yours.",
+            "The line is growing. Match each customer with the right tape and earn enough to keep the store open."
         };
 
         public static string[] Level1GoalOldDude(int money) => new[]
         {
-            $"${money}! Ha! The till hasn't sung like that in years.",
-            "And look at that LINE. Word's getting around — we've got more customers than hands now.",
-            "You're due for some upgrades, kid. New paint, new counters, computers on the desk. Liven the place up.",
-            "And my nephew's robot assistant comes out of the back room. Teach it some rules — that's AUTOMATION."
+            $"${money}! Great work, but the line is now too long to serve by hand.",
+            "My nephew built a robot helper. Give it clear IF/THEN rules so it can automate the work."
         };
 
         public static readonly string[] Level1GoalRobot =
         {
-            "GREETINGS PROPRIETOR. I AM UNIT B-EIGE.",
-            "PROVIDE ME WITH IF/THEN RULES. I WILL SERVE THE LINE WITHOUT REST.",
-            "WARNING: I DO EXACTLY WHAT YOU SAY. NOTHING MORE."
+            "HELLO, STORE OWNER. I AM UNIT B-EIGE. GIVE ME IF/THEN RULES, BUT REMEMBER: I DO EXACTLY WHAT YOU SAY."
         };
 
         public static readonly string[] Level2GoalRobot =
         {
-            "PROPRIETOR. MY RULES ARE TOO RIGID FOR REAL PEOPLE.",
-            "TASTE IS CONTINUOUS. RULES ARE NOT. I HAVE REACHED MY LIMIT.",
-            "NEXT STRATEGY: INSPECT THE ITEMS THEMSELVES."
+            "MY RULES ARE TOO STRICT FOR REAL PEOPLE. SIMPLE RULES CANNOT HANDLE EVERY KIND OF TASTE.",
+            "NEXT PLAN: LOOK AT THE FEATURES OF EACH MOVIE."
         };
 
         public static readonly string[] Level2GoalOldDude =
         {
-            "Before we ask the mainframe to read minds, try the obvious thing: look at the tapes.",
-            "Content-based recommendation means matching item features to what a customer says they want.",
-            "It's better than dumb rules, but it still only sees what's written on the box."
+            "A content-based system matches movie features with what a customer likes.",
+            "It works better than simple rules, but it only knows facts written on the box."
         };
 
         public static readonly string[] ContentBasedCompleteOldDude =
         {
-            "Good. Movie features help. Space movies for space people, loud movies for explosion people.",
-            "But people keep surprising us. They like blends. They hide taste even from themselves.",
-            "Now we need the mainframe — collaborative filtering. Let the crowd reveal the hidden vibes."
+            "Movie features help, but some likes are hard to describe.",
+            "The mainframe will compare many ratings to find hidden patterns. This is collaborative filtering."
         };
 
         public static readonly string[] Level4GoalOldDude =
         {
-            "You see that cluster? Rates EVERYTHING we stock a one or a two.",
-            "And look at the dials the machine learned for them — nobody ever labeled those knobs, but two of them are pinned HIGH.",
-            "I've stocked shelves for forty years, kid. I know what those two dials are: SPOOKY and FUNNY. Spook-comedy!",
-            "We never stocked a single one. That's not a problem, kid. That's a GOLDMINE.",
-            "We've got the budget. Go to the corkboard and MAKE the movie they're starving for."
+            "The hidden dials show this group wants something SPOOKY and FUNNY: a scary comedy.",
+            "We do not stock one, so use the corkboard to design the movie they want."
         };
 
         public static readonly string[] GreenlitOldDude =
         {
-            "THAT'S IT. That's the one. Spooky AND funny — exactly what the numbers screamed for.",
-            "You went from matching tapes by hand to PRODUCING the blockbuster the data predicted.",
-            "From manual, to rules, to the algorithm. You learned to feel the math, kid. Proud of you."
+            "That is it: spooky AND funny, just like the ratings showed.",
+            "You used hand choices, rules, and computer systems to recommend and even design a movie. I am proud of you."
         };
     }
 }

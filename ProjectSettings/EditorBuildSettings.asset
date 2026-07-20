@@ -5,15 +5,15 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
-    path: Assets/Scenes/ParticipantSetup.unity
-    guid: 57da3db78bc3c4610a57959e40b2ff42
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/MainMenu.unity
     guid: 7f0e1b2c3d4a456f8b9c0d1e2f3a4b5c
   - enabled: 0
     path: Assets/Scenes/MadMovieFact.unity
     guid: 5e058b54b5961094a8f575e0d8f9c44c
+  - enabled: 1
+    path: Assets/Scenes/GameMenu.unity
+    guid: a9b5e6f0490c4b5ca455af6bfb6bd7e1
   - enabled: 1
     path: Assets/Scenes/Storefront.unity
     guid: 4de3b639ee0764113a79c31f3c2fe96f
@@ -27,10 +27,13 @@ EditorBuildSettings:
     path: Assets/Scenes/Level03_ContentBasedRecommendation.unity
     guid: 20469f1fc76af4c189f174d89dbed036
   - enabled: 1
-    path: Assets/Scenes/Level04_CollaborativeFiltering.unity
+    path: Assets/Scenes/Level04_GroundTruthMatrix.unity
     guid: fb3468fea30674986ad9cc86a9589b1e
   - enabled: 1
-    path: Assets/Scenes/Level05_MarketGapResearch.unity
+    path: Assets/Scenes/Level05_MatrixFactorization.unity
+    guid: 4902d306097e24183bb0a82a5799dad6
+  - enabled: 1
+    path: Assets/Scenes/Level06_MarketGapResearch.unity
     guid: 5565e6de27f3b49f6a1ea93eed72f4e9
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

@@ -32,10 +32,14 @@ namespace MadFact
         int _served;
         bool _recommended;
         bool _pellingsExplained;   // the one-time "here's why they liked/hated it" lesson
+        bool _openedOnce;
+        bool _tutorialShown;
 
         void Awake()
         {
             if (_root == null) return;
+            _browser = GetComponentInChildren<PosterBrowser>(true);
+            if (_browser != null) _browser.OnRecommend = Recommend;
             _nextBtn.onClick.RemoveAllListeners();
             _nextBtn.onClick.AddListener(NextCustomer);
             var leave = UIFactory.FindDeep<Button>(transform, "Leave");
@@ -81,11 +85,19 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(_browser.gameObject), new Vector2(1, 1), new Vector2(1, 1), new Vector2(292, 384), new Vector2(-12, -40));
             _browser.OnRecommend = Recommend;
 
-            _result = UIFactory.Text(window.transform, "Result", "", 15, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleLeft, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(_result.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(560, 28), new Vector2(18, 52));
+            // Keep the outcome light on the artwork: only a crisp text stroke, without
+            // a banner or rectangle. Its centre matches the button below.
+            _result = UIFactory.Text(window.transform, "Result", "", 15, Theme.Ink,
+                Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_result.gameObject), new Vector2(0, 0), new Vector2(0, 0),
+                new Vector2(560, 32), new Vector2(18, 50));
+            var resultStroke = _result.gameObject.AddComponent<Outline>();
+            resultStroke.effectColor = new Color(0, 0, 0, 0.95f);
+            resultStroke.effectDistance = new Vector2(1, -1);
+            resultStroke.useGraphicAlpha = true;
 
             _nextBtn = UIFactory.Button(window.transform, "Next", "NEXT CUSTOMER", NextCustomer, Theme.Cash, 16, Theme.SystemSans, Theme.TitleText);
-            UIFactory.Place(UIFactory.RT(_nextBtn.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(220, 36), new Vector2(18, 12));
+            UIFactory.Place(UIFactory.RT(_nextBtn.gameObject), new Vector2(0, 0), new Vector2(0, 0), new Vector2(220, 36), new Vector2(188, 10));
             UIFactory.ButtonIcon(_nextBtn, ArtSprites.Next(), 24f);
             _nextBtn.gameObject.SetActive(false);
 
@@ -98,14 +110,15 @@ namespace MadFact
         {
             var folder = UIFactory.Image(window.transform, "Folder", Theme.Manila);
             UIFactory.Place(UIFactory.RT(folder.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(300, 380), new Vector2(16, -40));
-            // tab
+            // Keep the folder tab inside the body. The old upward offset placed it over
+            // the window title bar and hid part of "THE COUNTER".
             var tab = UIFactory.Image(folder.transform, "Tab", Theme.ManilaTab);
-            UIFactory.Place(UIFactory.RT(tab.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(140, 22), new Vector2(14, 20));
+            UIFactory.Place(UIFactory.RT(tab.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(140, 22), new Vector2(14, -4));
             var tabT = UIFactory.Text(tab.transform, "TT", "CUSTOMER FILE", 12, Theme.Ink, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
             UIFactory.Fill(UIFactory.RT(tabT.gameObject));
 
             var pf = UIFactory.Bevel(folder.transform, "Portrait", Theme.Manila, sunken: true);
-            UIFactory.Place(UIFactory.RT(pf.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, 80), new Vector2(18, -16));
+            UIFactory.Place(UIFactory.RT(pf.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, 80), new Vector2(18, -34));
             pf.gameObject.AddComponent<RectMask2D>();
             _portrait = UIFactory.Image(pf.transform, "P", Color.white, Theme.Disc);
             UIFactory.Fill(UIFactory.RT(_portrait.gameObject), 8, 8, 8, 8);
@@ -113,44 +126,131 @@ namespace MadFact
             UIFactory.Fill(UIFactory.RT(_portraitInitial.gameObject));
 
             _name = UIFactory.Text(folder.transform, "Name", "", 18, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(_name.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 24), new Vector2(108, -22));
+            UIFactory.Place(UIFactory.RT(_name.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 24), new Vector2(108, -40));
             _history = UIFactory.Text(folder.transform, "Hist", "", 14, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false);
-            UIFactory.Place(UIFactory.RT(_history.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(108, -48));
+            UIFactory.Place(UIFactory.RT(_history.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(108, -66));
             _stated = UIFactory.Text(folder.transform, "Stated", "", 14, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, false);
-            UIFactory.Place(UIFactory.RT(_stated.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(108, -70));
+            UIFactory.Place(UIFactory.RT(_stated.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(180, 22), new Vector2(108, -88));
 
             _quip = UIFactory.Text(folder.transform, "Quip", "", 14, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, true, FontStyle.Italic);
-            UIFactory.Place(UIFactory.RT(_quip.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(268, 56), new Vector2(16, -108));
+            UIFactory.Place(UIFactory.RT(_quip.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(268, 56), new Vector2(16, -126));
 
-            var ndlbl = UIFactory.Text(folder.transform, "NotesLbl", "— NOTES —", 12, Theme.ManilaEdge, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(ndlbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, 18), new Vector2(16, -170));
+            var ndlbl = UIFactory.Text(folder.transform, "NotesLbl", "NOTES", 12, Theme.ManilaEdge, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(ndlbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, 18), new Vector2(16, -188));
             _notes = UIFactory.Text(folder.transform, "Notes", "", 13, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, true);
-            UIFactory.Place(UIFactory.RT(_notes.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(268, 180), new Vector2(16, -190));
+            UIFactory.Place(UIFactory.RT(_notes.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(268, 160), new Vector2(16, -208));
         }
 
-        readonly Vibe[] _qAxis = { Vibe.Funny, Vibe.Spooky, Vibe.Spacey, Vibe.Explosions };
-        readonly string[] _qText = { "Looking for a laugh?", "In the mood for a scare?", "Into space & sci-fi?", "Want big explosions?" };
+        readonly struct QuestionDef
+        {
+            public readonly string Id;
+            public readonly string Label;
+            public readonly Vibe? VibeAxis;
+            public readonly Genre? GenreAxis;
+            public readonly string Strong;
+            public readonly string Medium;
+            public readonly string Weak;
+
+            public QuestionDef(string id, string label, Vibe axis, string strong, string medium, string weak)
+            {
+                Id = id;
+                Label = label;
+                VibeAxis = axis;
+                GenreAxis = null;
+                Strong = strong;
+                Medium = medium;
+                Weak = weak;
+            }
+
+            public QuestionDef(string id, string label, Genre genre, string strong, string medium, string weak)
+            {
+                Id = id;
+                Label = label;
+                VibeAxis = null;
+                GenreAxis = genre;
+                Strong = strong;
+                Medium = medium;
+                Weak = weak;
+            }
+
+            public float Score(CustomerData customer) =>
+                VibeAxis.HasValue
+                    ? customer.TrueVibe[(int)VibeAxis.Value]
+                    : customer.GenreTaste[(int)GenreAxis.Value];
+
+            public string PreferenceKey =>
+                VibeAxis.HasValue ? VibeAxis.Value.ToString() : GenreAxis.Value.ToString();
+        }
+
+        static readonly QuestionDef[] Questions =
+        {
+            new QuestionDef("funny", "SHOULD IT BE FUNNY?", Vibe.Funny,
+                "“Yes. Make me laugh the whole way through.”", "“A few laughs would be nice.”", "“No jokes, please.”"),
+            new QuestionDef("scary", "HOW SCARY SHOULD IT BE?", Vibe.Spooky,
+                "“Make it really scary.”", "“A little suspense is fine.”", "“Nothing scary, please.”"),
+            new QuestionDef("space", "SPACE OR EARTH?", Vibe.Spacey,
+                "“Yes. Take me to another world.”", "“Space is fine if the story is good.”", "“No. Keep it on Earth.”"),
+            new QuestionDef("action", "LOTS OF ACTION?", Vibe.Explosions,
+                "“Yes. Make it fast and exciting.”", "“Some action is fine.”", "“No. I want a quieter story.”"),
+            new QuestionDef("true_story", "TRUE STORY OR MADE-UP?", Genre.Documentary,
+                "“A true story, please. I want real people and real events.”", "“Either is fine if it feels believable.”", "“Made-up is fine. I am not looking for a documentary.”"),
+            new QuestionDef("serious", "LIGHT OR SERIOUS?", Genre.Drama,
+                "“Serious. I want a story that stays with me.”", "“Some serious moments are fine.”", "“Keep it light. Nothing heavy.”"),
+            new QuestionDef("romance", "ROMANCE OR NO ROMANCE?", Genre.Romance,
+                "“Yes. The love story should matter.”", "“A little romance is fine.”", "“No romance for me.”"),
+            new QuestionDef("animation", "CARTOON OR LIVE ACTION?", Genre.Animation,
+                "“A cartoon, please.”", "“Either one is fine.”", "“Live action, please.”")
+        };
+
+        public static Sprite QuestionIcon(int index)
+        {
+            if (index < 0 || index >= Questions.Length) return null;
+            var question = Questions[index];
+            return question.VibeAxis.HasValue
+                ? ArtSprites.VibeIcon((int)question.VibeAxis.Value)
+                : ArtSprites.GenreIcon(question.GenreAxis.Value);
+        }
 
         void BuildQuestions(Transform window)
         {
-            var lbl = UIFactory.Text(window.transform, "QLbl", "ASK A CLARIFYING QUESTION", 14, Theme.Ink, Theme.SystemSans, TextAnchor.UpperLeft, false, FontStyle.Bold);
-            UIFactory.Place(UIFactory.RT(lbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(280, 20), new Vector2(330, -44));
-            _qLeft = UIFactory.Text(window.transform, "QLeft", "", 13, Theme.ErrorRed, Theme.SystemSans, TextAnchor.UpperLeft, false);
-            UIFactory.Place(UIFactory.RT(_qLeft.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(280, 18), new Vector2(330, -64));
+            // This is a layout group, not a form field. Keep it transparent so the
+            // question controls sit directly on the window instead of inside a gray box.
+            var panel = UIFactory.Node(window, "QuestionPanel");
+            UIFactory.Place(UIFactory.RT(panel), new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(256, 252), new Vector2(328, -40));
 
-            for (int i = 0; i < _qText.Length; i++)
+            var lbl = UIFactory.Text(panel.transform, "QLbl", "ASK FOR A CLUE", 13, Theme.Ink,
+                Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(lbl.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(126, 22), new Vector2(12, -9));
+            _qLeft = UIFactory.Text(panel.transform, "QLeft", "", 11, Theme.ErrorRed,
+                Theme.SystemSans, TextAnchor.MiddleRight, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_qLeft.gameObject), new Vector2(1, 1), new Vector2(1, 1),
+                new Vector2(106, 22), new Vector2(-12, -9));
+
+            for (int i = 0; i < Questions.Length; i++)
             {
                 int idx = i;
-                var b = UIFactory.Button(window.transform, "Q" + i, _qText[i], () => Ask(idx), Theme.Face, 14, Theme.SystemSans);
-                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(245, 26), new Vector2(330, -86 - i * 30));
-                UIFactory.ButtonIcon(b, ArtSprites.VibeIcon((int)_qAxis[i]), 21f);
-                var t = b.GetComponentInChildren<Text>(); t.alignment = TextAnchor.MiddleLeft;
+                float y = -42f - i * 25.5f;
+                var question = Questions[i];
+                var b = UIFactory.Button(panel.transform, "Q" + i, question.Label, () => Ask(idx),
+                    Theme.Face, 12, Theme.SystemSans);
+                UIFactory.Place(UIFactory.RT(b.gameObject), new Vector2(.5f, 1), new Vector2(.5f, 1),
+                    new Vector2(232, 23), new Vector2(0, y));
+                UIFactory.ButtonIcon(b, QuestionIcon(i), 17f);
+                var t = b.GetComponentInChildren<Text>();
+                t.alignment = TextAnchor.MiddleLeft;
+                t.resizeTextForBestFit = true;
+                t.resizeTextMinSize = 10;
+                t.resizeTextMaxSize = 12;
                 _questionButtons.Add(b);
             }
 
             var shelfHint = UIFactory.Text(window.transform, "ShelfHint",
-                "Then flip through the shelves →\nclick a box to read its features.", 12, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, true, FontStyle.Italic);
-            UIFactory.Place(UIFactory.RT(shelfHint.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(250, 44), new Vector2(330, -212));
+                "Use the answers as clues. Then check the feature bars on each box →",
+                12, Theme.InkSoft, Theme.Typewriter, TextAnchor.UpperLeft, true, FontStyle.Italic);
+            UIFactory.Place(UIFactory.RT(shelfHint.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(250, 44), new Vector2(330, -300));
         }
 
         // ---- Flow --------------------------------------------------------
@@ -158,10 +258,29 @@ namespace MadFact
         {
             transform.SetAsLastSibling();
             _root.SetActive(true);
+            if (_openedOnce) return;
+            _openedOnce = true;
             _served = 0;
             NextCustomer();
+            ShowFirstOpenTutorial();
         }
         public void Close() => _root.SetActive(false);
+
+        void ShowFirstOpenTutorial()
+        {
+            if (_tutorialShown) return;
+            _tutorialShown = true;
+
+            RectTransform folder = UIFactory.FindDeep<RectTransform>(_root.transform, "Folder");
+            RectTransform questions = UIFactory.FindDeep<RectTransform>(_root.transform, "QuestionPanel");
+            RectTransform shelf = _browser != null ? UIFactory.RT(_browser.gameObject) : null;
+            MadFactBootstrap.I.Comms.ShowFocused(Speaker.System, new[]
+            {
+                "Start with the CUSTOMER FILE. Read what they rented, what they want, and any notes.",
+                "You may ask up to TWO clues. Use them when the request is not clear.",
+                "Browse the shelves, select a poster to inspect its details, then recommend the best match."
+            }, new[] { folder, questions, shelf });
+        }
 
         void NextCustomer()
         {
@@ -228,26 +347,31 @@ namespace MadFact
 
         void UpdateQLeft()
         {
-            _qLeft.text = _questionsLeft > 0 ? $"{_questionsLeft} questions remaining" : "No questions left — recommend now";
+            _qLeft.text = _questionsLeft > 0 ? $"{_questionsLeft} LEFT" : "CHOOSE A TAPE";
             if (_questionsLeft <= 0) foreach (var b in _questionButtons) b.interactable = false;
         }
 
         void Ask(int qi)
         {
             if (_questionsLeft <= 0 || _recommended) return;
+            if (qi < 0 || qi >= Questions.Length) return;
             _questionsLeft--;
             _questionsAsked++;
-            float w = _cust.TrueVibe[(int)_qAxis[qi]];
-            string ans = w > 0.66f ? "“Oh yes, absolutely!”" : w > 0.33f ? "“Eh, it's fine I guess.”" : "“Ugh, no thank you.”";
-            _notes.text += $"Q: {_qText[qi]}\n   {ans}\n";
+            if (qi < _questionButtons.Count) _questionButtons[qi].interactable = false;
+            var question = Questions[qi];
+            float w = question.Score(_cust);
+            string ans = w > 0.66f ? question.Strong : w > 0.33f ? question.Medium : question.Weak;
+            _notes.text += $"Q: {question.Label}\n   {ans}\n";
             if (AudioTension.I != null) AudioTension.I.Beep();
             MadFactLokiLogger.Instance?.Log("hint_requested", "Player asked a customer question", new
             {
                 interaction_id = _scenario.Id,
-                question_id = TelemetryJson.ToSnakeCase(_qAxis[qi].ToString()),
+                question_id = question.Id,
+                preference_axis = TelemetryJson.ToSnakeCase(question.PreferenceKey),
                 questions_remaining = _questionsLeft
             });
             UpdateQLeft();
+            MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[] { ans });
         }
 
         void Recommend(int mi)
@@ -291,7 +415,7 @@ namespace MadFact
                 satisfaction
             });
             string stars = new string('★', Mathf.RoundToInt(satisfaction)) + new string('·', 5 - Mathf.RoundToInt(satisfaction));
-            _result.text = repeat ? $"ALREADY RENTED  —  {movie.Title}  [{stars}]" : $"{Economy.TierLabel(tier)}  —  {movie.Title}  [{stars}]";
+            _result.text = repeat ? $"ALREADY RENTED: {movie.Title}  [{stars}]" : $"{Economy.TierLabel(tier)}: {movie.Title}  [{stars}]";
             _result.color = repeat ? Theme.ErrorRed : Economy.TierColor(tier);
 
             _served++;
@@ -300,36 +424,98 @@ namespace MadFact
             {
                 MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
                     { $"'{movie.Title}'? I already RENTED that one from you. Come on, I want something NEW." },
-                    () => AfterRecommend(tier));
+                    () =>
+                    {
+                        _pellingsExplained = true;
+                        if (GameManager.I.Money < 0) FinishRecommendation(tier);
+                        else ShowPellingsLesson(movie, tier, () => FinishRecommendation(tier));
+                    });
                 return;
             }
 
-            // Mr. Pellings breaks in ONCE, after the very first sale, to teach the lesson:
-            // taste is a set of features, and matching them is the whole job. Chain into
-            // the scenario's own outcome dialogue afterward so the two don't race to show
-            // on the CommsBox in the same frame.
-            if (!_pellingsExplained)
+            if (tier == SaleTier.Terrible)
             {
-                _pellingsExplained = true;
-                ShowPellingsLesson(movie, tier, () => AfterRecommend(tier));
+                PlayMistakeFeedback(movie, tier, () => FinishRecommendation(tier));
             }
             else
             {
-                AfterRecommend(tier);
+                PlaySuccessfulFeedback(movie, tier, () => FinishRecommendation(tier));
             }
         }
 
-        void AfterRecommend(SaleTier tier)
+        void PlaySuccessfulFeedback(MovieData movie, SaleTier tier, System.Action onComplete)
+        {
+            var outcome = _scenario != null ? _scenario.OutcomeFor(tier) : null;
+
+            // Some authored outcomes contain only Mr. Pellings' lesson. Give the
+            // customer the first word so the conversation still follows the same order.
+            if (outcome != null && outcome.Target == DialogueTarget.OldDude)
+            {
+                string customerLine = tier == SaleTier.Perfect
+                    ? "That sounds right for me. Thanks!"
+                    : "That is close enough. I will give it a try.";
+
+                MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[] { customerLine }, () =>
+                {
+                    _pellingsExplained = true;
+                    PlayScenarioOutcome(tier, onComplete);
+                });
+                return;
+            }
+
+            PlayScenarioOutcome(tier, () =>
+            {
+                if (_pellingsExplained)
+                {
+                    onComplete?.Invoke();
+                    return;
+                }
+
+                _pellingsExplained = true;
+                ShowPellingsLesson(movie, tier, onComplete);
+            });
+        }
+
+        void PlayMistakeFeedback(MovieData movie, SaleTier tier, System.Action onComplete)
+        {
+            var outcome = _scenario != null ? _scenario.OutcomeFor(tier) : null;
+
+            System.Action showOwner = () =>
+            {
+                // Bankruptcy/trust recovery supplies the owner's response after the
+                // customer finishes, so do not stack another owner dialogue before it.
+                if (GameManager.I.Money < 0 || GameManager.I.Trust <= 0)
+                {
+                    onComplete?.Invoke();
+                    return;
+                }
+
+                _pellingsExplained = true;
+                if (outcome != null && outcome.Target == DialogueTarget.OldDude)
+                    PlayScenarioOutcome(tier, onComplete);
+                else
+                    ShowPellingsLesson(movie, tier, onComplete);
+            };
+
+            if (outcome != null && outcome.Target == DialogueTarget.Customer)
+                PlayScenarioOutcome(tier, showOwner);
+            else
+                MadFactBootstrap.I.Comms.ShowCustomer(_cust,
+                    new[] { "That is not what I asked for. I want a different tape." },
+                    showOwner);
+        }
+
+        void FinishRecommendation(SaleTier tier)
         {
             if (GameManager.I.Money >= GameManager.Level1Goal && !MadFactBootstrap.I.Level1Cleared)
             {
                 MadFactBootstrap.I.Level1Cleared = true;
                 _nextBtn.gameObject.SetActive(false);
-                PlayScenarioOutcome(tier, TriggerUpgrade);
+                TriggerUpgrade();
                 return;
             }
 
-            PlayScenarioOutcome(tier, () => _nextBtn.gameObject.SetActive(true));
+            _nextBtn.gameObject.SetActive(true);
         }
 
         void PlayScenarioOutcome(SaleTier tier, System.Action onComplete)
@@ -375,28 +561,22 @@ namespace MadFact
                 case SaleTier.Perfect:
                     lines = new[]
                     {
-                        $"Ha! See that smile? That right there is a PERFECT match, kid.",
-                        $"Look at the file: what {_cust.Name} craves most is {vibe} — about {cv} out of 10.",
-                        $"And '{movie.Title}' is packed with it — {mv} out of 10. Taste met tape.",
-                        "That's the whole job. Match what they LOVE, not just what they say."
+                        $"Perfect match! {_cust.Name} likes {vibe} about {cv} out of 10, and '{movie.Title}' has {mv} out of 10.",
+                        "Match what customers truly like, not only the first thing they say."
                     };
                     break;
                 case SaleTier.Close:
                     lines = new[]
                     {
-                        $"Not bad — {_cust.Name} paid, but did you see that shrug? They weren't thrilled.",
-                        $"Their file says they crave {vibe} at {cv} out of 10.",
-                        $"'{movie.Title}' only delivers {mv} out of 10 of it. Close... but close pays five bucks.",
-                        "Study the HISTORY, ask a question or two, and hunt for the PERFECT tape."
+                        $"Close match. {_cust.Name} likes {vibe} at {cv} out of 10, but '{movie.Title}' has {mv}.",
+                        "Read the HISTORY, ask questions, and look for a better tape."
                     };
                     break;
                 default:
                     lines = new[]
                     {
-                        $"Hold up, kid. {_cust.Name} stormed out — let me show you what went wrong.",
-                        $"Their file says what they crave most is {vibe} — about {cv} out of 10.",
-                        $"'{movie.Title}'? It's got {mv} out of 10 of that. Wrong tape, angry customer, refund.",
-                        "Read the HISTORY, read what they WANT, ask your questions. THEN match."
+                        $"That match failed. {_cust.Name} likes {vibe} about {cv} out of 10, but '{movie.Title}' has only {mv}.",
+                        "Read the HISTORY, check what they WANT, and ask questions before you choose."
                     };
                     break;
             }

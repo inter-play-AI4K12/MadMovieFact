@@ -41,7 +41,7 @@ namespace MadFact
                         Genre.SciFi,
                         Genre.SciFi,
                         "Got anything with... y'know, SPACE in it?",
-                        "Regular. Trusts the store if we remember his space kick."),
+                        "A regular customer. He trusts us when we remember that he loves space movies."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
                         new[] { "Yeah. That's the stuff. Feels like someone here actually reads the back of the box.", "I'll come back after this one." },
@@ -60,7 +60,7 @@ namespace MadFact
                         Genre.Action,
                         Genre.Action,
                         "I want stuff blowin' up. That's the whole ask.",
-                        "Very literal. Explosions are not a metaphor."),
+                        "She means exactly what she says: she wants lots of action."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
                         new[] { "Boom. Perfect. No notes.", "If the building is still standing by the credits, I want my money back." },
@@ -78,7 +78,7 @@ namespace MadFact
                         Genre.Horror,
                         Genre.Comedy,
                         "We want to be SCARED and then LAUGH. Both. Together.",
-                        "Odd request. Current catalog may not actually satisfy it."),
+                        "They want a mix of horror and comedy. Our shelf may not have it."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
                         new[] { "Close, but it's missing the joke hiding inside the scream.", "Maybe nobody stocks what we want yet." },
@@ -97,7 +97,7 @@ namespace MadFact
                         Genre.SciFi,
                         Genre.SciFi,
                         "Back again. Got another space one, or did I already drain the shelf?",
-                        "Return visit. Earlier satisfaction should affect later trust.",
+                        "He has returned. His last visit should affect how much he trusts us.",
                         returnVisit: true),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
@@ -117,7 +117,7 @@ namespace MadFact
                         Genre.SciFi,
                         Genre.Action,
                         "Spaceships AND gunfights. Don't make me choose.",
-                        "Mixed taste: stated genre alone is not enough."),
+                        "He likes two kinds of movies. One genre is not enough to describe his taste."),
                     new ScenarioOutcome(
                         DialogueTarget.OldDude,
                         new[] { "See? Some folks are a blend. You can't sort people into one shelf forever.", "That's why the old way starts breaking." })),
@@ -131,7 +131,7 @@ namespace MadFact
                         Genre.SciFi,
                         Genre.SciFi,
                         "Something clever. Smart-clever, not dumb-clever.",
-                        "Prefers space, but dislikes pure noise."),
+                        "She likes smart space stories, not only loud action."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
                         new[] { "Good. Not just lasers and shouting.", "You have taste, apparently." })),
@@ -145,7 +145,7 @@ namespace MadFact
                         Genre.Romance,
                         Genre.Romance,
                         "Something that makes my heart do the thing.",
-                        "Very specific about 'the thing'. Will know it when she feels it."),
+                        "She wants a strong feeling, even if she cannot name it."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
                         new[] { "THE THING. My heart did the thing.", "You're getting a regular out of this, you know." },
@@ -163,13 +163,13 @@ namespace MadFact
                         Genre.Documentary,
                         Genre.Documentary,
                         "Real footage. Real facts. None of that made-up stuff.",
-                        "Retired. Watches everything twice: once for the facts, once to check them."),
+                        "He loves facts and checks if documentaries are correct."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
-                        new[] { "Now THAT'S footage. I'll be back Thursday to dispute two of the facts." }),
+                        new[] { "Now THAT is real footage. I will be back Thursday to check two of those facts." }),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
-                        new[] { "This is FICTION. I can tell because it's interesting in the wrong way.", "Refund." })),
+                        new[] { "This is made up. I asked for real facts.", "I want a refund." })),
 
                 new LevelScenario(
                     "l1_nguyen_two_dogs",
@@ -180,10 +180,10 @@ namespace MadFact
                         Genre.Animation,
                         Genre.Animation,
                         "Cartoons! With a dog in them! Or TWO dogs!!",
-                        "Age 8. Mind the sticker on the box."),
+                        "They are eight years old. Check the age rating on the box."),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
-                        new[] { "DOGS!! Did you SEE the part with the— the— WE'RE WATCHING IT AGAIN." }),
+                        new[] { "DOGS!! Did you SEE the part with the... the... WE'RE WATCHING IT AGAIN." }),
                     new ScenarioOutcome(
                         DialogueTarget.OldDude,
                         new[] { "Kid, look at the box next time. The sticker in the corner isn't decoration.", "Wrong tape for an eight-year-old is worse than no tape at all." })),
@@ -203,7 +203,7 @@ namespace MadFact
                         new[] { "...I felt something.", "I'm not going to tell you what it was. Good tape." }),
                     new ScenarioOutcome(
                         DialogueTarget.Customer,
-                        new[] { "I felt NOTHING. Which, coincidentally, is what you'll be refunding me: everything." }))
+                        new[] { "I felt NOTHING. This was the wrong movie for me.", "I want a full refund." }))
             };
         }
     }

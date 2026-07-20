@@ -1,9 +1,9 @@
 # MadFact participant sessions and telemetry
 
-The game starts in `ParticipantSetup.unity`. Remote telemetry is disabled until the
-player supplies a display name and explicitly enables the consent toggle. A study ID is
-optional; when omitted, MadFact stores only a generated anonymous participant ID in
-`PlayerPrefs`. Display names are not persisted.
+The game starts in `GameMenu.unity`. Before the first game, its Logger Information
+panel asks the player for a display name and explicit telemetry consent. A study ID is
+optional; when omitted, MadFact uses a generated anonymous participant ID. The saved
+profile can later be reviewed or changed from Settings.
 
 ## Development configuration
 

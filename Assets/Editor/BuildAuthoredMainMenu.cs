@@ -68,7 +68,7 @@ public static class BuildAuthoredMainMenu
         var level2 = AddButton(panel.transform, 3, "LEVEL 2 · RULES", ArtSprites.Robot());
         var level3 = AddButton(panel.transform, 4, "LEVEL 3 · CONTENT", ArtSprites.MovieCover(0));
         var level4 = AddButton(panel.transform, 5, "LEVEL 4 · COLLABORATIVE", ArtSprites.Optimize());
-        var level5 = AddButton(panel.transform, 6, "LEVEL 5 · MARKET GAP", ArtSprites.Goal());
+        var level5 = AddButton(panel.transform, 6, "LEVEL 5 · MATRIX FACTORIZATION", ArtSprites.Goal());
 
         var quit = UIFactory.Button(panel.transform, "Quit", "QUIT", null, Theme.Face, 14, Theme.SystemSans, Theme.TitleText);
         UIFactory.Place(UIFactory.RT(quit.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(160, 34), new Vector2(0, 20));

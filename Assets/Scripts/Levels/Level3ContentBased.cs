@@ -90,10 +90,10 @@ namespace MadFact
             // ---- engine output column (middle): status + auto-generated top picks ----
             var noteBg = UIFactory.Bevel(window.transform, "NoteBg", new Color(0.05f, 0.09f, 0.06f), sunken: true);
             UIFactory.Place(UIFactory.RT(noteBg.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(256, 64), new Vector2(328, -40));
-            _note = UIFactory.Text(noteBg.transform, "Note", "", 11, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
+            _note = UIFactory.Text(noteBg.transform, "Note", "> WAITING FOR CUSTOMER PROFILE...", 11, Theme.CrtGreen, Theme.Typewriter, TextAnchor.UpperLeft, true);
             UIFactory.Fill(UIFactory.RT(_note.gameObject), 8, 6, 8, 6);
 
-            var pickLbl = UIFactory.Text(window.transform, "PickLbl", "ENGINE TOP PICKS — click one to serve", 12, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold);
+            var pickLbl = UIFactory.Text(window.transform, "PickLbl", "ENGINE TOP PICKS: click one to serve", 12, Theme.Ink, Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(pickLbl.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(256, 18), new Vector2(330, -110));
 
             _suggestRoot = UIFactory.Node(window.transform, "Suggestions");
@@ -134,7 +134,7 @@ namespace MadFact
             var pf = UIFactory.Bevel(panel.transform, "PortraitFrame", Theme.FaceDark, sunken: true);
             UIFactory.Place(UIFactory.RT(pf.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(72, 78), new Vector2(12, -12));
             pf.gameObject.AddComponent<RectMask2D>();
-            _portrait = UIFactory.Image(pf.transform, "P", Color.white);
+            _portrait = UIFactory.Image(pf.transform, "P", Theme.FaceDark);
             UIFactory.Fill(UIFactory.RT(_portrait.gameObject), 4, 4, 4, 4);
 
             _name = UIFactory.Text(panel.transform, "Name", "", 15, Theme.Ink, Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
@@ -203,8 +203,8 @@ namespace MadFact
             new Visit
             {
                 Customer = "WENDELL",
-                Arrival = new[] { "Me again... the machine only ever shows me the space shelf now. Which — fair. But still." },
-                Note = "> RETURNING: WENDELL (x3)\n> every serve reinforced SCI-FI\n> other genres losing exposure_",
+                Arrival = new[] { "Me again... the machine only ever shows me the space shelf now. That is fair, but still." },
+                Note = "> RETURNING: WENDELL (x3)\n> each pick made SCI-FI stronger\n> other genres shown less_",
                 EngineProfile = Narrowed("WENDELL", 0.45f),
                 ProfileCaption = "ENGINE PROFILE (NARROWING)",
                 CaptionColor = new Color(0.85f, 0.65f, 0.2f)
@@ -212,8 +212,8 @@ namespace MadFact
             new Visit
             {
                 Customer = "WENDELL",
-                Arrival = new[] { "Oh. Let me guess. Another one with a spaceship on the cover. ...Ugh, NO — okay, fine. Give it here." },
-                Note = "> RETURNING: WENDELL (x4)\n> <color=#E0C266>profile narrowing further</color>\n> diversity: LOW_",
+                Arrival = new[] { "Oh. Let me guess. Another one with a spaceship on the cover. Ugh, no. Okay, fine. Give it here." },
+                Note = "> RETURNING: WENDELL (x4)\n> <color=#E0C266>profile getting narrower</color>\n> variety: LOW_",
                 EngineProfile = Narrowed("WENDELL", 0.25f),
                 ProfileCaption = "ENGINE PROFILE (NARROWER STILL)",
                 CaptionColor = new Color(0.90f, 0.50f, 0.20f)
@@ -226,7 +226,7 @@ namespace MadFact
                     "Okay, STOP. Every single time it's the same space tapes. I'm stuck in a LOOP here!",
                     "I know I like space! But is this ALL I am to that thing?!"
                 },
-                Note = "> RETURNING: WENDELL (x5)\n> <color=#F05A66>WARNING: profile overfit</color>\n> diversity: CRITICAL_",
+                Note = "> RETURNING: WENDELL (x5)\n> <color=#F05A66>WARNING: profile too narrow</color>\n> variety: VERY LOW_",
                 EngineProfile = Narrowed("WENDELL", 0.12f),
                 ProfileCaption = "ENGINE PROFILE (OVERFIT!)",
                 CaptionColor = Theme.ErrorRed,
@@ -348,10 +348,8 @@ namespace MadFact
                 GameManager.I.Run.SetFlag(FlagIntro);
                 MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
                 {
-                    "New office, new machine. The TASTE-MATCH 3000 reads what's PRINTED on every box.",
-                    "It keeps a genre PROFILE for each customer, built from their rental history.",
-                    "Profile times box features — that's the MATCH score. The machine ranks the shelf and hands you its top picks.",
-                    "Your job's easy now: look at the picks, click the best one. ...Keep an eye on it, though. Machines get tunnel vision."
+                    "TASTE-MATCH 3000 builds a profile from past rentals and compares it with features printed on each box.",
+                    "Choose the best match, but watch for the machine showing the same kind of movie again and again."
                 }, ShowVisit);
             }
             else ShowVisit();
@@ -379,6 +377,7 @@ namespace MadFact
             _name.text = _cust.Name + "  (" + _cust.Age + ")";
             _quip.text = "“" + _cust.Quip + "”";
             _note.text = _visit.Note;
+            _portrait.color = Color.white;
             _portrait.sprite = ArtSprites.CustomerPortrait(_cust.Name);
             UIFactory.CoverFit(_portrait);
             _profileCaption.text = _visit.ProfileCaption;
@@ -412,14 +411,12 @@ namespace MadFact
             var comms = MadFactBootstrap.I.Comms;
             comms.Show(Speaker.OldDude, new[]
             {
-                "Hear that, kid? That's the FILTER BUBBLE popping its head up.",
-                "Look at the ENGINE TOP PICKS — space, space, space. The engine only suggests what matches his profile.",
-                "And every serve narrows the profile further. The other tapes never get EXPOSURE. Round and round he goes.",
-                "Pop quiz, kid. Show me you see it."
+                "This is a FILTER BUBBLE: the machine keeps showing space because Wendell's profile keeps getting narrower.",
+                "Quick quiz: why does the loop continue?"
             }, () => comms.AskChoice(Speaker.OldDude,
                 "QUIZ: Why does Wendell keep seeing the same space tapes?", new[]
             {
-                "The engine only suggests what matches his profile, so it never widens",
+                "The machine only shows what matches his profile, so his choices never grow",
                 "The store stopped stocking new sci-fi, so there is nothing left to show",
                 "His member card expired, so the engine deleted his rental history"
             }, pick =>
@@ -428,16 +425,13 @@ namespace MadFact
                 string[] verdict = pick == 0
                     ? new[]
                     {
-                        "THAT'S IT. The system feeds on its own output — match, narrow, match, narrow.",
-                        "Now BREAK the loop. Ignore the machine's picks. Grab him something from a DIFFERENT shelf that still fits.",
-                        "Hint: flip boxes on other shelves. Some of them list a little SCI-FI in the small bars."
+                        "That is it. Each space pick makes the next space pick more likely.",
+                        "Break the loop with a different shelf that still has some space in it."
                     }
                     : new[]
                     {
-                        "Not quite. The shelf's full and Wendell's still Wendell.",
-                        "It's the LOOP: the engine suggests what matches, the profile narrows, repeat.",
-                        "Now BREAK it. Ignore the machine's picks. Grab him something from a DIFFERENT shelf that still fits.",
-                        "Hint: flip boxes on other shelves. Some of them list a little SCI-FI in the small bars."
+                        "It is a loop: the machine shows space, so the profile becomes even more about space.",
+                        "Break it with a different shelf that still has some space in it."
                     };
                 comms.Show(Speaker.OldDude, verdict, () => SetLocked(false));
             }));
@@ -460,7 +454,7 @@ namespace MadFact
                 var repeatTier = GameManager.I.RecordSale(4f, pop0); // forced-terrible error
                 GameManager.I.AddTrust(-5);
                 GameManager.I.Run.RecordRecommendation("l3_visit_" + _visitIndex, _cust.Name, Phase.Level3, movie, repeatTier, 1f);
-                _result.text = $"ALREADY SEEN  —  {movie.Title}";
+                _result.text = $"ALREADY SEEN: {movie.Title}";
                 _result.color = Theme.ErrorRed;
                 MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
                     { $"'{movie.Title}'? I've already SEEN that one. That's kind of the whole problem." },
@@ -475,7 +469,7 @@ namespace MadFact
                 if (!breaksBubble)
                 {
                     if (AudioTension.I != null) AudioTension.I.Buzzer();
-                    _result.text = "STILL IN THE LOOP — try a different shelf";
+                    _result.text = "STILL IN THE LOOP. Try a different shelf.";
                     _result.color = Theme.ErrorRed;
                     MadFactBootstrap.I.Comms.ShowCustomer(_cust, movie.Primary == Genre.SciFi
                         ? new[] { "That's the SAME SHELF. That's the loop! That's the thing I'm complaining about!" }
@@ -521,13 +515,10 @@ namespace MadFact
             {
                 MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
                 {
-                    $"'{movie.Title}'? Off the {GenreInfo.Name(movie.Primary)} shelf? For ME?",
-                    "...huh. It's got space stuff IN it. I'd never have found this back in my loop.",
-                    "Okay. Okay! The machine's forgiven. Mostly."
+                    $"'{movie.Title}' is from another shelf but still has space in it. I would never have found this inside my loop!"
                 }, () => MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
                 {
-                    "See what you did there? YOU added the diversity — the engine never would have.",
-                    "A content engine can't leave the profile on its own. Someone has to widen the window."
+                    "You added variety where the machine could not leave its own loop."
                 }, () => _nextBtn.gameObject.SetActive(true)));
             }
             else if (_visit.Finale)
@@ -538,12 +529,10 @@ namespace MadFact
                     {
                         $"The screen said {enginePct}% match. This is NOT {enginePct}%.",
                         "It's close! But it's missing the... the joke inside the scream. You know?"
-                    }, () => MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+                }, () => MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
                 {
                     $"Look at that: the box said {enginePct}%, the FACE said 'meh'.",
-                    "The box only lists what's PRINTED on it. It can't see what's inside the tape — or inside the customer.",
-                    "Scary-AND-funny isn't a label anyone prints. It's a hidden vibe.",
-                    "To find THAT, we don't read boxes. We let customers rate tapes and find the pattern. Basement. Now."
+                    "Some feelings are not printed on a box. We can compare ratings to find those hidden patterns."
                 }, Complete));
             }
             else

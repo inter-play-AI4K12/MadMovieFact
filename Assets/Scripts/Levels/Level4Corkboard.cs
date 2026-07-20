@@ -7,7 +7,7 @@ using MadFact.Telemetry;
 namespace MadFact
 {
     /// <summary>
-    /// Level 5 — Market Gap Research & Movie Making. The optimized matrix revealed an underserved
+    /// Level 6 — Market Gap Research & Movie Making. The optimized matrix revealed an underserved
     /// demographic (high Spooky + high Funny, no inventory match). On the Corkboard the
     /// player drags magazine-cutout stickers — each carrying latent weights — to design a
     /// movie poster that targets that gap. Match the gap vibe to greenlight the blockbuster.
@@ -25,6 +25,7 @@ namespace MadFact
         [SerializeField] Text _matchText;
         [SerializeField] Image _matchFill;
         [SerializeField] Button _greenlight;
+        [SerializeField] Text _posterInstruction;
         bool _won;
 
         static readonly StickerDef[] Palette =
@@ -89,7 +90,7 @@ namespace MadFact
                 UIFactory.Place(UIFactory.RT(fleck.gameObject), new Vector2((float)rng.NextDouble(), (float)rng.NextDouble()), new Vector2(0.5f, 0.5f), new Vector2(3 + (float)rng.NextDouble() * 4, 3 + (float)rng.NextDouble() * 4), Vector2.zero);
             }
 
-            var title = UIFactory.Text(_root.transform, "Title", "THE CORKBOARD — design a poster for the SPOOK-COMEDY gap", 17, new Color(0.20f, 0.12f, 0.05f), Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
+            var title = UIFactory.Text(_root.transform, "Title", "THE CORKBOARD: design a poster for the SPOOK-COMEDY gap", 17, new Color(0.20f, 0.12f, 0.05f), Theme.Typewriter, TextAnchor.UpperLeft, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(title.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(760, 24), new Vector2(20, -10));
 
             // poster (the board where stickers go)
@@ -100,6 +101,11 @@ namespace MadFact
             var posterBg = UIFactory.Image(posterFrame.transform, "PosterBg", new Color(0.12f, 0.10f, 0.16f));
             UIFactory.Fill(UIFactory.RT(posterBg.gameObject), 12, 12, 12, 40);
             _board = UIFactory.RT(posterBg.gameObject);
+            _posterInstruction = UIFactory.Text(posterBg.transform, "Instructions",
+                "CLICK A CUTOUT\nTO PIN IT HERE\n\nTHEN DRAG IT\nAROUND YOUR POSTER",
+                16, new Color(0.75f, 0.72f, 0.66f, 0.82f), Theme.Typewriter,
+                TextAnchor.MiddleCenter, true, FontStyle.Bold);
+            UIFactory.Fill(UIFactory.RT(_posterInstruction.gameObject), 48, 48, 48, 48);
             var ptitle = UIFactory.Text(posterFrame.transform, "PT", "YOUR FEATURE FILM", 16, new Color(0.15f, 0.1f, 0.05f), Theme.Typewriter, TextAnchor.LowerCenter, false, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(ptitle.gameObject), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(340, 30), new Vector2(0, 8));
 
@@ -187,6 +193,7 @@ namespace MadFact
             _root.SetActive(true);
             _won = false;               // re-entering re-arms the greenlight
             MadFactBootstrap.I.Storefront.SetLine(0);
+            if (_posterInstruction != null) _posterInstruction.gameObject.SetActive(_placed.Count == 0);
             RecomputeMatch();
         }
         public void Close() => _root.SetActive(false);
@@ -195,10 +202,11 @@ namespace MadFact
         {
             var d = Palette[defIndex];
             _placed.Add(d);
+            if (_posterInstruction != null) _posterInstruction.gameObject.SetActive(false);
             MadFactLokiLogger.Instance?.Log("market_gap_value_added",
                 "Player added a market-gap concept", new
                 {
-                    level_id = 5,
+                    level_id = 6,
                     concept = d.Label.Replace("\n", " "),
                     concept_count = _placed.Count
                 });
@@ -228,8 +236,9 @@ namespace MadFact
                 _placed.Remove(d);
                 MadFactLokiLogger.Instance?.Log("market_gap_value_removed",
                     "Player removed a market-gap concept",
-                    new { level_id = 5, concept = d.Label.Replace("\n", " "), concept_count = _placed.Count });
+                    new { level_id = 6, concept = d.Label.Replace("\n", " "), concept_count = _placed.Count });
                 Destroy(card.gameObject);
+                if (_posterInstruction != null) _posterInstruction.gameObject.SetActive(_placed.Count == 0);
                 RecomputeMatch();
             });
 
@@ -256,7 +265,7 @@ namespace MadFact
 
             bool ok = match >= 0.88f && _placed.Count >= 3;
             // always say what's missing — a dead button with no explanation reads as broken
-            _matchText.text = ok ? "MATCH " + pct + "% — GO!"
+            _matchText.text = ok ? "MATCH " + pct + "%: GO!"
                 : _placed.Count < 3 ? "MATCH " + pct + "% (pin 3+ cutouts)"
                 : "MATCH " + pct + "% (need 88%)";
             _greenlight.interactable = ok && !_won;
@@ -280,7 +289,7 @@ namespace MadFact
             GameManager.I.AddMoney(1000);
             MadFactLokiLogger.Instance?.Log("choice_selected", "Player greenlit a market-gap movie", new
             {
-                level_id = 5,
+                level_id = 6,
                 choice_id = "greenlight",
                 concept_count = _placed.Count,
                 money_after = GameManager.I.Money

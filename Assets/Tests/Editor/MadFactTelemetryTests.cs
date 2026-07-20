@@ -97,5 +97,39 @@ namespace MadFact.Tests
             logger.Log("level_started", "Local-only event", new { level_id = 1 });
             Assert.That(logger.QueuedEventCount, Is.Zero);
         }
+
+        [TestCase(4, LevelSceneCatalog.GroundTruthMatrix)]
+        [TestCase(5, LevelSceneCatalog.MatrixFactorization)]
+        [TestCase(6, LevelSceneCatalog.MarketGapResearch)]
+        public void SplitMatrixLevelsHaveDedicatedSceneRoutes(int level, string expectedPath)
+        {
+            Assert.That(LevelSceneCatalog.PathForLevel(level), Is.EqualTo(expectedPath));
+        }
+
+        [Test]
+        public void ThreeByThreeGroundTruthTutorialHasOneMissingRating()
+        {
+            var model = new MatrixTutorialModel();
+            int missing = 0;
+            for (int row = 0; row < 3; row++)
+                for (int column = 0; column < 3; column++)
+                    if (!model.Known[row, column]) missing++;
+
+            Assert.That(missing, Is.EqualTo(1));
+            Assert.That(MatrixTutorialModel.CustomerNames[0], Is.EqualTo("MAYA"));
+            Assert.That(MatrixTutorialModel.MovieNames[2], Is.EqualTo("GALAXY RAIDERS"));
+            Assert.That(model.Target[2, 2], Is.EqualTo(5f));
+        }
+
+        [Test]
+        public void ThreeByThreeOptimizerReducesTutorialError()
+        {
+            var model = new MatrixTutorialModel();
+            float initial = model.MeanError();
+            for (int step = 0; step < 80; step++)
+                model.StepGradient(0.004f);
+
+            Assert.That(model.MeanError(), Is.LessThan(initial));
+        }
     }
 }

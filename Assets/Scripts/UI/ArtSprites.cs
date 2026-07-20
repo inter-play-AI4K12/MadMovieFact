@@ -193,9 +193,12 @@ namespace MadFact
         public static Sprite CashRegister() => Ui("cash", 196, 66, 120, 100);
         public static Sprite Goal() => Ui("goal", 337, 64, 124, 100);
         public static Sprite Close() => Ui("close", 505, 70, 110, 96);
-        public static Sprite Back() => Ui("back", 650, 72, 120, 94);
-        public static Sprite Next() => Ui("next", 817, 72, 120, 94);
-        public static Sprite Play() => Ui("play", 1136, 72, 116, 94);
+        // The navigation arrows in the supplied Interface atlas sit on an opaque white
+        // presentation background. Use transparent pixel arrows so icon-only buttons do
+        // not appear as missing white rectangles.
+        public static Sprite Back() => NavigationArrow(false);
+        public static Sprite Next() => NavigationArrow(true);
+        public static Sprite Play() => PlayTriangle();
         public static Sprite Stop() => Ui("stop", 1284, 68, 120, 100);
         public static Sprite Add() => Ui("add", 38, 240, 120, 112);
         public static Sprite Remove() => Ui("remove", 174, 240, 116, 112);
@@ -211,6 +214,72 @@ namespace MadFact
 
         static Sprite Ui(string key, float x, float top, float width, float height) =>
             Crop("Interface", "ui_" + key, x, top, width, height);
+
+        static Sprite NavigationArrow(bool right)
+        {
+            string key = right ? "navigation_arrow_right" : "navigation_arrow_left";
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
+
+            const int size = 16;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point
+            };
+            var clear = new Color32(0, 0, 0, 0);
+            var white = new Color32(255, 255, 255, 255);
+            var pixels = new Color32[size * size];
+            for (int i = 0; i < pixels.Length; i++) pixels[i] = clear;
+
+            for (int y = 6; y <= 9; y++)
+                for (int x = 2; x <= 8; x++)
+                    pixels[y * size + (right ? x : size - 1 - x)] = white;
+
+            for (int x = 7; x <= 13; x++)
+            {
+                int halfHeight = 13 - x;
+                for (int y = 8 - halfHeight; y <= 8 + halfHeight; y++)
+                    pixels[y * size + (right ? x : size - 1 - x)] = white;
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            var sprite = Sprite.Create(texture, new Rect(0, 0, size, size),
+                new Vector2(0.5f, 0.5f), size, 0, SpriteMeshType.FullRect);
+            sprite.name = key;
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        static Sprite PlayTriangle()
+        {
+            const string key = "play_triangle";
+            if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
+
+            const int size = 16;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point
+            };
+            var pixels = new Color32[size * size];
+            var white = new Color32(255, 255, 255, 255);
+            for (int x = 3; x <= 13; x++)
+            {
+                int halfHeight = Mathf.Min(x - 2, 13 - x);
+                for (int y = 8 - halfHeight; y <= 8 + halfHeight; y++)
+                    pixels[y * size + x] = white;
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            var sprite = Sprite.Create(texture, new Rect(0, 0, size, size),
+                new Vector2(0.5f, 0.5f), size, 0, SpriteMeshType.FullRect);
+            sprite.name = key;
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            Cache[key] = sprite;
+            return sprite;
+        }
 
         static Sprite Crop(string atlas, string key, float x, float top, float width, float height)
             => Crop(atlas, key, x, top, width, height, Vector4.zero);

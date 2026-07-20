@@ -120,7 +120,7 @@ namespace MadFact
         // stock (MatrixMovieSet).
         // Authoring guardrails:
         //  - no tape carries BOTH spooky>=0.6 AND funny>=0.6 — that combination is the
-        //    unserved market gap Level 5 is about, so the shelf must never contain it
+        //    unserved market gap Level 6 is about, so the shelf must never contain it
         //    (which is also why no Ghostbusters/Beetlejuice on these shelves).
         //  - every non-gap customer has at least one near-perfect tape somewhere.
         public static readonly List<MovieData> Movies = new List<MovieData>
@@ -152,7 +152,7 @@ namespace MadFact
             new MovieData("THE KARATE KID",     Genre.Action,      1984, AgeRating.PG,   new Latent(0.05f,0.10f,0.35f,0.60f), F(Genre.Action,0.80f, Genre.Drama,0.50f),                      Col(160,120,40), Col(240,230,200), "Wax on. Wax off. Crane kick.", "KARATE KID"),
             new MovieData("JURASSIC PARK",      Genre.Action,      1993, AgeRating.PG13, new Latent(0.50f,0.55f,0.15f,0.80f), F(Genre.Action,0.80f, Genre.SciFi,0.70f),                      Col(20,40,25),   Col(230,60,40),   "Life finds a way. Run."),
             new MovieData("THE AVENGERS",       Genre.Action,      2012, AgeRating.PG13, new Latent(0.35f,0.15f,0.45f,0.95f), F(Genre.Action,0.95f, Genre.SciFi,0.60f),                      Col(25,30,50),   Col(200,60,50),   "Earth's mightiest heroes. Some assembly required."),
-            new MovieData("GOOSEBUMPS",         Genre.Horror,      2015, AgeRating.PG,   new Latent(0.05f,0.55f,0.45f,0.35f), F(Genre.Horror,0.60f, Genre.Comedy,0.55f),                     Col(30,50,35),   Col(180,230,120), "Every monster he ever wrote — out of the books."),
+            new MovieData("GOOSEBUMPS",         Genre.Horror,      2015, AgeRating.PG,   new Latent(0.05f,0.55f,0.45f,0.35f), F(Genre.Horror,0.60f, Genre.Comedy,0.55f),                     Col(30,50,35),   Col(180,230,120), "Every monster he ever wrote is out of the books."),
             new MovieData("MONSTER HOUSE",      Genre.Horror,      2006, AgeRating.PG,   new Latent(0.02f,0.70f,0.40f,0.30f), F(Genre.Horror,0.75f, Genre.Animation,0.50f, Genre.Comedy,0.40f), Col(35,25,45), Col(200,170,220), "The house across the street is ALIVE."),
             new MovieData("CORALINE",           Genre.Horror,      2009, AgeRating.PG,   new Latent(0.05f,0.90f,0.15f,0.10f), F(Genre.Horror,0.85f, Genre.Animation,0.60f),                  Col(20,35,45),   Col(120,180,220), "The Other Mother has button eyes."),
             new MovieData("ARACHNOPHOBIA",      Genre.Horror,      1990, AgeRating.PG13, new Latent(0.02f,0.80f,0.30f,0.35f), F(Genre.Horror,0.80f, Genre.Comedy,0.40f),                     Col(40,30,25),   Col(210,170,110), "Eight legs. Zero chill."),
@@ -192,7 +192,7 @@ namespace MadFact
         // ---- The customers -------------------------------------------------
         // The Spooky+Funny crowd (Underserved) crave both AT ONCE — a taste no single-genre
         // tape can serve. They top out at "close" on the shelf, and rate the original
-        // mainframe stock ~1-2 stars: the market gap Level 4 reveals and Level 5 fills.
+        // mainframe stock ~1-2 stars: the matrix lesson reveals and Level 6 fills.
         public static readonly List<CustomerData> Customers = new List<CustomerData>
         {
             new CustomerData("WENDELL", 27, Genre.SciFi,  Genre.SciFi,  new Latent(1.00f,0.05f,0.10f,0.40f), F(Genre.SciFi,0.90f, Genre.Action,0.40f, Genre.Documentary,0.30f), Col(224,178,140), Col(70,110,160),  "Got anything with... y'know, SPACE in it?"),
@@ -202,13 +202,13 @@ namespace MadFact
             // --- The underserved demographic: high Spooky + high Funny, TOGETHER ---
             new CustomerData("THE TIBBS TWINS", 16, Genre.Horror, Genre.Comedy, new Latent(0.12f,0.62f,0.62f,0.12f), F(Genre.Horror,0.80f, Genre.Comedy,0.80f), Col(214,176,150), Col(120,40,120), "We want to be SCARED and then LAUGH. Both. Together.", true, "SPOOK-COMEDY"),
             new CustomerData("MORTICIA", 29, Genre.Horror, Genre.Comedy, new Latent(0.10f,0.62f,0.60f,0.12f), F(Genre.Horror,0.85f, Genre.Comedy,0.70f), Col(225,205,205), Col(60,40,90),  "Funny ghosts. Is that so much to ask?", true, "SPOOK-COMEDY"),
-            new CustomerData("GIGGLES", 38, Genre.Comedy, Genre.Horror,  new Latent(0.15f,0.60f,0.65f,0.10f), F(Genre.Comedy,0.90f, Genre.Horror,0.70f), Col(235,195,160), Col(40,90,70),  "I cackle at the macabre. Recommend accordingly.", true, "SPOOK-COMEDY"),
+            new CustomerData("GIGGLES", 38, Genre.Comedy, Genre.Horror,  new Latent(0.15f,0.60f,0.65f,0.10f), F(Genre.Comedy,0.90f, Genre.Horror,0.70f), Col(235,195,160), Col(40,90,70),  "I laugh at creepy things. Find me something scary and funny.", true, "SPOOK-COMEDY"),
             // --- The wider neighbourhood (Levels 1-3 shelf traffic) ---
             new CustomerData("TIMMY", 9, Genre.Horror, Genre.Horror,     new Latent(0.10f,0.80f,0.35f,0.40f), F(Genre.Horror,0.80f, Genre.Animation,0.50f, Genre.Action,0.40f), Col(230,190,160), Col(200,60,40),   "I want the SCARIEST one. I can handle it. Probably."),
             new CustomerData("ROSA", 34, Genre.Romance, Genre.Romance,   new Latent(0.05f,0.08f,0.95f,0.05f), F(Genre.Romance,0.95f, Genre.Comedy,0.50f, Genre.Drama,0.40f),    Col(210,160,120), Col(220,110,140), "Something that makes my heart do the thing."),
             new CustomerData("EARL", 61, Genre.Documentary, Genre.Documentary, new Latent(0.95f,0.02f,0.05f,0.10f), F(Genre.Documentary,0.95f, Genre.Drama,0.50f, Genre.SciFi,0.30f), Col(222,190,165), Col(120,110,90), "Real footage. Real facts. None of that made-up stuff."),
             new CustomerData("BABS", 45, Genre.Drama, Genre.Drama,       new Latent(0.05f,0.92f,0.10f,0.05f), F(Genre.Drama,0.95f, Genre.Romance,0.50f),                        Col(228,185,155), Col(90,70,110),   "I want to FEEL something. Preferably in black and white."),
-            new CustomerData("VICTOR", 28, Genre.Drama, Genre.Romance,   new Latent(0.02f,0.40f,0.95f,0.02f), F(Genre.Drama,0.70f, Genre.Romance,0.80f),                        Col(200,155,115), Col(50,60,100),   "Something aching. But, like, gently aching."),
+            new CustomerData("VICTOR", 28, Genre.Drama, Genre.Romance,   new Latent(0.02f,0.40f,0.95f,0.02f), F(Genre.Drama,0.70f, Genre.Romance,0.80f),                        Col(200,155,115), Col(50,60,100),   "I want a sad love story, but not one that hurts too much."),
             new CustomerData("THE NGUYEN KIDS", 8, Genre.Animation, Genre.Animation, new Latent(0.30f,0.02f,0.85f,0.40f), F(Genre.Animation,0.95f, Genre.Comedy,0.60f),         Col(215,175,135), Col(240,170,60),  "Cartoons! With a dog in them! Or TWO dogs!!"),
         };
 

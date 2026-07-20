@@ -18,9 +18,11 @@ namespace MadFact
         [SerializeField] GameObject _root;
         MfModel _previewModel;
         MfModel M => GameManager.I != null ? GameManager.I.Matrix : (_previewModel ??= new MfModel());
+        MatrixTutorialModel _tutorial;
 
         Image[,] _cellBg; Image[,] _cellGlow; Text[,] _cellGuess; Text[,] _cellTarget;
         Button[] _rowBtn; Button[] _colBtn;
+        Text[] _rowLabel; Text[] _colLabel;
         Image[] _rowSel; Image[] _colSel;
 
         [SerializeField] Slider[] _sliders = new Slider[4];
@@ -42,6 +44,8 @@ namespace MadFact
         // reading the patterns (collaborative filtering by hand). Stage 2: the sliders
         // unlock — four UNLABELED dials per row/column — and the optimizer takes over.
         bool _stage2;
+        bool _miniTutorial;
+        bool _miniDialChanged;
         int[,] _stage1Guess;
         GameObject _sliderPanel, _pickerRoot, _lossBox;
         Text _pickerLabel;
@@ -57,6 +61,9 @@ namespace MadFact
         const int MainframeStageBase = 100; // first of three post-optimizer payout stages
         const string FlagStage1Done = "mf_stage1_done";
         const string FlagStage1Intro = "mf_stage1_intro";
+        const string FlagStage2Intro = "mf_stage2_intro";
+        const string FlagGroundMiniDone = "mf_ground_3x3_done";
+        const string FlagFactorMiniDone = "mf_factor_3x3_done";
         const string FlagPowered = "mf_optimizer_powered";
 
         const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 116, ColHeadH = 40;
@@ -71,12 +78,14 @@ namespace MadFact
             _cellBg = new Image[rows, cols]; _cellGlow = new Image[rows, cols];
             _cellGuess = new Text[rows, cols]; _cellTarget = new Text[rows, cols];
             _rowBtn = new Button[rows]; _colBtn = new Button[cols];
+            _rowLabel = new Text[rows]; _colLabel = new Text[cols];
             _rowSel = new Image[rows]; _colSel = new Image[cols];
 
             for (int j = 0; j < cols; j++)
             {
                 int index = j;
                 _colBtn[j] = UIFactory.FindDeep<Button>(transform, "Col" + j);
+                _colLabel[j] = _colBtn[j].GetComponentInChildren<Text>();
                 _colSel[j] = UIFactory.FindDeep<Image>(_colBtn[j].transform, "Sel");
                 _colBtn[j].onClick.RemoveAllListeners();
                 _colBtn[j].onClick.AddListener(() => SelectCol(index));
@@ -85,6 +94,7 @@ namespace MadFact
             {
                 int index = i;
                 _rowBtn[i] = UIFactory.FindDeep<Button>(transform, "Row" + i);
+                _rowLabel[i] = _rowBtn[i].GetComponentInChildren<Text>();
                 _rowSel[i] = UIFactory.FindDeep<Image>(_rowBtn[i].transform, "Sel");
                 _rowBtn[i].onClick.RemoveAllListeners();
                 _rowBtn[i].onClick.AddListener(() => SelectRow(index));
@@ -168,6 +178,7 @@ namespace MadFact
             _cellBg = new Image[rows, cols]; _cellGlow = new Image[rows, cols];
             _cellGuess = new Text[rows, cols]; _cellTarget = new Text[rows, cols];
             _rowBtn = new Button[rows]; _colBtn = new Button[cols];
+            _rowLabel = new Text[rows]; _colLabel = new Text[cols];
             _rowSel = new Image[rows]; _colSel = new Image[cols];
 
             // column headers (movies)
@@ -179,6 +190,7 @@ namespace MadFact
                 UIFactory.ButtonIcon(b, ArtSprites.MatrixCover(j), 14f);
                 b.GetComponentInChildren<Text>().fontSize = 9;
                 _colBtn[j] = b;
+                _colLabel[j] = b.GetComponentInChildren<Text>();
                 _colSel[j] = UIFactory.Image(b.transform, "Sel", new Color(1, 1, 0.4f, 0.25f), null, Image.Type.Simple, false);
                 UIFactory.Fill(UIFactory.RT(_colSel[j].gameObject)); _colSel[j].gameObject.SetActive(false);
             }
@@ -192,6 +204,7 @@ namespace MadFact
                 UIFactory.ButtonIcon(b, ArtSprites.CustomerPortrait(cust.Name), 28f);
                 var t = b.GetComponentInChildren<Text>(); t.alignment = TextAnchor.MiddleLeft; t.horizontalOverflow = HorizontalWrapMode.Wrap;
                 _rowBtn[i] = b;
+                _rowLabel[i] = t;
                 _rowSel[i] = UIFactory.Image(b.transform, "Sel", new Color(1, 1, 0.4f, 0.25f), null, Image.Type.Simple, false);
                 UIFactory.Fill(UIFactory.RT(_rowSel[i].gameObject)); _rowSel[i].gameObject.SetActive(false);
 
@@ -264,7 +277,7 @@ namespace MadFact
             _pickerRoot = picker.gameObject;
 
             _pickerLabel = UIFactory.Text(picker.transform, "PickLbl",
-                "STAGE 1 — FILL THE LEDGER\n\nClick a ? cell on the board,\nthen give your best guess.", 13, Theme.CrtAmber, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
+                "STAGE 1: FILL THE LEDGER\n\nClick a ? cell on the board,\nthen give your best guess.", 13, Theme.CrtAmber, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(_pickerLabel.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(260, 130), new Vector2(0, -14));
 
             for (int v = 1; v <= 5; v++)
@@ -309,7 +322,24 @@ namespace MadFact
             _root.SetActive(true);
             MadFactBootstrap.I.Storefront.SetLine(0);
 
-            _stage2 = GameManager.I.Run.HasFlag(FlagStage1Done);
+            // This UI is shared by two dedicated lessons. Level 4 owns only the
+            // ground-truth ledger; Level 5 starts at the latent-factor controls.
+            _stage2 = GameManager.I.CurrentLevel == 5;
+            _miniTutorial = _stage2
+                ? !GameManager.I.Run.HasFlag(FlagFactorMiniDone)
+                : !GameManager.I.Run.HasFlag(FlagGroundMiniDone);
+            if (_miniTutorial) _tutorial = new MatrixTutorialModel();
+            _miniDialChanged = false;
+            if (_stage2) GameManager.I.Run.SetFlag(FlagStage1Done);
+            Text screenTitle = UIFactory.FindDeep<Text>(_root.transform, "Title");
+            if (screenTitle != null)
+                screenTitle.text = _stage2
+                    ? (_miniTutorial
+                        ? "█ 3×3 TRAINING ░ FACTORIZATION ENGINE █"
+                        : "█ MAD-FACT MAINFRAME ░ MATRIX FACTORIZATION ENGINE █")
+                    : (_miniTutorial
+                        ? "█ 3×3 TRAINING ░ GROUND-TRUTH RATINGS MATRIX █"
+                        : "█ MAD-FACT MAINFRAME ░ GROUND-TRUTH RATINGS MATRIX █");
             if (_stage1Guess == null)
                 _stage1Guess = new int[M.Rows, M.Cols];
             if (_stage2 && _stage2StartTime < 0f) { _stage2StartTime = Time.unscaledTime; _slidersSeen.Clear(); }
@@ -320,13 +350,28 @@ namespace MadFact
             if (!_stage2 && !GameManager.I.Run.HasFlag(FlagStage1Intro))
             {
                 GameManager.I.Run.SetFlag(FlagStage1Intro);
-                MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+                string[] lines =
                 {
-                    "The mainframe kept a LEDGER: five customers, five tapes, one-to-five stars.",
-                    "But five entries never got logged. Before any machine touches this board — YOU fill them in.",
-                    "How? Read the PATTERNS. If two customers agree everywhere else, they'll probably agree on the blanks.",
-                    "Click a ? cell and give me your best guess."
-                });
+                    "This 3 by 3 training matrix has one missing rating. The saved ratings are the ground truth.",
+                    "Compare its row and column, then click the ? and choose the rating that fits."
+                };
+                RectTransform grid = UIFactory.FindDeep<RectTransform>(_root.transform, "Grid");
+                RectTransform missingCell = UIFactory.RT(_cellBg[2, 2].gameObject);
+                MadFactBootstrap.I.Comms.ShowFocused(Speaker.OldDude, lines,
+                    new[] { grid, missingCell });
+            }
+            else if (_stage2 && !GameManager.I.Run.HasFlag(FlagStage2Intro))
+            {
+                GameManager.I.Run.SetFlag(FlagStage2Intro);
+                string[] lines =
+                {
+                    "Each customer and tape has hidden dials called LATENT FACTORS. Move one and watch several guesses change.",
+                    "Then press TEST 3×3 OPTIMIZER so the machine can reduce its error."
+                };
+                RectTransform sliders = UIFactory.RT(_sliderPanel);
+                RectTransform optimizer = UIFactory.RT(_optimizeBtn.gameObject);
+                MadFactBootstrap.I.Comms.ShowFocused(Speaker.OldDude, lines,
+                    new[] { sliders, optimizer });
             }
         }
         public void Close() { _root.SetActive(false); if (AudioTension.I != null) AudioTension.I.Silence(); }
@@ -334,25 +379,65 @@ namespace MadFact
         void ApplyStage()
         {
             bool powered = GameManager.I.Run.HasFlag(FlagPowered);
+            SetGridSize(_miniTutorial ? 3 : M.Rows);
             if (_sliderPanel != null) _sliderPanel.SetActive(_stage2);
             if (_pickerRoot != null) _pickerRoot.SetActive(!_stage2);
             if (_lossBox != null) _lossBox.SetActive(_stage2);
-            if (_optimizeBtn != null) _optimizeBtn.gameObject.SetActive(_stage2 && powered);
+            if (_optimizeBtn != null)
+            {
+                _optimizeBtn.gameObject.SetActive(_stage2 && (_miniTutorial || powered));
+                Text label = _optimizeBtn.GetComponentInChildren<Text>();
+                if (label != null) label.text = _miniTutorial ? "TEST 3×3 OPTIMIZER" : "RUN OPTIMIZER";
+                _optimizeBtn.interactable = !_miniTutorial || _miniDialChanged;
+            }
             if (_resetBtn != null) _resetBtn.gameObject.SetActive(_stage2);
             if (_hint != null)
                 _hint.text = !_stage2
-                    ? "STAGE 1 — five ratings are missing from the ledger. Fill each ? by reading the rows and columns around it."
+                    ? (_miniTutorial
+                        ? "3×3 TASK: One rating is missing. Read the two matching rows and columns, then fill the ?."
+                        : "MAIN TASK: Five ratings are missing. Fill each ? by reading the rows and columns around it.")
+                    : _miniTutorial
+                        ? "3×3 TASK: Select a row or column, move one hidden-factor dial, then test the optimizer."
                     : powered
-                        ? "STAGE 2 — the optimizer is powered. Hit OPTIMIZE and watch it guess-and-check every dial."
-                        : "STAGE 2 — four unlabeled dials per row and column. Grab a row or a tape and tune the board by hand.";
+                        ? "STAGE 2: The optimizer is powered. Hit OPTIMIZE and watch it guess-and-check every dial."
+                        : "STAGE 2: Four unlabeled dials per row and column. Grab a row or a tape and tune the board by hand.";
+        }
+
+        void SetGridSize(int size)
+        {
+            for (int i = 0; i < M.Rows; i++)
+            {
+                _rowBtn[i].gameObject.SetActive(i < size);
+                if (i < size)
+                {
+                    string name = _miniTutorial ? MatrixTutorialModel.CustomerNames[i] : M.Customers[i].Name;
+                    if (_rowLabel[i] != null) _rowLabel[i].text = name;
+                    Image icon = UIFactory.FindDeep<Image>(_rowBtn[i].transform, "Icon");
+                    if (icon != null) icon.sprite = ArtSprites.CustomerPortrait(name);
+                }
+                for (int j = 0; j < M.Cols; j++)
+                    _cellBg[i, j].gameObject.SetActive(i < size && j < size);
+            }
+            for (int j = 0; j < M.Cols; j++)
+            {
+                _colBtn[j].gameObject.SetActive(j < size);
+                if (j < size && _colLabel[j] != null)
+                {
+                    string movie = _miniTutorial ? MatrixTutorialModel.MovieNames[j] : M.Movies[j].Short;
+                    _colLabel[j].text = movie.Replace(" ", "\n");
+                }
+            }
         }
 
         // ---- Stage 1: fill in the blanks ----------------------------------
         void OnCellClicked(int i, int j)
         {
-            if (_stage2 || M.Known[i, j] || _stage1Guess == null) return;
+            bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+            if (_stage2 || known || _stage1Guess == null) return;
             _pickI = i; _pickJ = j;
-            _pickerLabel.text = $"HOW WOULD\n{M.Customers[i].Name}\nRATE '{M.Movies[j].Title}'?\n\nRead their row.\nRead the tape's column.";
+            string customer = _miniTutorial ? MatrixTutorialModel.CustomerNames[i] : M.Customers[i].Name;
+            string movie = _miniTutorial ? MatrixTutorialModel.MovieNames[j] : M.Movies[j].Title;
+            _pickerLabel.text = $"HOW WOULD\n{customer}\nRATE '{movie}'?\n\nRead their row.\nRead the tape's column.";
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
@@ -364,9 +449,13 @@ namespace MadFact
             if (AudioTension.I != null) AudioTension.I.Clunk();
 
             int filled = 0, blanks = 0;
-            for (int i = 0; i < M.Rows; i++)
-                for (int j = 0; j < M.Cols; j++)
-                    if (!M.Known[i, j]) { blanks++; if (_stage1Guess[i, j] > 0) filled++; }
+            int taskSize = _miniTutorial ? 3 : M.Rows;
+            for (int i = 0; i < taskSize; i++)
+                for (int j = 0; j < taskSize; j++)
+                {
+                    bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                    if (!known) { blanks++; if (_stage1Guess[i, j] > 0) filled++; }
+                }
 
             _pickerLabel.text = filled < blanks
                 ? $"LOGGED {filled} OF {blanks}.\n\nClick the next ? cell."
@@ -378,34 +467,59 @@ namespace MadFact
         void Stage1Evaluate()
         {
             int correct = 0, blanks = 0;
-            for (int i = 0; i < M.Rows; i++)
-                for (int j = 0; j < M.Cols; j++)
+            int taskSize = _miniTutorial ? 3 : M.Rows;
+            for (int i = 0; i < taskSize; i++)
+                for (int j = 0; j < taskSize; j++)
                 {
-                    if (M.Known[i, j]) continue;
+                    bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                    if (known) continue;
                     blanks++;
-                    float truth = GameData.TrueRating(M.Customers[i], M.Movies[j]);
+                    float truth = _miniTutorial
+                        ? _tutorial.Target[i, j]
+                        : GameData.TrueRating(M.Customers[i], M.Movies[j]);
                     bool ok = Mathf.Abs(_stage1Guess[i, j] - truth) <= 0.75f;
                     if (ok) correct++;
                     _cellTarget[i, j].text = "t" + (Mathf.Round(truth * 2f) / 2f).ToString("0.0");
                     _cellGuess[i, j].color = ok ? new Color(0.33f, 0.95f, 0.40f) : Theme.ErrorRed;
                 }
 
-            if (AudioTension.I != null) { if (correct >= 3) AudioTension.I.ChaChing(); else AudioTension.I.Buzzer(); }
+            if (AudioTension.I != null) { if (correct == blanks) AudioTension.I.ChaChing(); else AudioTension.I.Buzzer(); }
+
+            if (_miniTutorial)
+            {
+                MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+                {
+                    correct == blanks
+                        ? "You found the missing rating. The row and column patterns agreed."
+                        : "That guess did not match the saved answer, but the pattern-checking method is what matters.",
+                    "Now solve the full 5 by 5 matrix using the same row-and-column clues."
+                }, BeginFullGroundTruthTask);
+                return;
+            }
 
             MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
             {
-                $"Vault copy says: {correct} of {blanks} within one star. " + (correct >= 4 ? "Sharp eyes, kid." : correct >= 2 ? "Not bad for a first shift." : "Rough — but watch what comes next."),
-                "Notice HOW you guessed: you compared ROWS. Similar customers rate similarly. That's COLLABORATIVE FILTERING, done by hand.",
-                "Now — every customer and every tape gets four hidden dials. No names, no labels. The MACHINE doesn't know what they mean — it just crunches numbers.",
-                "Your job: tune them until the board agrees with the ledger. Grab a row, drag a dial, watch the numbers. Off you go."
+                $"{correct} of {blanks} guesses were within one star. Comparing similar customers is collaborative filtering by hand.",
+                "These saved ratings are ground truth. Next, the machine will use them to learn hidden factors."
             }, () =>
             {
                 GameManager.I.Run.SetFlag(FlagStage1Done);
-                _stage2 = true;
-                _stage2StartTime = Time.unscaledTime;
-                ApplyStage();
-                RefreshGrid();
+                MadFactBootstrap.I.OnGroundTruthMatrixGoal();
             });
+        }
+
+        void BeginFullGroundTruthTask()
+        {
+            GameManager.I.Run.SetFlag(FlagGroundMiniDone);
+            _miniTutorial = false;
+            _pickI = _pickJ = -1;
+            _stage1Guess = new int[M.Rows, M.Cols];
+            Text screenTitle = UIFactory.FindDeep<Text>(_root.transform, "Title");
+            if (screenTitle != null)
+                screenTitle.text = "█ MAD-FACT MAINFRAME ░ GROUND-TRUTH RATINGS MATRIX █";
+            ApplyStage();
+            RefreshGrid();
+            _pickerLabel.text = "MAIN TASK: FILL THE LEDGER\n\nClick a ? cell on the board,\nthen give your best guess.";
         }
 
         void SelectRow(int i)
@@ -413,17 +527,18 @@ namespace MadFact
             if (!_stage2) return;
             _editingRow = true; _editIndex = i;
             HighlightSelection();
-            var u = M.U[i];
-            _editLabel.text = "CUSTOMER: " + M.Customers[i].Name + "\n(four hidden dials)";
+            var u = _miniTutorial ? _tutorial.U[i] : M.U[i];
+            string customer = _miniTutorial ? MatrixTutorialModel.CustomerNames[i] : M.Customers[i].Name;
+            _editLabel.text = "CUSTOMER: " + customer + "\n(four hidden dials)";
             LoadSliders(u);
             SetSlidersInteractable(true);
             MaybePowerOn();
             MadFactLokiLogger.Instance?.Log("collaborative_filter_entity_selected",
                 "Player selected a customer taste vector", new
                 {
-                    level_id = 4,
+                    level_id = GameManager.I.CurrentLevel,
                     entity_type = "customer",
-                    entity_id = M.Customers[i].Name
+                    entity_id = customer
                 });
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
@@ -433,17 +548,18 @@ namespace MadFact
             if (!_stage2) return;
             _editingRow = false; _editIndex = j;
             HighlightSelection();
-            var v = M.V[j];
-            _editLabel.text = "MOVIE: " + M.Movies[j].Title + "\n(four hidden dials)";
+            var v = _miniTutorial ? _tutorial.V[j] : M.V[j];
+            string movie = _miniTutorial ? MatrixTutorialModel.MovieNames[j] : M.Movies[j].Title;
+            _editLabel.text = "MOVIE: " + movie + "\n(four hidden dials)";
             LoadSliders(v);
             SetSlidersInteractable(true);
             MaybePowerOn();
             MadFactLokiLogger.Instance?.Log("collaborative_filter_entity_selected",
                 "Player selected a movie feature vector", new
                 {
-                    level_id = 4,
+                    level_id = GameManager.I.CurrentLevel,
                     entity_type = "movie",
-                    entity_id = M.Movies[j].Title
+                    entity_id = movie
                 });
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
@@ -477,9 +593,28 @@ namespace MadFact
         void OnSlider(int d, float value)
         {
             if (_suppressSliderEvents || _editIndex < 0) return;
-            float previous = _editingRow ? M.U[_editIndex][d] : M.V[_editIndex][d];
-            if (_editingRow) M.U[_editIndex][d] = value; else M.V[_editIndex][d] = value;
+            Latent vector = _miniTutorial
+                ? (_editingRow ? _tutorial.U[_editIndex] : _tutorial.V[_editIndex])
+                : (_editingRow ? M.U[_editIndex] : M.V[_editIndex]);
+            float previous = vector[d];
+            vector[d] = value;
+            if (_miniTutorial)
+            {
+                if (_editingRow) _tutorial.U[_editIndex] = vector;
+                else _tutorial.V[_editIndex] = vector;
+            }
+            else
+            {
+                if (_editingRow) M.U[_editIndex] = vector;
+                else M.V[_editIndex] = vector;
+            }
             _sliderVal[d].text = value.ToString("0.00");
+            if (_miniTutorial && !_miniDialChanged)
+            {
+                _miniDialChanged = true;
+                if (_optimizeBtn != null) _optimizeBtn.interactable = true;
+                _hint.text = "Good. Several guesses changed together. Now press TEST 3×3 OPTIMIZER.";
+            }
             // one distinct dial (this entity + this dimension) counts once no matter how
             // many OnValueChanged events the drag that touched it fired.
             _slidersSeen.Add((_editingRow ? 1000 : 0) + _editIndex * 4 + d);
@@ -495,13 +630,17 @@ namespace MadFact
                 MadFactLokiLogger.Instance?.Log("collaborative_filter_value_changed",
                     "Player changed a collaborative filtering value", new
                     {
-                        level_id = 4,
+                        level_id = GameManager.I.CurrentLevel,
                         entity_type = _editingRow ? "customer" : "movie",
-                        entity_id = _editingRow ? M.Customers[_editIndex].Name : M.Movies[_editIndex].Title,
+                        entity_id = _miniTutorial
+                            ? (_editingRow
+                                ? MatrixTutorialModel.CustomerNames[_editIndex]
+                                : MatrixTutorialModel.MovieNames[_editIndex])
+                            : (_editingRow ? M.Customers[_editIndex].Name : M.Movies[_editIndex].Title),
                         dimension = Latent.Names[d],
                         previous_value = previous,
                         new_value = value,
-                        mean_error = M.MeanError()
+                        mean_error = _miniTutorial ? _tutorial.MeanError() : M.MeanError()
                     });
             }
         }
@@ -513,7 +652,8 @@ namespace MadFact
         /// </summary>
         void MaybePowerOn()
         {
-            if (_optimizing || _stage2StartTime < 0f || GameManager.I.Run.HasFlag(FlagPowered)) return;
+            if (_miniTutorial || _optimizing || _stage2StartTime < 0f ||
+                GameManager.I.Run.HasFlag(FlagPowered)) return;
             bool longEnough = Time.unscaledTime - _stage2StartTime >= PowerOnMinSeconds;
             bool enoughSliders = _slidersSeen.Count >= PowerOnMinSliders;
             if (longEnough && enoughSliders) PowerOnBeat();
@@ -524,10 +664,10 @@ namespace MadFact
             var comms = MadFactBootstrap.I.Comms;
             comms.Show(Speaker.OldDude, new[]
             {
-                "Wait. Hold on. Kid. Have you been spinning those dials YOURSELF this whole time?",
-                "Oh no. Oh, that's my fault. I forgot to POWER ON the optimizer. The part of the machine that does the machine part.",
-                "It does exactly what you've been doing — nudge a dial, check the error, keep what helped — except a few thousand times a minute, without lunch breaks.",
-                "Flipping the big switch... NOW. Hit OPTIMIZE and watch it work. You've earned the sit-down."
+                "Wait. Have you been moving all those dials by hand?",
+                "That is my mistake. I forgot to turn on the OPTIMIZER, the part that improves the guesses.",
+                "It does the same steps you did: move a dial, check the error, and keep changes that help. It can do this very fast.",
+                "I am turning it on now. Press OPTIMIZE and watch it work."
             }, () =>
             {
                 GameManager.I.Run.SetFlag(FlagPowered);
@@ -538,12 +678,22 @@ namespace MadFact
 
         void ResetTastes()
         {
-            M.ResetCustomerTaste();
-            if (_editingRow && _editIndex >= 0) LoadSliders(M.U[_editIndex]);
+            if (_miniTutorial)
+                _tutorial.Reset();
+            else
+                M.ResetCustomerTaste();
+            if (_editIndex >= 0)
+                LoadSliders(_miniTutorial
+                    ? (_editingRow ? _tutorial.U[_editIndex] : _tutorial.V[_editIndex])
+                    : (_editingRow ? M.U[_editIndex] : M.V[_editIndex]));
             RefreshGrid();
             MadFactLokiLogger.Instance?.Log("collaborative_filter_values_reset",
                 "Player reset collaborative filtering customer values",
-                new { level_id = 4, mean_error = M.MeanError() });
+                new
+                {
+                    level_id = GameManager.I.CurrentLevel,
+                    mean_error = _miniTutorial ? _tutorial.MeanError() : M.MeanError()
+                });
             if (AudioTension.I != null) AudioTension.I.Whir();
         }
 
@@ -553,15 +703,18 @@ namespace MadFact
             // guesses, no error glow, no audio tension. The machine hasn't started.
             if (!_stage2)
             {
-                for (int i = 0; i < M.Rows; i++)
-                    for (int j = 0; j < M.Cols; j++)
+                int taskSize = _miniTutorial ? 3 : M.Rows;
+                for (int i = 0; i < taskSize; i++)
+                    for (int j = 0; j < taskSize; j++)
                     {
                         _cellGlow[i, j].color = Color.clear;
                         _cellBg[i, j].color = Theme.CrtBgSoft;
-                        if (M.Known[i, j])
+                        bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                        if (known)
                         {
                             _cellTarget[i, j].text = "";
-                            _cellGuess[i, j].text = M.Target[i, j].ToString("0.0");
+                            float target = _miniTutorial ? _tutorial.Target[i, j] : M.Target[i, j];
+                            _cellGuess[i, j].text = target.ToString("0.0");
                             _cellGuess[i, j].color = Theme.CrtGreen;
                         }
                         else
@@ -575,13 +728,15 @@ namespace MadFact
                 return;
             }
 
-            for (int i = 0; i < M.Rows; i++)
-                for (int j = 0; j < M.Cols; j++)
+            int activeSize = _miniTutorial ? 3 : M.Rows;
+            for (int i = 0; i < activeSize; i++)
+                for (int j = 0; j < activeSize; j++)
                 {
-                    float g = M.Guess(i, j);
-                    if (M.Known[i, j])
+                    float g = _miniTutorial ? _tutorial.Guess(i, j) : M.Guess(i, j);
+                    bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                    if (known)
                     {
-                        float t = M.Target[i, j];
+                        float t = _miniTutorial ? _tutorial.Target[i, j] : M.Target[i, j];
                         float err = Mathf.Abs(t - g);
                         _cellTarget[i, j].text = "t" + t.ToString("0.0");
                         _cellGuess[i, j].text = g.ToString("0.0");
@@ -592,20 +747,21 @@ namespace MadFact
                     }
                     else
                     {
-                        _cellTarget[i, j].text = _revealed ? "pred" : "—";
+                        _cellTarget[i, j].text = _revealed ? "pred" : "?";
                         _cellGuess[i, j].text = _revealed ? g.ToString("0.0") : "?";
                         _cellGuess[i, j].color = _revealed ? new Color(0.5f, 0.9f, 1f) : Theme.CrtGreenDim;
                         _cellGlow[i, j].color = new Color(0.4f, 0.8f, 1f, _revealed ? 0.25f : 0f);
                         _cellBg[i, j].color = Theme.CrtBgSoft;
                     }
                 }
-            UpdateLossAndAudio();
+            if (_miniTutorial)
+                UpdateLossAndAudio(_tutorial.MeanError(), _tutorial.WorstError());
+            else
+                UpdateLossAndAudio(M.MeanError(), M.WorstError());
         }
 
-        void UpdateLossAndAudio()
+        void UpdateLossAndAudio(float mean, float worst)
         {
-            float mean = M.MeanError();
-            float worst = M.WorstError();
             float tension = 0.5f * mean + 0.5f * worst;
             if (AudioTension.I != null) AudioTension.I.SetError(tension);
 
@@ -627,10 +783,68 @@ namespace MadFact
         void RunOptimizer()
         {
             if (_optimizing) return;
+            if (_miniTutorial)
+            {
+                StartCoroutine(RunMiniOptimizer());
+                return;
+            }
             MadFactLokiLogger.Instance?.Log("optimizer_started",
                 "Player started the collaborative filtering optimizer",
-                new { level_id = 4, initial_mean_error = M.MeanError() });
+                new { level_id = GameManager.I.CurrentLevel, initial_mean_error = M.MeanError() });
             StartCoroutine(OptimizeRoutine());
+        }
+
+        IEnumerator RunMiniOptimizer()
+        {
+            _optimizing = true;
+            _optimizeBtn.interactable = false;
+            _resetBtn.interactable = false;
+            SetSlidersInteractable(false);
+            float initialError = _tutorial.MeanError();
+            _hint.text = $"3×3 OPTIMIZER: Starting error {initialError:0.00}. Guessing and checking...";
+            if (AudioTension.I != null) AudioTension.I.Whir();
+
+            for (int step = 0; step < 80; step++)
+            {
+                _tutorial.StepGradient(0.004f);
+                RefreshGrid();
+                if (step % 8 == 0)
+                    _hint.text = $"3×3 OPTIMIZER: Step {step + 1} of 80 · error {_tutorial.MeanError():0.00}";
+                yield return new WaitForSecondsRealtime(0.025f);
+            }
+
+            float finalError = _tutorial.MeanError();
+            _revealed = true;
+            RefreshGrid();
+            _optimizing = false;
+            if (AudioTension.I != null) { AudioTension.I.Silence(); AudioTension.I.Clunk(); }
+            MadFactLokiLogger.Instance?.Log("matrix_3x3_tutorial_completed",
+                "Player completed the 3 by 3 matrix factorization tutorial",
+                new { level_id = 5, initial_mean_error = initialError, final_mean_error = finalError });
+
+            MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+            {
+                $"The 3 by 3 optimizer lowered its error from {initialError:0.00} to {finalError:0.00}.",
+                "Now explore the full 5 by 5 matrix before powering its optimizer."
+            }, BeginFullFactorizationTask);
+        }
+
+        void BeginFullFactorizationTask()
+        {
+            GameManager.I.Run.SetFlag(FlagFactorMiniDone);
+            _miniTutorial = false;
+            _miniDialChanged = false;
+            _revealed = false;
+            _slidersSeen.Clear();
+            _stage2StartTime = Time.unscaledTime;
+            M.ResetCustomerTaste();
+            Deselect();
+            Text screenTitle = UIFactory.FindDeep<Text>(_root.transform, "Title");
+            if (screenTitle != null)
+                screenTitle.text = "█ MAD-FACT MAINFRAME ░ MATRIX FACTORIZATION ENGINE █";
+            _resetBtn.interactable = true;
+            ApplyStage();
+            RefreshGrid();
         }
 
         IEnumerator OptimizeRoutine()
@@ -654,7 +868,7 @@ namespace MadFact
                 HighlightSelection();
                 string focus = onRow ? M.Customers[idx].Name : M.Movies[idx].Short;
                 _editLabel.text = (onRow ? "CUSTOMER: " : "TAPE: ") + focus + "\n(machine at the dials)";
-                _hint.text = $"MACHINE: {verbs[p % verbs.Length]} {focus}'s dials — guess, check, keep what helps.  ERROR {M.MeanError():0.00}";
+                _hint.text = $"MACHINE: {verbs[p % verbs.Length]} {focus}'s dials. Guess, check, and keep what helps. ERROR {M.MeanError():0.00}";
 
                 for (int s = 0; s < stepsPerPass; s++)
                 {
@@ -690,7 +904,7 @@ namespace MadFact
             _resetBtn.interactable = true;
             MadFactLokiLogger.Instance?.Log("optimizer_completed",
                 "Collaborative filtering optimizer completed",
-                new { level_id = 4, final_mean_error = M.MeanError(), payout });
+                new { level_id = GameManager.I.CurrentLevel, final_mean_error = M.MeanError(), payout });
 
             yield return ObservationPause(12f);
 
@@ -715,7 +929,7 @@ namespace MadFact
                 PopularityBiasScene(() =>
                 {
                     GrowMainframePayout(payout, "Still climbing.");
-                    StartCoroutine(FinishLevel4Goal());
+                    StartCoroutine(FinishMatrixFactorizationGoal());
                 });
             }
             else _optimizeBtn.interactable = true;
@@ -727,11 +941,11 @@ namespace MadFact
         /// a scene that isn't about it — with an observation window first so the last
         /// payout is actually read before the hint bar changes underneath it.
         /// </summary>
-        IEnumerator FinishLevel4Goal()
+        IEnumerator FinishMatrixFactorizationGoal()
         {
             yield return ObservationPause(10f);
             HighlightUnderserved();
-            MadFactBootstrap.I.OnLevel4Goal();
+            MadFactBootstrap.I.OnMatrixFactorizationGoal();
         }
 
         /// <summary>
@@ -744,7 +958,7 @@ namespace MadFact
         {
             float firstLeg = Mathf.Min(promptAfter, totalSeconds);
             yield return new WaitForSecondsRealtime(firstLeg);
-            _hint.text = "Take a moment — check your MONEY and TRUST above.";
+            _hint.text = "Take a moment. Check your MONEY and TRUST above.";
             float remaining = totalSeconds - firstLeg;
             if (remaining > 0f) yield return new WaitForSecondsRealtime(remaining);
         }
@@ -762,17 +976,17 @@ namespace MadFact
 
             comms.ShowNamed("INDIE IRIS  (independent filmmaker)", "INCOMING COMPLAINT", iris, new[]
             {
-                "Hey! Basement guy! Your machine only recommends the big blockbuster to EVERYONE now!",
-                "I made 'QUASAR RUN' with two lamps and a borrowed camera, and it's GOOD.",
-                "But nobody rates what nobody's shown, and nobody's shown what nobody rates. See the problem?!"
+                "Hey! Your machine now recommends the same big movie to EVERYONE!",
+                "I made 'QUASAR RUN' with two lamps and a borrowed camera, and it is GOOD.",
+                "No one can rate my movie if the system never shows it. The system will not show it because it has few ratings. See the loop?"
             }, () => comms.Show(Speaker.OldDude, new[]
             {
-                "She's got a point, kid. Look at the board — the tape with the most ratings wins every column.",
-                "Quick — tell me WHY the crowd's math piles onto the big hit."
+                "She is right. Look at the board: the tape with the most ratings wins in every column.",
+                "Why does the system keep choosing the movie that is already popular?"
             }, () => comms.AskChoice(Speaker.OldDude,
                 "QUIZ: 'STAR DRIFTER' tops every list and 'QUASAR RUN' never gets shown. Why?", new[]
             {
-                "Popular tapes have the most ratings, so the math is most confident about them",
+                "Popular tapes have more ratings, so the system is more sure about them",
                 "The mainframe reads each movie's budget and always favors the expensive ones",
                 "Small movies always get worse ratings, so hiding them is correct behavior"
             }, pick =>
@@ -780,17 +994,17 @@ namespace MadFact
                 string[] verdict = pick == 0
                     ? new[]
                     {
-                        "Exactly. The crowd's data is thickest around what's already popular.",
-                        "More recommendations, more rentals, more ratings — the loop feeds itself.",
-                        "That's POPULARITY BIAS. The little tapes never get the EXPOSURE to prove themselves.",
-                        "Remember Iris. A fair system has to spend some recommendations on the long shots."
+                        "Exactly. Popular movies have the most data.",
+                        "More picks lead to more rentals and more ratings. The loop keeps growing.",
+                        "That is POPULARITY BIAS. It means popular choices get an unfair head start.",
+                        "A fair system should also show some less-known movies so they get a chance."
                     }
                     : new[]
                     {
-                        "Nope. The machine doesn't know budgets, and 'QUASAR RUN' is terrific.",
-                        "It's the DATA: popular tapes have the most ratings, so the math is surest about them.",
-                        "Sure bets get recommended, get rented, get rated — the loop feeds itself. POPULARITY BIAS.",
-                        "The little tapes never get the EXPOSURE to prove themselves. Remember Iris."
+                        "Not quite. The machine does not know each movie's budget.",
+                        "The problem is the DATA. Popular tapes have more ratings, so the system is more sure about them.",
+                        "Those tapes get picked, rented, and rated again. This loop is called POPULARITY BIAS.",
+                        "Less-known movies need to be shown before they can earn ratings."
                     };
                 comms.Show(Speaker.OldDude, verdict, then);
             })));

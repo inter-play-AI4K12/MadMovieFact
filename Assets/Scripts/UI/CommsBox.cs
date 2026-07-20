@@ -19,11 +19,12 @@ namespace MadFact
         [SerializeField] Image _titleBar;
         [SerializeField] Text _titleText;
         [SerializeField] Button _next;
-        [SerializeField] Image _nextIcon;
         [SerializeField] Text _nextLabel;
-        Button _skip;
+        [SerializeField] Button _skip;
+        DialogueFocus _focus;
 
         readonly Queue<string> _queue = new Queue<string>();
+        readonly Queue<RectTransform> _focusTargets = new Queue<RectTransform>();
         Speaker _speaker;
         Action _onComplete;
         string _full = "";
@@ -33,11 +34,25 @@ namespace MadFact
 
         static Sprite _oldDude, _robot, _sysIcon;
 
+        public bool IsShowing => gameObject.activeSelf;
+
         void Awake()
         {
-            if (_next == null) return;
-            _next.onClick.RemoveAllListeners();
-            _next.onClick.AddListener(Advance);
+            EnsureDragHandle();
+            EnsureFocus();
+            if (_next == null) _next = UIFactory.FindDeep<Button>(transform, "Next");
+            if (_skip == null) _skip = UIFactory.FindDeep<Button>(transform, "Skip");
+            if (_next != null)
+            {
+                if (_nextLabel == null) _nextLabel = _next.GetComponentInChildren<Text>(true);
+                _next.onClick.RemoveAllListeners();
+                _next.onClick.AddListener(Advance);
+            }
+            if (_skip != null)
+            {
+                _skip.onClick.RemoveAllListeners();
+                _skip.onClick.AddListener(SkipAll);
+            }
             var clicker = GetComponent<Button>();
             if (clicker != null)
             {
@@ -55,6 +70,7 @@ namespace MadFact
             rt.sizeDelta = new Vector2(820, 188);
             rt.anchoredPosition = new Vector2(0, 16);
 
+            root.gameObject.AddComponent<DialogueFocus>();
             var cb = root.gameObject.AddComponent<CommsBox>();
             cb.Build(root.transform);
             root.gameObject.SetActive(false);
@@ -74,6 +90,7 @@ namespace MadFact
             var reel = UIFactory.Image(_titleBar.transform, "Reel", Color.white, ArtSprites.FilmReel(), Image.Type.Simple, false);
             reel.preserveAspect = true;
             UIFactory.Place(UIFactory.RT(reel.gameObject), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(22, 22), new Vector2(7, 0));
+            EnsureDragHandle();
 
             // portrait frame (sunken)
             var pf = UIFactory.Bevel(root, "PortraitFrame", Theme.FaceDark, sunken: true);
@@ -91,7 +108,6 @@ namespace MadFact
 
             _next = UIFactory.Button(root, "Next", "NEXT", Advance, Theme.Face, 14);
             UIFactory.Place(UIFactory.RT(_next.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(124, 34), new Vector2(-16, 14));
-            _nextIcon = UIFactory.ButtonIcon(_next, ArtSprites.Next(), 20f);
             _nextLabel = _next.GetComponentInChildren<Text>();
 
             // "I wanted to skip" — a visible escape hatch that dumps the rest of the
@@ -106,14 +122,67 @@ namespace MadFact
             clicker.onClick.AddListener(OnBoxClick);
         }
 
-        public void Show(Speaker who, string[] lines, Action onComplete = null)
+        void EnsureDragHandle()
         {
+            RectTransform target = (RectTransform)transform;
+
+            // The opaque window body is the dependable fallback hit target. Buttons
+            // and choice controls remain above it in the raycast order.
+            var windowDrag = GetComponent<CommsDragHandle>();
+            if (windowDrag == null) windowDrag = gameObject.AddComponent<CommsDragHandle>();
+            windowDrag.Target = target;
+
+            if (_titleBar != null)
+            {
+                var titleDrag = _titleBar.GetComponent<CommsDragHandle>();
+                if (titleDrag == null) titleDrag = _titleBar.gameObject.AddComponent<CommsDragHandle>();
+                titleDrag.Target = target;
+            }
+        }
+
+        void EnsureFocus()
+        {
+            _focus = GetComponent<DialogueFocus>();
+            if (_focus == null) _focus = gameObject.AddComponent<DialogueFocus>();
+        }
+
+        public void Show(Speaker who, string[] lines, Action onComplete = null)
+            => ShowInternal(who, lines, null, onComplete);
+
+        /// <summary>
+        /// Shows dialogue while spotlighting one UI target. The target tracks layout
+        /// changes and remains focused for every line in this dialogue.
+        /// </summary>
+        public void ShowFocused(Speaker who, RectTransform target, string[] lines, Action onComplete = null)
+        {
+            var targets = new RectTransform[lines.Length];
+            for (int i = 0; i < targets.Length; i++) targets[i] = target;
+            ShowInternal(who, lines, targets, onComplete);
+        }
+
+        /// <summary>
+        /// Shows dialogue with one focus target per line. A null entry deliberately
+        /// clears the spotlight for that line.
+        /// </summary>
+        public void ShowFocused(Speaker who, string[] lines, RectTransform[] targets, Action onComplete = null)
+            => ShowInternal(who, lines, targets, onComplete);
+
+        void ShowInternal(Speaker who, string[] lines, RectTransform[] targets, Action onComplete)
+        {
+            EnsureFocus();
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             _speaker = who;
             _onComplete = onComplete;
             _queue.Clear();
+            _focusTargets.Clear();
+            if (_skip != null) _skip.gameObject.SetActive(true);
             foreach (var l in lines) _queue.Enqueue(l);
+            if (targets != null)
+                for (int i = 0; i < lines.Length; i++)
+                    _focusTargets.Enqueue(i < targets.Length ? targets[i] : null);
+            else
+                _focus.Clear();
 
             switch (who)
             {
@@ -145,6 +214,9 @@ namespace MadFact
 
         public void ShowCustomer(CustomerData customer, string[] lines, Action onComplete = null)
         {
+            EnsureFocus();
+            _focus.Clear();
+            _focusTargets.Clear();
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             _speaker = Speaker.System;
@@ -166,6 +238,9 @@ namespace MadFact
         /// <summary>Dialogue from a one-off narrative figure (data broker, filmmaker, angry parent...).</summary>
         public void ShowNamed(string displayName, string titleBar, Sprite portrait, string[] lines, Action onComplete = null)
         {
+            EnsureFocus();
+            _focus.Clear();
+            _focusTargets.Clear();
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             _speaker = Speaker.System;
@@ -283,7 +358,12 @@ namespace MadFact
             _onComplete?.Invoke();
         }
 
-        public void Hide() { gameObject.SetActive(false); }
+        public void Hide()
+        {
+            if (_focus != null) _focus.Clear();
+            _focusTargets.Clear();
+            gameObject.SetActive(false);
+        }
 
         void NextLine()
         {
@@ -291,13 +371,19 @@ namespace MadFact
             _body.color = Theme.TitleText;
             if (_queue.Count == 0) { Hide(); _onComplete?.Invoke(); return; }
             _full = _queue.Dequeue();
+            if (_focusTargets.Count > 0)
+            {
+                EnsureFocus();
+                _focus.Focus(_focusTargets.Dequeue());
+            }
+            else if (_focus != null)
+                _focus.Clear();
             _revealed = 0f;
             _typing = !_instant;
             _body.text = _instant ? _full : "";
             if (_instant) _body.text = _full;
             bool done = _queue.Count == 0;
             _nextLabel.text = done ? "DONE" : "NEXT";
-            _nextIcon.sprite = done ? ArtSprites.Stop() : ArtSprites.Next();
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
@@ -412,4 +498,5 @@ namespace MadFact
             return _sysIcon;
         }
     }
+
 }

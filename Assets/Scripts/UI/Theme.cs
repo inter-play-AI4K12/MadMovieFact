@@ -231,6 +231,12 @@ namespace MadFact
 
         static Font LoadOS(string[] names)
         {
+#if UNITY_WEBGL
+            // Browsers do not expose OS font files to Unity. Referencing
+            // CreateDynamicFontFromOSFont in a WebGL player makes the build fail with
+            // "Need to include font data on WebGL", so use Unity's bundled font.
+            return Fallback;
+#else
             try
             {
                 // A larger source size gives Unity's dynamic atlas enough detail for
@@ -240,6 +246,7 @@ namespace MadFact
             }
             catch { /* headless / font unavailable */ }
             return Fallback;
+#endif
         }
     }
 }

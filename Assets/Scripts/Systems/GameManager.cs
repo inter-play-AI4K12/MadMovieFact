@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MadFact
 {
-    public enum Phase { Boot, Storefront, Level1, Level2, Level3, Level4, Level5, Win }
+    public enum Phase { Boot, Storefront, Level1, Level2, Level3, Level4, Level5, Level6, Win }
 
     /// <summary>Central game state: money, current phase, the shared matrix model.</summary>
     public class GameManager : MonoBehaviour
@@ -15,6 +15,8 @@ namespace MadFact
         public MfModel Matrix { get; private set; }
         public RunState Run { get; private set; }
         public bool HasActiveRun { get; private set; }
+        public bool CanContinue { get; private set; }
+        public int CurrentLevel { get; private set; }
 
         // The money balance at the moment the player most recently opened the current
         // level. Bankruptcy restarts the level by rolling Money back to this baseline
@@ -103,6 +105,8 @@ namespace MadFact
             Run = new RunState();
             HighestUnlocked = 1;
             HasActiveRun = true;
+            CanContinue = false;
+            CurrentLevel = 0;
             Trust = StartTrust;
             OnMoneyChanged?.Invoke(Money, 0);
             OnTrustChanged?.Invoke(Trust, 0);
@@ -115,20 +119,50 @@ namespace MadFact
         /// </summary>
         public void PrepareStandaloneLevel(int level)
         {
+            level = Mathf.Clamp(level, 1, 6);
             if (HasActiveRun)
             {
-                HighestUnlocked = Mathf.Max(HighestUnlocked, Mathf.Clamp(level, 1, 5));
+                HighestUnlocked = Mathf.Max(HighestUnlocked, level);
+                CurrentLevel = level;
+                CanContinue = true;
                 return;
             }
 
             Money = level <= 1 ? 0 : level == 2 ? Level1Goal : Level2Goal;
             Matrix = new MfModel();
             Run = new RunState();
-            HighestUnlocked = Mathf.Clamp(level, 1, 5);
+            HighestUnlocked = level;
             HasActiveRun = true;
+            CurrentLevel = level;
+            CanContinue = true;
             Trust = StartTrust;
             OnMoneyChanged?.Invoke(Money, 0);
             OnTrustChanged?.Invoke(Trust, 0);
+        }
+
+        /// <summary>Dismiss the current run and seed a clean run at the selected level.</summary>
+        public void StartNewAtLevel(int level)
+        {
+            level = Mathf.Clamp(level, 1, 6);
+            Money = level <= 1 ? 0 : level == 2 ? Level1Goal : Level2Goal;
+            Current = Phase.Boot;
+            Matrix = new MfModel();
+            Run = new RunState();
+            HighestUnlocked = level;
+            HasActiveRun = true;
+            CanContinue = true;
+            CurrentLevel = level;
+            Trust = StartTrust;
+            OnMoneyChanged?.Invoke(Money, 0);
+            OnTrustChanged?.Invoke(Trust, 0);
+            OnPhaseChanged?.Invoke(Current);
+        }
+
+        public void MarkLevelCompleted(int level)
+        {
+            HighestUnlocked = Mathf.Max(HighestUnlocked, Mathf.Clamp(level + 1, 1, 6));
+            CurrentLevel = 0;
+            CanContinue = false;
         }
 
         public void SetMoney(int value)
@@ -187,6 +221,7 @@ namespace MadFact
             if (p == Phase.Level3) HighestUnlocked = Mathf.Max(HighestUnlocked, 3);
             if (p == Phase.Level4) HighestUnlocked = Mathf.Max(HighestUnlocked, 4);
             if (p == Phase.Level5) HighestUnlocked = Mathf.Max(HighestUnlocked, 5);
+            if (p == Phase.Level6) HighestUnlocked = Mathf.Max(HighestUnlocked, 6);
             OnPhaseChanged?.Invoke(p);
         }
 
@@ -194,5 +229,6 @@ namespace MadFact
         public bool Level3Unlocked => Money >= Level2Goal || HighestUnlocked >= 3;
         public bool Level4Unlocked => HighestUnlocked >= 4;
         public bool Level5Unlocked => HighestUnlocked >= 5;
+        public bool Level6Unlocked => HighestUnlocked >= 6;
     }
 }

@@ -8,6 +8,10 @@ namespace MadFact.Telemetry
     public sealed class MadFactSessionManager : MonoBehaviour
     {
         const string AnonymousParticipantKey = "madfact.anonymous_participant_id";
+        const string SavedDisplayNameKey = "madfact.profile.display_name";
+        const string SavedParticipantIdKey = "madfact.profile.participant_id";
+        const string SavedConsentKey = "madfact.profile.logging_consent";
+        const string SavedProfileKey = "madfact.profile.saved";
         static readonly Regex SafeParticipantId = new Regex(
             "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
             RegexOptions.CultureInvariant);
@@ -15,6 +19,7 @@ namespace MadFact.Telemetry
         public static MadFactSessionManager Instance { get; private set; }
         public bool HasActiveSession => CurrentSession != null;
         public ParticipantSession CurrentSession { get; private set; }
+        public static bool HasSavedProfile => PlayerPrefs.GetInt(SavedProfileKey, 0) == 1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Bootstrap()
@@ -73,6 +78,47 @@ namespace MadFact.Telemetry
             if (!HasActiveSession || !CurrentSession.logging_consent) return;
             CurrentSession.logging_consent = false;
             MadFactLokiLogger.Instance?.StopRemoteLoggingAndClearQueue();
+        }
+
+        public static void SaveProfile(string displayName, string participantId, bool consent)
+        {
+            PlayerPrefs.SetString(SavedDisplayNameKey, (displayName ?? string.Empty).Trim());
+            PlayerPrefs.SetString(SavedParticipantIdKey, (participantId ?? string.Empty).Trim());
+            PlayerPrefs.SetInt(SavedConsentKey, consent ? 1 : 0);
+            PlayerPrefs.SetInt(SavedProfileKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        public static void LoadSavedProfile(out string displayName, out string participantId,
+            out bool consent)
+        {
+            displayName = PlayerPrefs.GetString(SavedDisplayNameKey, string.Empty);
+            participantId = PlayerPrefs.GetString(SavedParticipantIdKey, string.Empty);
+            consent = PlayerPrefs.GetInt(SavedConsentKey, 0) == 1;
+        }
+
+        public bool TryStartSavedSession()
+        {
+            if (HasActiveSession) return true;
+            if (!HasSavedProfile) return false;
+            LoadSavedProfile(out string displayName, out string participantId, out bool consent);
+            if (Validate(displayName, participantId, consent) != null) return false;
+            StartSession(displayName, participantId, consent);
+            MadFactLokiLogger.Instance?.Log(
+                "session_started",
+                "Participant session started",
+                new { anonymous_participant = string.IsNullOrEmpty(participantId) });
+            return true;
+        }
+
+        public void ApplySavedProfileToSession()
+        {
+            if (!HasActiveSession || !HasSavedProfile) return;
+            LoadSavedProfile(out string displayName, out string participantId, out bool consent);
+            CurrentSession.display_name = displayName;
+            if (!string.IsNullOrEmpty(participantId)) CurrentSession.participant_id = participantId;
+            CurrentSession.logging_consent = consent;
+            if (!consent) MadFactLokiLogger.Instance?.StopRemoteLoggingAndClearQueue();
         }
 
         public long SessionDurationMilliseconds()
