@@ -37,7 +37,7 @@ The menu also provides direct access to the storefront and every level for devel
 ## Create and serve a web build
 
 The reusable exporter builds every enabled scene in Build Settings and creates both a deployable
-folder and a ZIP archive:
+folder and a ZIP archive. Unity is required only on the computer that creates the build:
 
 ```bash
 ./scripts/build-web.sh
@@ -48,8 +48,9 @@ use **MadFact → Build → WebGL Export** from Unity's menu instead; both route
 
 The outputs are:
 
-- `Builds/WebGL/` — the folder to deploy to a static web host.
-- `Builds/MadMovieFact-WebGL.zip` — the same export packaged for sharing or uploading.
+- `Builds/WebGL/` — the folder to deploy or run locally.
+- `Builds/MadMovieFact-WebGL.zip` — a shareable copy that includes local launchers and the
+  telemetry relay.
 
 Build outputs and logs are intentionally ignored by Git. If Unity is installed outside the default
 Unity Hub location, provide its executable explicitly:
@@ -58,14 +59,48 @@ Unity Hub location, provide its executable explicitly:
 UNITY_PATH="/path/to/Unity" ./scripts/build-web.sh
 ```
 
-To test the latest export locally with Unity's compression-aware web server:
+Before serving a telemetry-enabled build, create the ignored project-root `.env`:
+
+```text
+LOKI_USER=beetrap
+LOKI_PASSWORD=your_password_here
+```
+
+Then serve the latest export:
 
 ```bash
 ./scripts/serve-web.sh
 ```
 
-Then open <http://localhost:8080/>. Set a different port when needed, for example
+The launcher serves Unity's compressed files and exposes a same-origin `/api/telemetry` relay.
+The password stays in the local server process; it is never compiled into or returned to the
+WebGL client. Open <http://localhost:8080/> on the host, or use the host machine's LAN address,
+such as `http://192.168.1.20:8080/`, from another device. Set a different port when needed with
 `PORT=9000 ./scripts/serve-web.sh`, and press `Ctrl+C` to stop the server.
+
+On a Windows computer without Unity, extract `MadMovieFact-WebGL.zip`, open the resulting `WebGL`
+folder, and double-click `serve-web.cmd`. The launcher starts a local compression-aware server and
+opens the game in the default browser. Copy `.env.example` to `.env` beside the launcher and set
+`LOKI_PASSWORD` to enable server logging. It uses only Windows PowerShell; Unity, Python, Node.js,
+and administrator access are not required.
+
+From Command Prompt inside the extracted `WebGL` folder, the same launcher can be started with:
+
+```bat
+serve-web.cmd
+```
+
+To use a different port in Command Prompt:
+
+```bat
+set PORT=9000
+serve-web.cmd
+```
+
+The launcher handles the local PowerShell execution-policy override. Keep `serve-web.cmd`,
+`serve-web.ps1`, `.env`, `index.html`, and the build folders together after extraction. Never
+upload or share the populated `.env`. In a development checkout, use `scripts\serve-web.cmd`
+from the project root instead.
 
 ## Playing an individual level
 

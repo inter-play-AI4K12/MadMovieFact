@@ -3,16 +3,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-UNITY_VERSION="$(awk '/m_EditorVersion:/ { print $2; exit }' "$PROJECT_ROOT/ProjectSettings/ProjectVersion.txt")"
-DEFAULT_UNITY_PATH="/Applications/Unity/Hub/Editor/$UNITY_VERSION/Unity.app/Contents/MacOS/Unity"
-UNITY_EXECUTABLE="${UNITY_PATH:-$DEFAULT_UNITY_PATH}"
-EDITOR_ROOT="$(cd "$(dirname "$UNITY_EXECUTABLE")/../../.." 2>/dev/null && pwd || true)"
-MONO_EXECUTABLE="$EDITOR_ROOT/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/bin/mono"
-SERVER_EXECUTABLE="$EDITOR_ROOT/PlaybackEngines/WebGLSupport/BuildTools/SimpleWebServer.exe"
-BUILD_DIRECTORY="$PROJECT_ROOT/Builds/WebGL"
 PORT="${PORT:-8080}"
-URL="http://localhost:$PORT/"
+HOST="${HOST:-0.0.0.0}"
+
+if [[ -f "$SCRIPT_DIR/index.html" ]]; then
+    BUILD_DIRECTORY="$SCRIPT_DIR"
+    SERVER_SCRIPT="$SCRIPT_DIR/serve_web.py"
+else
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    BUILD_DIRECTORY="$PROJECT_ROOT/Builds/WebGL"
+    SERVER_SCRIPT="$SCRIPT_DIR/serve_web.py"
+fi
 
 if [[ ! -f "$BUILD_DIRECTORY/index.html" ]]; then
     echo "No WebGL export was found at $BUILD_DIRECTORY."
@@ -20,12 +21,12 @@ if [[ ! -f "$BUILD_DIRECTORY/index.html" ]]; then
     exit 1
 fi
 
-if [[ ! -x "$MONO_EXECUTABLE" || ! -f "$SERVER_EXECUTABLE" ]]; then
-    echo "Unity's WebGL server was not found for Unity $UNITY_VERSION."
-    echo "Check UNITY_PATH and confirm WebGL Build Support is installed."
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Python 3 is required to run the local WebGL telemetry relay."
     exit 1
 fi
 
-echo "Serving MadMovieFact at $URL"
-echo "Press Ctrl+C to stop."
-exec "$MONO_EXECUTABLE" "$SERVER_EXECUTABLE" "$BUILD_DIRECTORY" "$URL"
+exec python3 "$SERVER_SCRIPT" \
+    --host "$HOST" \
+    --port "$PORT" \
+    --directory "$BUILD_DIRECTORY"

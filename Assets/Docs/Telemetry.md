@@ -38,6 +38,27 @@ store it in `PlayerPrefs`. Production clients should obtain a short-lived runtim
 credential through the deployment platform; a long-lived Loki password embedded in a
 client build can always be extracted.
 
+## Local WebGL configuration
+
+WebGL cannot safely read a process environment variable, and browsers cannot post directly
+to the authenticated Loki endpoint because its CORS preflight is rejected. The supplied web
+launchers therefore serve two things from the same local origin:
+
+- the static Unity WebGL files;
+- `/api/telemetry`, a small relay that validates game payloads and forwards them to Loki.
+
+Create an ignored `.env` at the project root before using `./scripts/serve-web.sh`. For a
+distributed Windows ZIP, copy `.env.example` to `.env` beside `serve-web.cmd`:
+
+```text
+LOKI_USER=beetrap
+LOKI_PASSWORD=your_password_here
+```
+
+The browser never receives this password. Other devices on the same network can open the
+host machine's LAN URL, for example `http://192.168.1.20:8080/`, and their telemetry will
+travel back through that host machine's relay.
+
 ## Event shape
 
 Loki labels are deliberately limited to `app="madfact"` and `source="unity"`.

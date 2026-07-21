@@ -90,6 +90,16 @@ namespace MadFact.Tests
             Assert.That(MadFactTelemetryConfig.IsRetryableStatus(status), Is.EqualTo(expected));
         }
 
+        [TestCase("http://localhost:8080/", "http://localhost:8080/api/telemetry")]
+        [TestCase("http://192.168.1.20:9000/index.html",
+            "http://192.168.1.20:9000/api/telemetry")]
+        [TestCase("https://example.test/games/madfact/", "https://example.test/api/telemetry")]
+        public void WebGlRelayUsesThePageOrigin(string pageUrl, string expected)
+        {
+            Assert.That(MadFactTelemetryConfig.BuildWebGlRelayEndpoint(pageUrl),
+                Is.EqualTo(expected));
+        }
+
         [Test]
         public void NoSessionMeansNoRemoteQueue()
         {

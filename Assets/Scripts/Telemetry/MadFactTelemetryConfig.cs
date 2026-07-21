@@ -7,11 +7,41 @@ namespace MadFact.Telemetry
 {
     public static class MadFactTelemetryConfig
     {
-        public const string Endpoint = "https://loki-madfact.interplaylab.io/loki/api/v1/push";
+        public const string DirectLokiEndpoint =
+            "https://loki-madfact.interplaylab.io/loki/api/v1/push";
+        public const string WebGlRelayPath = "/api/telemetry";
         public const string Username = "beetrap";
         public const int QueueCapacity = 500;
         public const int RequestTimeoutSeconds = 10;
         public const int MaxRetryCount = 4;
+
+        /// <summary>
+        /// Browser builds send to the same origin that served the game. The local web
+        /// launcher owns the Loki credential and forwards the request, avoiding both
+        /// credential exposure in the WebGL files and Loki's browser CORS restriction.
+        /// </summary>
+        public static bool UsesWebGlRelay
+        {
+            get
+            {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static string Endpoint => UsesWebGlRelay
+            ? BuildWebGlRelayEndpoint(Application.absoluteURL)
+            : DirectLokiEndpoint;
+
+        public static string BuildWebGlRelayEndpoint(string pageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(pageUrl)) return WebGlRelayPath;
+            if (!Uri.TryCreate(pageUrl, UriKind.Absolute, out Uri page)) return WebGlRelayPath;
+            return new Uri(page, WebGlRelayPath).AbsoluteUri;
+        }
 
         [Serializable]
         sealed class LocalSecrets
@@ -29,6 +59,10 @@ namespace MadFact.Telemetry
         /// </summary>
         public static string ResolvePassword()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Browser clients never receive the Loki credential. The local relay reads it.
+            return null;
+#else
             string value = Environment.GetEnvironmentVariable("LOKI_PASSWORD");
             if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
 
@@ -52,6 +86,7 @@ namespace MadFact.Telemetry
                     exception.GetType().Name);
                 return null;
             }
+#endif
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

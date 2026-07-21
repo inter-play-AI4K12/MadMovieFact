@@ -16,6 +16,9 @@
 .vs/
 .idea/
 .vscode/
+.playwright-cli/
+__pycache__/
+*.py[cod]
 *.csproj
 *.unityproj
 *.sln

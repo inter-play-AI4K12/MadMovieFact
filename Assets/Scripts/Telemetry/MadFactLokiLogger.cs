@@ -28,7 +28,8 @@ namespace MadFact.Telemetry
         bool _warnedMissingCredentials;
 
         public int QueuedEventCount => _queue.Count;
-        public bool HasRuntimeCredentials => !string.IsNullOrEmpty(_password);
+        public bool HasRuntimeCredentials =>
+            MadFactTelemetryConfig.UsesWebGlRelay || !string.IsNullOrEmpty(_password);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Bootstrap()
@@ -142,9 +143,12 @@ namespace MadFact.Telemetry
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.timeout = MadFactTelemetryConfig.RequestTimeoutSeconds;
                     request.SetRequestHeader("Content-Type", "application/json");
-                    string credentials = Convert.ToBase64String(
-                        Encoding.UTF8.GetBytes(MadFactTelemetryConfig.Username + ":" + _password));
-                    request.SetRequestHeader("Authorization", "Basic " + credentials);
+                    if (!MadFactTelemetryConfig.UsesWebGlRelay)
+                    {
+                        string credentials = Convert.ToBase64String(
+                            Encoding.UTF8.GetBytes(MadFactTelemetryConfig.Username + ":" + _password));
+                        request.SetRequestHeader("Authorization", "Basic " + credentials);
+                    }
 
                     yield return request.SendWebRequest();
 
@@ -181,6 +185,7 @@ namespace MadFact.Telemetry
             var session = MadFactSessionManager.Instance?.CurrentSession;
             if (session != null && !session.logging_consent) return false;
             if (!_remoteAllowed) return false;
+            if (MadFactTelemetryConfig.UsesWebGlRelay) return true;
             if (!string.IsNullOrEmpty(_password)) return true;
             if (!_warnedMissingCredentials)
             {
