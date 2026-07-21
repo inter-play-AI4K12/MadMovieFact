@@ -7,12 +7,12 @@ using MadFact.Telemetry;
 namespace MadFact
 {
     /// <summary>
-    /// Level 6 — Market Gap Research & Movie Making. The optimized matrix revealed an underserved
+    /// Level 7: Market Gap Research and Movie Making. The optimized matrix revealed an underserved
     /// demographic (high Spooky + high Funny, no inventory match). On the Corkboard the
     /// player drags magazine-cutout stickers — each carrying latent weights — to design a
     /// movie poster that targets that gap. Match the gap vibe to greenlight the blockbuster.
     /// </summary>
-    public class Level4Corkboard : MonoBehaviour
+    public class Level7Corkboard : MonoBehaviour
     {
         struct StickerDef { public string Label; public Latent Vibe; public Color Color; public StickerDef(string l, Latent v, Color c) { Label = l; Vibe = v; Color = c; } }
 
@@ -64,11 +64,11 @@ namespace MadFact
             button.onClick.AddListener(action);
         }
 
-        public static Level4Corkboard Create(Transform canvas)
+        public static Level7Corkboard Create(Transform canvas)
         {
             var go = UIFactory.Node(canvas, "Level4");
             UIFactory.Fill(UIFactory.RT(go));
-            var lvl = go.AddComponent<Level4Corkboard>();
+            var lvl = go.AddComponent<Level7Corkboard>();
             lvl.Build(go.transform);
             return lvl;
         }
@@ -77,7 +77,7 @@ namespace MadFact
         {
             _gap = GameData.MarketGapVibe();
 
-            _root = UIFactory.Image(parent, "Level4Corkboard", new Color(0.30f, 0.20f, 0.10f)).gameObject;
+            _root = UIFactory.Image(parent, "Level7Corkboard", new Color(0.30f, 0.20f, 0.10f)).gameObject;
             UIFactory.Fill(UIFactory.RT(_root), 40, 40, 40, 0);
 
             // cork texture (mottled)

@@ -108,16 +108,18 @@ namespace MadFact.Tests
             Assert.That(logger.QueuedEventCount, Is.Zero);
         }
 
-        [TestCase(4, LevelSceneCatalog.GroundTruthMatrix)]
+        [TestCase(3, LevelSceneCatalog.RatingsTable)]
+        [TestCase(4, LevelSceneCatalog.CollaborativeFiltering)]
         [TestCase(5, LevelSceneCatalog.MatrixFactorization)]
-        [TestCase(6, LevelSceneCatalog.MarketGapResearch)]
-        public void SplitMatrixLevelsHaveDedicatedSceneRoutes(int level, string expectedPath)
+        [TestCase(6, LevelSceneCatalog.ContentBasedRecommendation)]
+        [TestCase(7, LevelSceneCatalog.MarketGapResearch)]
+        public void LearningLevelsHaveDedicatedSceneRoutes(int level, string expectedPath)
         {
             Assert.That(LevelSceneCatalog.PathForLevel(level), Is.EqualTo(expectedPath));
         }
 
         [Test]
-        public void ThreeByThreeGroundTruthTutorialHasOneMissingRating()
+        public void ThreeByThreeFactorizationTutorialUsesKnownCharactersAndOneMissingRating()
         {
             var model = new MatrixTutorialModel();
             int missing = 0;
@@ -126,20 +128,40 @@ namespace MadFact.Tests
                     if (!model.Known[row, column]) missing++;
 
             Assert.That(missing, Is.EqualTo(1));
-            Assert.That(MatrixTutorialModel.CustomerNames[0], Is.EqualTo("MAYA"));
+            Assert.That(MatrixTutorialModel.CustomerNames,
+                Is.EqualTo(new[] { "WENDELL", "DOT", "HANK" }));
             Assert.That(MatrixTutorialModel.MovieNames[2], Is.EqualTo("GALAXY RAIDERS"));
             Assert.That(model.Target[2, 2], Is.EqualTo(5f));
         }
 
         [Test]
-        public void ThreeByThreeOptimizerReducesTutorialError()
+        public void TwoByFiveCollaborativeTutorialUsesMatchingKnownCharacters()
+        {
+            var model = new CollaborativeFilteringTutorialModel();
+            Assert.That(CollaborativeFilteringTutorialModel.Rows, Is.EqualTo(2));
+            Assert.That(CollaborativeFilteringTutorialModel.Columns, Is.EqualTo(5));
+            Assert.That(CollaborativeFilteringTutorialModel.CustomerNames,
+                Is.EqualTo(new[] { "WENDELL", "PRIYA" }));
+
+            int missing = 0;
+            for (int row = 0; row < CollaborativeFilteringTutorialModel.Rows; row++)
+                for (int column = 0; column < CollaborativeFilteringTutorialModel.Columns; column++)
+                {
+                    if (!model.Known[row, column]) missing++;
+                    Assert.That(model.Target[0, column], Is.EqualTo(model.Target[1, column]));
+                }
+
+            Assert.That(missing, Is.EqualTo(1));
+            Assert.That(model.MissingRow, Is.EqualTo(1));
+            Assert.That(model.MissingColumn, Is.EqualTo(4));
+            Assert.That(model.MissingRating, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ThreeByThreeFactorizationStartsAboveTheManualErrorGoal()
         {
             var model = new MatrixTutorialModel();
-            float initial = model.MeanError();
-            for (int step = 0; step < 80; step++)
-                model.StepGradient(0.004f);
-
-            Assert.That(model.MeanError(), Is.LessThan(initial));
+            Assert.That(model.MeanError(), Is.GreaterThan(MatrixTutorialModel.GoalMeanError));
         }
     }
 }

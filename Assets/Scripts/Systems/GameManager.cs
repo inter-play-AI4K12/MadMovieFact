@@ -3,7 +3,20 @@ using UnityEngine;
 
 namespace MadFact
 {
-    public enum Phase { Boot, Storefront, Level1, Level2, Level3, Level4, Level5, Level6, Win }
+    public enum Phase
+    {
+        Boot,
+        Storefront,
+        Level1,
+        Level2,
+        Level3,
+        Level4,
+        Level5,
+        Level6,
+        Level7,
+        Level8,
+        Win
+    }
 
     /// <summary>Central game state: money, current phase, the shared matrix model.</summary>
     public class GameManager : MonoBehaviour
@@ -119,7 +132,7 @@ namespace MadFact
         /// </summary>
         public void PrepareStandaloneLevel(int level)
         {
-            level = Mathf.Clamp(level, 1, 6);
+            level = Mathf.Clamp(level, 1, LevelSceneCatalog.MaxPlayableLevel);
             if (HasActiveRun)
             {
                 HighestUnlocked = Mathf.Max(HighestUnlocked, level);
@@ -143,7 +156,7 @@ namespace MadFact
         /// <summary>Dismiss the current run and seed a clean run at the selected level.</summary>
         public void StartNewAtLevel(int level)
         {
-            level = Mathf.Clamp(level, 1, 6);
+            level = Mathf.Clamp(level, 1, LevelSceneCatalog.MaxPlayableLevel);
             Money = level <= 1 ? 0 : level == 2 ? Level1Goal : Level2Goal;
             Current = Phase.Boot;
             Matrix = new MfModel();
@@ -160,7 +173,8 @@ namespace MadFact
 
         public void MarkLevelCompleted(int level)
         {
-            HighestUnlocked = Mathf.Max(HighestUnlocked, Mathf.Clamp(level + 1, 1, 6));
+            HighestUnlocked = Mathf.Max(HighestUnlocked,
+                Mathf.Clamp(level + 1, 1, LevelSceneCatalog.MaxPlayableLevel));
             CurrentLevel = 0;
             CanContinue = false;
         }
@@ -222,6 +236,8 @@ namespace MadFact
             if (p == Phase.Level4) HighestUnlocked = Mathf.Max(HighestUnlocked, 4);
             if (p == Phase.Level5) HighestUnlocked = Mathf.Max(HighestUnlocked, 5);
             if (p == Phase.Level6) HighestUnlocked = Mathf.Max(HighestUnlocked, 6);
+            if (p == Phase.Level7) HighestUnlocked = Mathf.Max(HighestUnlocked, 7);
+            if (p == Phase.Level8) HighestUnlocked = Mathf.Max(HighestUnlocked, 8);
             OnPhaseChanged?.Invoke(p);
         }
 
@@ -230,5 +246,7 @@ namespace MadFact
         public bool Level4Unlocked => HighestUnlocked >= 4;
         public bool Level5Unlocked => HighestUnlocked >= 5;
         public bool Level6Unlocked => HighestUnlocked >= 6;
+        public bool Level7Unlocked => HighestUnlocked >= 7;
+        public bool Level8Unlocked => HighestUnlocked >= 8;
     }
 }

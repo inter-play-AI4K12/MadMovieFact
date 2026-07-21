@@ -3,12 +3,15 @@ using UnityEngine;
 namespace MadFact
 {
     /// <summary>
-    /// Standalone 3×3 teaching dataset used before the main 5×5 matrix. None of these
-    /// people, movies, ratings, or factor vectors are taken from the mainframe model.
+    /// Small 3×3 teaching dataset used before the main 5×5 matrix. It reuses familiar
+    /// game characters and only two hidden taste factors so students can reduce error
+    /// by hand before the optimizer is introduced.
     /// </summary>
     public sealed class MatrixTutorialModel
     {
-        public static readonly string[] CustomerNames = { "MAYA", "LEO", "SAM" };
+        public const int FactorCount = 2;
+        public const float GoalMeanError = 0.35f;
+        public static readonly string[] CustomerNames = { "WENDELL", "DOT", "HANK" };
         public static readonly string[] MovieNames = { "STAR VOYAGE", "BOOM PATROL", "GALAXY RAIDERS" };
 
         public readonly float[,] Target =
@@ -33,11 +36,11 @@ namespace MadFact
         public void Reset()
         {
             for (int i = 0; i < U.Length; i++)
-                U[i] = new Latent(.5f, 0f, 0f, .5f);
+                U[i] = new Latent(.5f, .5f, 0f, 0f);
 
-            V[0] = new Latent(1f, 0f, 0f, .02f);       // space
-            V[1] = new Latent(.02f, 0f, 0f, 1f);       // action
-            V[2] = new Latent(.70f, 0f, 0f, .70f);     // space + action
+            V[0] = new Latent(1f, .02f, 0f, 0f);       // mostly factor 1
+            V[1] = new Latent(.02f, 1f, 0f, 0f);       // mostly factor 2
+            V[2] = new Latent(.70f, .70f, 0f, 0f);     // both factors
         }
 
         public float Guess(int row, int column) => MfMath.Predict(U[row], V[column]);

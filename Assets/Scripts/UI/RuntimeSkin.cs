@@ -32,10 +32,21 @@ namespace MadFact
                 bool isWindowFrame = image.transform.Find("WindowBody") != null;
                 if (image.GetComponent<Button>() != null)
                 {
-                    image.sprite = image.GetComponent<CommsBox>() != null || isWindowFrame
-                        ? ArtSprites.PanelChrome()
-                        : ArtSprites.ButtonChrome();
-                    image.type = Image.Type.Sliced;
+                    // Matrix cells are clickable data, not action buttons. Keep the
+                    // simple solid rectangle authored in the prefab so known black
+                    // ratings and colour-coded guesses remain crisp in Play Mode.
+                    if (IsMatrixCell(image.gameObject.name))
+                    {
+                        image.sprite = Theme.Solid;
+                        image.type = Image.Type.Simple;
+                    }
+                    else
+                    {
+                        image.sprite = image.GetComponent<CommsBox>() != null || isWindowFrame
+                            ? ArtSprites.PanelChrome()
+                            : ArtSprites.ButtonChrome();
+                        image.type = Image.Type.Sliced;
+                    }
                 }
                 else if (isWindowFrame)
                 {
@@ -65,6 +76,16 @@ namespace MadFact
 
             SkinButtons(root);
             SkinCatalog(root);
+        }
+
+        static bool IsMatrixCell(string name)
+        {
+            if (name.StartsWith("SCell_")) return true;
+            if (!name.StartsWith("C")) return false;
+            int underscore = name.IndexOf('_');
+            if (underscore <= 1 || underscore >= name.Length - 1) return false;
+            return int.TryParse(name.Substring(1, underscore - 1), out _) &&
+                   int.TryParse(name.Substring(underscore + 1), out _);
         }
 
         static void SkinButtons(Transform root)

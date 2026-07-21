@@ -18,10 +18,11 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Scenes/Storefront.unity",
         "Assets/Scenes/Level01_ManualRecommendation.unity",
         "Assets/Scenes/Level02_RuleBasedRecommendation.unity",
-        "Assets/Scenes/Level03_ContentBasedRecommendation.unity",
-        "Assets/Scenes/Level04_GroundTruthMatrix.unity",
+        "Assets/Scenes/Level03_RatingsTable.unity",
+        "Assets/Scenes/Level04_CollaborativeFiltering.unity",
         "Assets/Scenes/Level05_MatrixFactorization.unity",
-        "Assets/Scenes/Level06_MarketGapResearch.unity"
+        "Assets/Scenes/Level06_ContentBasedRecommendation.unity",
+        "Assets/Scenes/Level07_MarketGapResearch.unity"
     };
 
     static readonly string[] SharedUiScenePaths =
@@ -30,10 +31,11 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Scenes/Storefront.unity",
         "Assets/Scenes/Level01_ManualRecommendation.unity",
         "Assets/Scenes/Level02_RuleBasedRecommendation.unity",
-        "Assets/Scenes/Level03_ContentBasedRecommendation.unity",
-        "Assets/Scenes/Level04_GroundTruthMatrix.unity",
+        "Assets/Scenes/Level03_RatingsTable.unity",
+        "Assets/Scenes/Level04_CollaborativeFiltering.unity",
         "Assets/Scenes/Level05_MatrixFactorization.unity",
-        "Assets/Scenes/Level06_MarketGapResearch.unity"
+        "Assets/Scenes/Level06_ContentBasedRecommendation.unity",
+        "Assets/Scenes/Level07_MarketGapResearch.unity"
     };
 
     static readonly string[] AuthoredUiPrefabPaths =
@@ -43,9 +45,10 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Prefabs/UI/DialogueBox.prefab",
         "Assets/Prefabs/Levels/Level1Counter.prefab",
         "Assets/Prefabs/Levels/Level2Robot.prefab",
-        "Assets/Prefabs/Levels/Level3ContentBased.prefab",
+        "Assets/Prefabs/Levels/Level3RatingsTable.prefab",
         "Assets/Prefabs/Levels/Level3Mainframe.prefab",
-        "Assets/Prefabs/Levels/Level4Corkboard.prefab"
+        "Assets/Prefabs/Levels/Level6ContentBased.prefab",
+        "Assets/Prefabs/Levels/Level7Corkboard.prefab"
     };
 
     static RefreshAuthoredLevelPrefabs()
@@ -106,21 +109,67 @@ public static class RefreshAuthoredLevelPrefabs
             SaveVisibleLevel(level2.gameObject, "Level2Robot",
                 "Assets/Prefabs/Levels/Level2Robot.prefab");
 
-            var level3Content = Level3ContentBased.Create(stagingRoot.transform);
-            SaveVisibleLevel(level3Content.gameObject, "Level3ContentBased",
-                "Assets/Prefabs/Levels/Level3ContentBased.prefab");
+            var level3Ratings = Level3RatingsTable.Create(stagingRoot.transform);
+            SaveVisibleLevel(level3Ratings.gameObject, "Level3RatingsTable",
+                "Assets/Prefabs/Levels/Level3RatingsTable.prefab");
 
             var level3Mainframe = Level3Mainframe.Create(stagingRoot.transform);
             SaveVisibleLevel(level3Mainframe.gameObject, "Level3Mainframe",
                 "Assets/Prefabs/Levels/Level3Mainframe.prefab");
 
-            var level4 = Level4Corkboard.Create(stagingRoot.transform);
-            SaveVisibleLevel(level4.gameObject, "Level4Corkboard",
-                "Assets/Prefabs/Levels/Level4Corkboard.prefab");
+            var level6Content = Level6ContentBased.Create(stagingRoot.transform);
+            SaveVisibleLevel(level6Content.gameObject, "Level6ContentBased",
+                "Assets/Prefabs/Levels/Level6ContentBased.prefab");
+
+            var level7 = Level7Corkboard.Create(stagingRoot.transform);
+            SaveVisibleLevel(level7.gameObject, "Level7Corkboard",
+                "Assets/Prefabs/Levels/Level7Corkboard.prefab");
 
             BakeSerializablePreviewFonts();
             AssetDatabase.SaveAssets();
             Debug.Log("Refreshed all authored MadFact UI prefabs from their current builders.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stagingRoot);
+        }
+    }
+
+    /// <summary>Refreshes only the editable ratings-table lesson used by Level 3.</summary>
+    [MenuItem("MadFact/Refresh Authored Level 3 Ratings Prefab")]
+    public static void RefreshLevel3Ratings()
+    {
+        var stagingRoot = new GameObject("__Level3RatingsPrefabStagingRoot", typeof(RectTransform));
+        stagingRoot.hideFlags = HideFlags.HideAndDontSave;
+
+        try
+        {
+            var level = Level3RatingsTable.Create(stagingRoot.transform);
+            SaveVisibleLevel(level.gameObject, "Level3RatingsTable",
+                "Assets/Prefabs/Levels/Level3RatingsTable.prefab");
+            AssetDatabase.SaveAssets();
+            Debug.Log("Refreshed the authored Level 3 ratings-table prefab.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stagingRoot);
+        }
+    }
+
+    /// <summary>Refreshes the shared Level 4/5 mainframe prefab.</summary>
+    [MenuItem("MadFact/Refresh Authored Collaborative Filtering Prefab")]
+    public static void RefreshCollaborativeFiltering()
+    {
+        var stagingRoot = new GameObject("__CollaborativeFilteringPrefabStagingRoot", typeof(RectTransform));
+        stagingRoot.hideFlags = HideFlags.HideAndDontSave;
+
+        try
+        {
+            var level = Level3Mainframe.Create(stagingRoot.transform);
+            SaveVisibleLevel(level.gameObject, "Level3Mainframe",
+                "Assets/Prefabs/Levels/Level3Mainframe.prefab");
+            AssetDatabase.SaveAssets();
+            Debug.Log("Refreshed the shared authored collaborative-filtering mainframe prefab.");
         }
         finally
         {
@@ -181,17 +230,19 @@ public static class RefreshAuthoredLevelPrefabs
     {
         var level1 = Load("Assets/Prefabs/Levels/Level1Counter.prefab");
         var level2 = Load("Assets/Prefabs/Levels/Level2Robot.prefab");
-        var level3Content = Load("Assets/Prefabs/Levels/Level3ContentBased.prefab");
+        var level3Ratings = Load("Assets/Prefabs/Levels/Level3RatingsTable.prefab");
         var level3Mainframe = Load("Assets/Prefabs/Levels/Level3Mainframe.prefab");
-        var level4 = Load("Assets/Prefabs/Levels/Level4Corkboard.prefab");
+        var level6Content = Load("Assets/Prefabs/Levels/Level6ContentBased.prefab");
+        var level7 = Load("Assets/Prefabs/Levels/Level7Corkboard.prefab");
         var dialogue = Load("Assets/Prefabs/UI/DialogueBox.prefab");
         var hud = Load("Assets/Prefabs/UI/HUD.prefab");
 
         RequireActive(level1.transform, "Level1Counter");
         RequireActive(level2.transform, "Level2Robot");
-        RequireActive(level3Content.transform, "Level3ContentBased");
+        RequireActive(level3Ratings.transform, "Level3RatingsTable");
         RequireActive(level3Mainframe.transform, "Level3Mainframe");
-        RequireActive(level4.transform, "Level4Corkboard");
+        RequireActive(level6Content.transform, "Level6ContentBased");
+        RequireActive(level7.transform, "Level7Corkboard");
 
         var dialogueBody = Require(dialogue.transform, "Body").GetComponent<Text>();
         if (dialogueBody == null || dialogueBody.lineSpacing < 1.2f)
@@ -225,12 +276,20 @@ public static class RefreshAuthoredLevelPrefabs
         RequireApproximately(Require(level1.transform, "Next").GetComponent<RectTransform>().anchoredPosition,
             new Vector2(18, 12), "Level 1 next-customer position");
 
-        var level3Shelf = Require(level3Content.transform, "Shelf");
-        if (level3Shelf.GetComponent<PosterBrowser>() == null)
-            throw new System.InvalidOperationException("Level 3 shelf must use the authored PosterBrowser.");
-        Require(level3Content.transform, "ProfilePanel");
+        Require(level3Ratings.transform, "ProfileStrip");
+        Require(level3Ratings.transform, "RatingsRow");
+        Require(level3Ratings.transform, "QuestionPanel");
+        for (int i = 0; i < 4; i++)
+            Require(level3Ratings.transform, "Profile" + i);
+        for (int i = 0; i < 5; i++)
+            Require(level3Ratings.transform, "Movie" + i);
+
+        var level6Shelf = Require(level6Content.transform, "Shelf");
+        if (level6Shelf.GetComponent<PosterBrowser>() == null)
+            throw new System.InvalidOperationException("Level 6 shelf must use the authored PosterBrowser.");
+        Require(level6Content.transform, "ProfilePanel");
         for (int i = 0; i < GenreInfo.Count; i++)
-            Require(level3Content.transform, "pf" + i);
+            Require(level6Content.transform, "pf" + i);
 
         ValidateLevel2Prefab(level2);
 
@@ -242,6 +301,34 @@ public static class RefreshAuthoredLevelPrefabs
     {
         ValidateLevel2Prefab(Load("Assets/Prefabs/Levels/Level2Robot.prefab"));
         Debug.Log("Validated authored Level 2 movie browser, preview, and runtime references.");
+    }
+
+    [MenuItem("MadFact/Validate Authored Level 3 Ratings")]
+    public static void ValidateLevel3Ratings()
+    {
+        var ratings = Load("Assets/Prefabs/Levels/Level3RatingsTable.prefab");
+        RequireActive(ratings.transform, "Level3RatingsTable");
+        Require(ratings.transform, "ProfileStrip");
+        Require(ratings.transform, "RatingsRow");
+        Require(ratings.transform, "QuestionPanel");
+        for (int profile = 0; profile < Level3RatingsTable.ProfileCount; profile++)
+        {
+            Require(ratings.transform, "Profile" + profile);
+            Require(ratings.transform, "Selected");
+        }
+        for (int movie = 0; movie < Level3RatingsTable.MovieCount; movie++)
+        {
+            Require(ratings.transform, "MovieColumn" + movie);
+            Require(ratings.transform, "Poster" + movie);
+            Require(ratings.transform, "Rating" + movie);
+        }
+        for (int answer = 0; answer < 4; answer++)
+            Require(ratings.transform, "Answer" + answer);
+
+        var controller = ratings.GetComponent<Level3RatingsTable>();
+        if (controller == null)
+            throw new System.InvalidOperationException("Level 3 ratings prefab is missing its controller.");
+        Debug.Log("Validated authored Level 3 ratings profiles, movie columns, stars, and answer controls.");
     }
 
     static void ValidateLevel2Prefab(GameObject level2)
@@ -365,9 +452,10 @@ public static class RefreshAuthoredLevelPrefabs
             {
                 if (child.GetComponent<Level1Counter>() != null ||
                     child.GetComponent<Level2Robot>() != null ||
-                    child.GetComponent<Level3ContentBased>() != null ||
+                    child.GetComponent<Level3RatingsTable>() != null ||
                     child.GetComponent<Level3Mainframe>() != null ||
-                    child.GetComponent<Level4Corkboard>() != null)
+                    child.GetComponent<Level6ContentBased>() != null ||
+                    child.GetComponent<Level7Corkboard>() != null)
                     child.SetSiblingIndex(Mathf.Min(1, canvas.transform.childCount - 1));
             }
 

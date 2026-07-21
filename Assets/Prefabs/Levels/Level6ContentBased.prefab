@@ -2039,7 +2039,7 @@ GameObject:
   - component: {fileID: 1375169163659751645}
   - component: {fileID: 8562307068285095470}
   m_Layer: 0
-  m_Name: Level3ContentBased
+  m_Name: Level6ContentBased
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2076,7 +2076,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 478290da37a54cf3bd85027f1924c92f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level3ContentBased
+  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level6ContentBased
   _root: {fileID: 7021593389969864023}
 --- !u!1 &2534242487667571182
 GameObject:
@@ -4761,7 +4761,7 @@ GameObject:
   - component: {fileID: 3588687718321788884}
   - component: {fileID: 1172386524918740400}
   m_Layer: 0
-  m_Name: Level3ContentBased
+  m_Name: Level6ContentBased
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

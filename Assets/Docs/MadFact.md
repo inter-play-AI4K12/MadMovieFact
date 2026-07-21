@@ -14,7 +14,7 @@ then use the math to discover an unserved market and produce its blockbuster.
 > UI, fonts, and audio are generated procedurally in code. Imported character art lives under
 > `Resources/Characters/` and is loaded by the runtime-built UI.
 
-## The arc (4 levels + hub)
+## The arc (7 playable levels + hub)
 - **Storefront (hub):** a top-down store whose customer line grows to show the scaling
   bottleneck. The empty **HORROR / COMEDY** shelves quietly foreshadow the market gap.
 - **Level 1 — Manual Era (`Level1Counter`):** read a manila customer file, ask a *limited*
@@ -22,13 +22,22 @@ then use the math to discover an unserved market and produce its blockbuster.
 - **Level 2 — Automation Era (`Level2Robot`):** program the beige robot with rigid
   `IF wants=Genre THEN recommend Tape` rules on a DOS terminal. Brittle rules fail on
   contradictory customers and tank revenue.
-- **Level 3 — Algorithm Era (`Level3Mainframe`):** the CRT Matrix Factorization engine.
-  A Customers×Movies grid shows a **Target** and a live **Guess = 1 + 4·dot(U,V)**.
-  Click a row/column to open four plastic **vibe sliders** (Space-y, Spooky, Funny,
-  Explosions). Tuning one cell breaks others (red glow + audio static — the coupling you
-  *feel*). The **OPTIMIZER** runs real gradient descent to balance the whole board, fills
-  empty cells with predictions, and reveals an underserved cluster.
-- **Level 4 — The Market Gap (`Level4Corkboard`):** the matrix surfaced a Spooky+Funny
+- **Level 3 — Ratings Table (`Level3RatingsTable`):** four customer profiles expose rows
+  of 0-to-5-star ratings. Players find each person's favorite and least favorite movie,
+  then compare movie-column averages across all four people.
+- **Level 4 — Collaborative Filtering (`Level3Mainframe`):** begin with two established
+  customers whose 2×5 rating rows nearly match, then solve a 5×5 comparison task (including
+  an average-of-two-customers clue). A final scrollable 5×9 sparse table shows that most
+  people have not rated most movies and motivates learning how to fill missing values.
+- **Level 5 — Matrix Factorization (`Level3Mainframe`):** the CRT factorization engine.
+  A 3×3 tutorial reuses Wendell, Dot, and Hank and summarizes their ratings with two
+  unnamed hidden factors. Players manually adjust customer/movie
+  profiles until mean prediction error falls below 0.35. The lesson then expands to the
+  full 5×5 table and four factors; only there is the **OPTIMIZER** introduced to run real
+  gradient descent, fill empty cells, and reveal an underserved cluster.
+- **Level 6 — Content-Based (`Level6ContentBased`):** compare customer preferences with
+  movie features and confront the limits of box-label data.
+- **Level 7 — The Market Gap (`Level7Corkboard`):** the matrix surfaced a Spooky+Funny
   crowd no tape serves. Drag magazine-cutout stickers (each carrying latent weights) onto a
   poster to match that gap's vibe, then **GREENLIGHT** the blockbuster.
 
@@ -49,8 +58,8 @@ Level caps are monetary (`$40` to automate, `$110` to boot the mainframe).
 - `Systems/` — `GameManager` (state/money), `Economy`, `AudioTension` (procedural sound).
 - `UI/` — `Theme` (Corporate Lo-Fi palette, bevel sprites, CRT overlays, OS fonts),
   `UIFactory` (panels/buttons/sliders), `CommsBox` (Old Dude FMV vs. Robot icon), `Hud`.
-- `Levels/` — `StorefrontView`, `Level1Counter`, `Level2Robot`, `Level3Mainframe`,
-  `Level4Corkboard`.
+- `Levels/` — `StorefrontView`, `Level1Counter`, `Level2Robot`, `Level3RatingsTable`,
+  `Level3Mainframe`, `Level6ContentBased`, `Level7Corkboard`.
 - `Resources/Characters/` — imported, runtime-loaded character sprites grouped by role.
 - `Resources/Atlases/` — original supplied pixel-art sheets; `UI/ArtSprites.cs` slices and
   caches portraits, covers, stickers, HUD graphics, and action icons at runtime.

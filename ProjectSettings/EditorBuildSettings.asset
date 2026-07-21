@@ -24,16 +24,19 @@ EditorBuildSettings:
     path: Assets/Scenes/Level02_RuleBasedRecommendation.unity
     guid: b4c7f0f98e41b4f67b56f4dcfff192c5
   - enabled: 1
-    path: Assets/Scenes/Level03_ContentBasedRecommendation.unity
-    guid: 20469f1fc76af4c189f174d89dbed036
+    path: Assets/Scenes/Level03_RatingsTable.unity
+    guid: 761a9d7c12bdd489ebd3ff2d2ded7456
   - enabled: 1
-    path: Assets/Scenes/Level04_GroundTruthMatrix.unity
+    path: Assets/Scenes/Level04_CollaborativeFiltering.unity
     guid: fb3468fea30674986ad9cc86a9589b1e
   - enabled: 1
     path: Assets/Scenes/Level05_MatrixFactorization.unity
     guid: 4902d306097e24183bb0a82a5799dad6
   - enabled: 1
-    path: Assets/Scenes/Level06_MarketGapResearch.unity
+    path: Assets/Scenes/Level06_ContentBasedRecommendation.unity
+    guid: 20469f1fc76af4c189f174d89dbed036
+  - enabled: 1
+    path: Assets/Scenes/Level07_MarketGapResearch.unity
     guid: 5565e6de27f3b49f6a1ea93eed72f4e9
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

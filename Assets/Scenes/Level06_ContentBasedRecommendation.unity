@@ -786,6 +786,7 @@ MonoBehaviour:
   Comms: {fileID: 938098819}
   L1: {fileID: 0}
   L2: {fileID: 0}
+  L3Ratings: {fileID: 0}
   L3Content: {fileID: 2066429445}
   L3: {fileID: 0}
   L4: {fileID: 0}
@@ -793,8 +794,8 @@ MonoBehaviour:
   Level2Cleared: 0
   Level3Cleared: 0
   Level4Cleared: 0
-  StartPhaseOverride: 3
-  _allowRuntimeFallback: 0
+  Level6Cleared: 0
+  StartPhaseOverride: 6
   _canvas: {fileID: 424338267}
 --- !u!1001 &938098817
 PrefabInstance:
@@ -1283,7 +1284,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1778219391346490473, guid: b1771d129deb34c398c280c375964d02, type: 3}
       propertyPath: m_Name
-      value: Level3ContentBased
+      value: Level6ContentBased
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1300,7 +1301,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 478290da37a54cf3bd85027f1924c92f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level3ContentBased
+  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level6ContentBased
 --- !u!224 &2066429446 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1375169163659751645, guid: b1771d129deb34c398c280c375964d02, type: 3}

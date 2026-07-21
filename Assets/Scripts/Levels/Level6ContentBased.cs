@@ -6,14 +6,14 @@ using MadFact.Telemetry;
 namespace MadFact
 {
     /// <summary>
-    /// Level 3 — Content-Based Recommendation. The TASTE-MATCH 3000 builds a genre profile
+    /// Level 6: Content-Based Recommendation. The TASTE-MATCH 3000 builds a genre profile
     /// from each customer's rental history, scores every box against it, and hands the
     /// player its TOP PICKS — the player mostly just approves the machine's best match.
     /// Two truths get taught the hard way:
     ///  - recommending only what matches the profile narrows the profile (filter bubble),
     ///  - the box can't see what's inside (features said 99%, the customer said "meh").
     /// </summary>
-    public class Level3ContentBased : MonoBehaviour
+    public class Level6ContentBased : MonoBehaviour
     {
         class Visit
         {
@@ -60,11 +60,11 @@ namespace MadFact
             button.onClick.AddListener(action);
         }
 
-        public static Level3ContentBased Create(Transform canvas)
+        public static Level6ContentBased Create(Transform canvas)
         {
-            var go = UIFactory.Node(canvas, "Level3ContentBased");
+            var go = UIFactory.Node(canvas, "Level6ContentBased");
             UIFactory.Fill(UIFactory.RT(go));
-            var lvl = go.AddComponent<Level3ContentBased>();
+            var lvl = go.AddComponent<Level6ContentBased>();
             lvl.Build(go.transform);
             lvl._root.SetActive(false);
             return lvl;
@@ -73,7 +73,7 @@ namespace MadFact
         void Build(Transform parent)
         {
             // translucent overlay: the startup-era backdrop lives on the storefront behind
-            _root = UIFactory.Image(parent, "Level3ContentBased", new Color(0, 0, 0, 0.4f)).gameObject;
+            _root = UIFactory.Image(parent, "Level6ContentBased", new Color(0, 0, 0, 0.4f)).gameObject;
             UIFactory.Fill(UIFactory.RT(_root), 40, 40, 40, 0);
 
             var window = UIFactory.DialogWindow(_root.transform, "Window", Theme.Face);
@@ -453,7 +453,7 @@ namespace MadFact
                 var pop0 = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
                 var repeatTier = GameManager.I.RecordSale(4f, pop0); // forced-terrible error
                 GameManager.I.AddTrust(-5);
-                GameManager.I.Run.RecordRecommendation("l3_visit_" + _visitIndex, _cust.Name, Phase.Level3, movie, repeatTier, 1f);
+                GameManager.I.Run.RecordRecommendation("l6_visit_" + _visitIndex, _cust.Name, Phase.Level6, movie, repeatTier, 1f);
                 _result.text = $"ALREADY SEEN: {movie.Title}";
                 _result.color = Theme.ErrorRed;
                 MadFactBootstrap.I.Comms.ShowCustomer(_cust, new[]
@@ -488,7 +488,7 @@ namespace MadFact
             if (AudioTension.I != null) AudioTension.I.Clunk();
             Vector2 pop = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + 40);
             var tier = GameManager.I.RecordSale(error, pop);
-            GameManager.I.Run.RecordRecommendation("l3_visit_" + _visitIndex, _cust.Name, Phase.Level3, movie, tier, satisfaction);
+            GameManager.I.Run.RecordRecommendation("l6_visit_" + _visitIndex, _cust.Name, Phase.Level6, movie, tier, satisfaction);
             MadFactLokiLogger.Instance?.Log("movie_recommended", "Player accepted a content-based movie recommendation", new
             {
                 interaction_id = "l3_visit_" + _visitIndex,
@@ -548,8 +548,8 @@ namespace MadFact
 
         void Complete()
         {
-            if (MadFactBootstrap.I.Level3Cleared) { Close(); MadFactBootstrap.I.GoStorefront(); return; }
-            MadFactBootstrap.I.Level3Cleared = true;
+            if (MadFactBootstrap.I.Level6Cleared) { Close(); MadFactBootstrap.I.GoStorefront(); return; }
+            MadFactBootstrap.I.Level6Cleared = true;
             Close();
             MadFactBootstrap.I.OnContentBasedGoal();
         }

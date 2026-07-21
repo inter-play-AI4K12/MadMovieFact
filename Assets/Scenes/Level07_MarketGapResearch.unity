@@ -378,6 +378,7 @@ MonoBehaviour:
   Comms: {fileID: 547444468}
   L1: {fileID: 0}
   L2: {fileID: 0}
+  L3Ratings: {fileID: 0}
   L3Content: {fileID: 0}
   L3: {fileID: 0}
   L4: {fileID: 395749996}
@@ -385,7 +386,8 @@ MonoBehaviour:
   Level2Cleared: 0
   Level3Cleared: 0
   Level4Cleared: 0
-  StartPhaseOverride: 6
+  Level6Cleared: 0
+  StartPhaseOverride: 7
   _canvas: {fileID: 1027422890}
 --- !u!1001 &395749995
 PrefabInstance:
@@ -397,7 +399,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2373888170178512775, guid: d303effd13c7b4a21903907e128cfa5f, type: 3}
       propertyPath: m_Name
-      value: Level4Corkboard
+      value: Level7Corkboard
       objectReference: {fileID: 0}
     - target: {fileID: 2926371086905374175, guid: d303effd13c7b4a21903907e128cfa5f, type: 3}
       propertyPath: m_Pivot.x
@@ -494,7 +496,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: effb984c918da8c4e9bc25e77788e4fc, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level4Corkboard
+  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level7Corkboard
 --- !u!224 &395749997 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 2926371086905374175, guid: d303effd13c7b4a21903907e128cfa5f, type: 3}

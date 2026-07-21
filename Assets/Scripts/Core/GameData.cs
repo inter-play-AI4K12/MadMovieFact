@@ -120,7 +120,7 @@ namespace MadFact
         // stock (MatrixMovieSet).
         // Authoring guardrails:
         //  - no tape carries BOTH spooky>=0.6 AND funny>=0.6 — that combination is the
-        //    unserved market gap Level 6 is about, so the shelf must never contain it
+        //    unserved market gap Level 7 is about, so the shelf must never contain it
         //    (which is also why no Ghostbusters/Beetlejuice on these shelves).
         //  - every non-gap customer has at least one near-perfect tape somewhere.
         public static readonly List<MovieData> Movies = new List<MovieData>
@@ -192,7 +192,7 @@ namespace MadFact
         // ---- The customers -------------------------------------------------
         // The Spooky+Funny crowd (Underserved) crave both AT ONCE — a taste no single-genre
         // tape can serve. They top out at "close" on the shelf, and rate the original
-        // mainframe stock ~1-2 stars: the matrix lesson reveals and Level 6 fills.
+        // mainframe stock ~1-2 stars: the matrix lesson reveals and Level 7 fills.
         public static readonly List<CustomerData> Customers = new List<CustomerData>
         {
             new CustomerData("WENDELL", 27, Genre.SciFi,  Genre.SciFi,  new Latent(1.00f,0.05f,0.10f,0.40f), F(Genre.SciFi,0.90f, Genre.Action,0.40f, Genre.Documentary,0.30f), Col(224,178,140), Col(70,110,160),  "Got anything with... y'know, SPACE in it?"),
@@ -249,7 +249,7 @@ namespace MadFact
         /// <summary>
         /// What a content-based engine SEES: cosine similarity of the customer's visible
         /// genre profile against the movie's box features (0..1). This is the number the
-        /// Level 3 engine proudly prints — and it only knows what's written on the box.
+        /// Level 6 engine proudly prints — and it only knows what's written on the box.
         /// </summary>
         public static float FeatureMatch(CustomerData c, MovieData m)
         {

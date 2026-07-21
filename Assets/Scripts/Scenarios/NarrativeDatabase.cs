@@ -27,31 +27,36 @@ namespace MadFact
         public static readonly string[] Level2GoalRobot =
         {
             "MY RULES ARE TOO STRICT FOR REAL PEOPLE. SIMPLE RULES CANNOT HANDLE EVERY KIND OF TASTE.",
-            "NEXT PLAN: LOOK AT THE FEATURES OF EACH MOVIE."
+            "NEXT PLAN: ASK CUSTOMERS TO RATE MOVIES THEY HAVE ALREADY WATCHED."
         };
 
         public static readonly string[] Level2GoalOldDude =
         {
-            "A content-based system matches movie features with what a customer likes.",
-            "It works better than simple rules, but it only knows facts written on the box."
+            "A rating records how much one customer liked one movie, from zero to five stars.",
+            "Put many ratings in a table. Each row is a customer, and each column is a movie."
+        };
+
+        public static readonly string[] RatingsTableCompleteOldDude =
+        {
+            "Good work. One row shows one customer's ratings. Looking down a column compares how everyone rated one movie."
         };
 
         public static readonly string[] ContentBasedCompleteOldDude =
         {
-            "Movie features help, but some likes are hard to describe.",
-            "The mainframe will compare many ratings to find hidden patterns. This is collaborative filtering."
+            "Movie features help us explain recommendations, but they still do not cover every person's taste.",
+            "Next, combine features with the rating patterns you found to spot a movie our store is missing."
         };
 
         public static readonly string[] Level4GoalOldDude =
         {
-            "The hidden dials show this group wants something SPOOKY and FUNNY: a scary comedy.",
-            "We do not stock one, so use the corkboard to design the movie they want."
+            "The mainframe found hidden taste patterns in the ratings.",
+            "Next shift, compare those patterns with movie features to make recommendations we can explain."
         };
 
         public static readonly string[] GreenlitOldDude =
         {
             "That is it: spooky AND funny, just like the ratings showed.",
-            "You used hand choices, rules, and computer systems to recommend and even design a movie. I am proud of you."
+            "You used hand choices, rules, ratings, and computer systems to recommend and even design a movie. I am proud of you."
         };
     }
 }

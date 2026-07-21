@@ -3714,7 +3714,7 @@ GameObject:
   - component: {fileID: 2926371086905374175}
   - component: {fileID: 1648009711921071994}
   m_Layer: 0
-  m_Name: Level4Corkboard
+  m_Name: Level7Corkboard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3751,7 +3751,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: effb984c918da8c4e9bc25e77788e4fc, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level4Corkboard
+  m_EditorClassIdentifier: Assembly-CSharp::MadFact.Level7Corkboard
   _root: {fileID: 3878872366285703093}
   _board: {fileID: 1894308042459543661}
   _gapBars:
@@ -6284,7 +6284,7 @@ GameObject:
   - component: {fileID: 2356626725607023689}
   - component: {fileID: 4365997449888018714}
   m_Layer: 0
-  m_Name: Level4Corkboard
+  m_Name: Level7Corkboard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

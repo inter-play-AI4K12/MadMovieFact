@@ -9,7 +9,7 @@ namespace MadFact
     /// The shelf browser from the design sketch: a "◀ GENRE ▶" carousel over a grid of
     /// poster thumbnails; clicking a poster opens a detail view with the big poster,
     /// title + year, age sticker, and the 8 genre feature bars printed on the box.
-    /// Level 1 (manual) and Level 3 (content-based) both mount one of these.
+    /// Level 1 (manual) and Level 6 (content-based) both mount one of these.
     /// </summary>
     public class PosterBrowser : MonoBehaviour
     {

@@ -203,10 +203,12 @@ namespace MadFact
                 case Phase.Storefront: _level.text = "THE STOREFRONT"; break;
                 case Phase.Level1: _level.text = "LEVEL 1 · MANUAL RECOMMENDATION"; break;
                 case Phase.Level2: _level.text = "LEVEL 2 · RULE-BASED RECOMMENDATION"; break;
-                case Phase.Level3: _level.text = "LEVEL 3 · CONTENT-BASED RECOMMENDATION"; break;
-                case Phase.Level4: _level.text = "LEVEL 4 · GROUND-TRUTH MATRIX"; break;
+                case Phase.Level3: _level.text = "LEVEL 3 · RATINGS TABLE"; break;
+                case Phase.Level4: _level.text = "LEVEL 4 · COLLABORATIVE FILTERING"; break;
                 case Phase.Level5: _level.text = "LEVEL 5 · MATRIX FACTORIZATION"; break;
-                case Phase.Level6: _level.text = "LEVEL 6 · MARKET GAP RESEARCH"; break;
+                case Phase.Level6: _level.text = "LEVEL 6 · CONTENT-BASED RECOMMENDATION"; break;
+                case Phase.Level7: _level.text = "LEVEL 7 · MARKET GAP RESEARCH"; break;
+                case Phase.Level8: _level.text = "LEVEL 8 · COMING SOON"; break;
                 case Phase.Win: _level.text = "★ BLOCKBUSTER ★"; break;
             }
             RefreshGoal();
@@ -219,7 +221,7 @@ namespace MadFact
             {
                 case Phase.Level1: _goal.text = $"goal: ${GameManager.Level1Goal} to upgrade"; break;
                 case Phase.Level2: _goal.text = $"goal: ${GameManager.Level2Goal} to automate"; break;
-                case Phase.Level3: _goal.text = "goal: serve the line by the box"; break;
+                case Phase.Level3: _goal.text = "goal: read the ratings table"; break;
                 default: _goal.text = ""; break;
             }
             _goalIcon.gameObject.SetActive(false);

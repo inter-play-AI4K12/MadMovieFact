@@ -24,12 +24,13 @@ namespace MadFact
         public CommsBox Comms;
         public Level1Counter L1;
         public Level2Robot L2;
-        public Level3ContentBased L3Content;
+        public Level3RatingsTable L3Ratings;
+        public Level6ContentBased L3Content;
         public Level3Mainframe L3;
-        public Level4Corkboard L4;
+        public Level7Corkboard L4;
 
-        public bool Level1Cleared, Level2Cleared, Level3Cleared, Level4Cleared;
-        [Tooltip("-1 = normal full-game intro, 0 = storefront hub, 1..6 = start directly in that dedicated level scene.")]
+        public bool Level1Cleared, Level2Cleared, Level3Cleared, Level4Cleared, Level6Cleared;
+        [Tooltip("-1 = normal full-game intro, 0 = storefront hub, 1..7 = start directly in that dedicated level scene.")]
         public int StartPhaseOverride = -1;
         int _currentLevel = 1;
         int _capturedEntryLevel = -1;
@@ -87,12 +88,14 @@ namespace MadFact
                 L1 = Level1Counter.Create(_canvas.transform);
             if ((all || StartPhaseOverride == 2) && L2 == null)
                 L2 = Level2Robot.Create(_canvas.transform);
-            if ((all || StartPhaseOverride == 3) && L3Content == null)
-                L3Content = Level3ContentBased.Create(_canvas.transform);
+            if ((all || StartPhaseOverride == 3) && L3Ratings == null)
+                L3Ratings = Level3RatingsTable.Create(_canvas.transform);
             if ((all || StartPhaseOverride == 4 || StartPhaseOverride == 5) && L3 == null)
                 L3 = Level3Mainframe.Create(_canvas.transform);
-            if ((all || StartPhaseOverride == 6) && L4 == null)
-                L4 = Level4Corkboard.Create(_canvas.transform);
+            if ((all || StartPhaseOverride == 6) && L3Content == null)
+                L3Content = Level6ContentBased.Create(_canvas.transform);
+            if ((all || StartPhaseOverride == 7) && L4 == null)
+                L4 = Level7Corkboard.Create(_canvas.transform);
 
             BringHudToFront();
         }
@@ -178,7 +181,7 @@ namespace MadFact
 
         void RestartCurrentLevelFromBeginning()
         {
-            int level = Mathf.Clamp(_currentLevel, 1, 6);
+            int level = Mathf.Clamp(_currentLevel, 1, LevelSceneCatalog.MaxPlayableLevel);
             Phase phase = (Phase)((int)Phase.Level1 + level - 1);
             GameManager.I.Run.ResetPhase(
                 phase,
@@ -189,6 +192,7 @@ namespace MadFact
             if (level == 2) Level2Cleared = false;
             if (level == 3) Level3Cleared = false;
             if (level == 4 || level == 5) Level4Cleared = false;
+            if (level == 6) Level6Cleared = false;
 
             SceneManager.LoadScene(LevelSceneCatalog.PathForLevel(level), LoadSceneMode.Single);
         }
@@ -253,12 +257,12 @@ namespace MadFact
                 case 3:
                     Storefront.SetLine(12);
                     Storefront.SetEnter("OPEN LEVEL 3 TASKS", EnterCurrentLevel);
-                    Storefront.SetSubtitle("LEVEL 3: Content-based recommendation. Match item features to stated needs.");
+                    Storefront.SetSubtitle("LEVEL 3: Ratings table. Read each customer's zero-to-five-star movie ratings.");
                     break;
                 case 4:
                     Storefront.SetLine(16);
                     Storefront.SetEnter("OPEN LEVEL 4 TASKS", EnterCurrentLevel);
-                    Storefront.SetSubtitle("LEVEL 4: Ground truth. Read the known ratings and fill the missing cells.");
+                    Storefront.SetSubtitle("LEVEL 4: Collaborative filtering. Predict missing ratings from similar customers.");
                     break;
                 case 5:
                     Storefront.SetLine(16);
@@ -266,9 +270,14 @@ namespace MadFact
                     Storefront.SetSubtitle("LEVEL 5: Matrix factorization. Learn hidden taste factors from the ratings.");
                     break;
                 case 6:
-                    Storefront.SetLine(0);
+                    Storefront.SetLine(12);
                     Storefront.SetEnter("OPEN LEVEL 6 TASKS", EnterCurrentLevel);
-                    Storefront.SetSubtitle("LEVEL 6: Market gap research. Make the movie people are starving for.");
+                    Storefront.SetSubtitle("LEVEL 6: Content-based recommendation. Match item features to stated needs.");
+                    break;
+                case 7:
+                    Storefront.SetLine(0);
+                    Storefront.SetEnter("OPEN LEVEL 7 TASKS", EnterCurrentLevel);
+                    Storefront.SetSubtitle("LEVEL 7: Market gap research. Make the movie people are starving for.");
                     break;
             }
             Storefront.SetEnterVisible(true);
@@ -278,6 +287,7 @@ namespace MadFact
         {
             if (L1 != null) L1.Close();
             if (L2 != null) L2.Close();
+            if (L3Ratings != null) L3Ratings.Close();
             if (L3Content != null) L3Content.Close();
             if (L3 != null) L3.Close();
             if (L4 != null) L4.Close();
@@ -285,7 +295,7 @@ namespace MadFact
 
         void StartDedicatedScene(int sceneLevel)
         {
-            _currentLevel = Mathf.Clamp(sceneLevel, 0, 6);
+            _currentLevel = Mathf.Clamp(sceneLevel, 0, LevelSceneCatalog.MaxPlayableLevel);
             // The authored dialogue prefab contains preview copy so designers can inspect
             // its layout. Dedicated scenes must hide that preview before gameplay starts.
             Comms.Hide();
@@ -314,9 +324,10 @@ namespace MadFact
             bool levelIsBuiltHere =
                 (_currentLevel == 1 && L1 != null) ||
                 (_currentLevel == 2 && L2 != null) ||
-                (_currentLevel == 3 && L3Content != null) ||
+                (_currentLevel == 3 && L3Ratings != null) ||
                 ((_currentLevel == 4 || _currentLevel == 5) && L3 != null) ||
-                (_currentLevel == 6 && L4 != null);
+                (_currentLevel == 6 && L3Content != null) ||
+                (_currentLevel == 7 && L4 != null);
 
             if (!levelIsBuiltHere)
             {
@@ -332,10 +343,11 @@ namespace MadFact
             {
                 case 1: GameManager.I.GoTo(Phase.Level1); L1.Open(); break;
                 case 2: GameManager.I.GoTo(Phase.Level2); L2.Open(); break;
-                case 3: GameManager.I.GoTo(Phase.Level3); L3Content.Open(); break;
+                case 3: GameManager.I.GoTo(Phase.Level3); L3Ratings.Open(); break;
                 case 4: GameManager.I.GoTo(Phase.Level4); L3.Open(); break;
                 case 5: GameManager.I.GoTo(Phase.Level5); L3.Open(); break;
-                case 6: GameManager.I.GoTo(Phase.Level6); L4.Open(); break;
+                case 6: GameManager.I.GoTo(Phase.Level6); L3Content.Open(); break;
+                case 7: GameManager.I.GoTo(Phase.Level7); L4.Open(); break;
             }
             MadFactLokiLogger.Instance?.Log("level_started", "Level started", new
             {
@@ -379,12 +391,19 @@ namespace MadFact
 
         public void OnContentBasedGoal()
         {
-            LogLevelCompleted(3);
+            LogLevelCompleted(6);
             Comms.Show(Speaker.OldDude, NarrativeDatabase.ContentBasedCompleteOldDude,
+                () => FinishLevel(6));
+        }
+
+        public void OnRatingsTableGoal()
+        {
+            LogLevelCompleted(3);
+            Comms.Show(Speaker.OldDude, NarrativeDatabase.RatingsTableCompleteOldDude,
                 () => FinishLevel(3));
         }
 
-        public void OnGroundTruthMatrixGoal()
+        public void OnCollaborativeFilteringGoal()
         {
             LogLevelCompleted(4);
             FinishLevel(4);
@@ -422,7 +441,7 @@ namespace MadFact
 
         public void OnGreenlit()
         {
-            LogLevelCompleted(6);
+            LogLevelCompleted(7);
             MadFactLokiLogger.Instance?.Log("game_completed", "Player completed MadFact", new
             {
                 money = GameManager.I.Money,
@@ -431,7 +450,7 @@ namespace MadFact
             });
             GameManager.I.GoTo(Phase.Win);
             Comms.Show(Speaker.OldDude, NarrativeDatabase.GreenlitOldDude,
-                () => FinishLevel(6));
+                () => FinishLevel(7));
         }
 
         void LogLevelCompleted(int level)

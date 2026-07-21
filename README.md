@@ -122,9 +122,11 @@ This makes both workflows valid:
 | `Storefront.unity` | VHS shop hub, customer queue, narrative dialogue, and level entrances. |
 | `Level01_ManualRecommendation.unity` | Read customer files, ask limited questions, and recommend a tape manually. |
 | `Level02_RuleBasedRecommendation.unity` | Program UNIT B-EIGE with rigid `IF genre THEN movie` rules and run customer batches. |
-| `Level03_ContentBasedRecommendation.unity` | Rank the full catalog from customer and box features, then confront filter bubbles and feature-model limits. |
-| `Level04_CollaborativeFiltering.unity` | Explore a Customers × Movies matrix, latent-vibe sliders, prediction error, and gradient descent. |
-| `Level05_MarketGapResearch.unity` | Use the learned market gap to assemble and greenlight a new movie poster. |
+| `Level03_RatingsTable.unity` | Click four customer profiles, read their 0-to-5-star movie-rating rows, and identify row favorites and overall column averages. |
+| `Level04_CollaborativeFiltering.unity` | Compare similar customers and predict missing ratings from their shared patterns. |
+| `Level05_MatrixFactorization.unity` | Explore latent-vibe sliders, prediction error, and gradient descent. |
+| `Level06_ContentBasedRecommendation.unity` | Rank the catalog from customer and movie features, then confront feature-model limits. |
+| `Level07_MarketGapResearch.unity` | Use learned rating patterns to assemble and greenlight a movie that fills the market gap. |
 | `MadMovieFact.unity` | Compatibility/all-in-one composition scene; retained for reference, but disabled in Build Settings. |
 
 `Assets/Scripts/Core/LevelSceneCatalog.cs` is the authoritative code-side map for these paths.
@@ -177,25 +179,29 @@ The player creates brittle genre-to-movie rules and runs them against a batch of
 log reports perfect sales, close matches, and refunds. A rule that hands an R-rated tape to Timmy
 turns the abstract limitation into a concrete oversight lesson and lets the player add an age rule.
 
-### Level 3 — Content-based recommendation
+### Level 3 — Ratings table
 
-The TASTE-MATCH 3000 builds genre profiles from rental history, scores the full shelf from the
-features printed on each box, and generates ranked suggestions. Returning customers expose a filter
-bubble, while a high-scoring but disappointing recommendation demonstrates that a content model can
-only reason about the features it was given.
+Four known customer profiles reveal rows of zero-to-five-star movie ratings. The player identifies
+row favorites, then checks each profile and calculates which movie columns have the highest and
+lowest average ratings.
 
 ### Level 4 — Collaborative filtering
 
-The mainframe displays known and predicted ratings for a Customers × Movies matrix. Four latent
-dimensions—Space-y, Spooky, Funny, and Explosions—can be adjusted manually. The optimizer runs real
-gradient descent to reduce total prediction error and expose missing ratings. Its success also
-triggers a privacy decision with Gibbs and a popularity-bias complaint from Indie Iris; money, trust,
-and narrative flags retain the consequences.
+The mainframe begins with Wendell and Priya in a 2 × 5 ratings matrix. Their first four ratings are
+identical, so the player can use Wendell's final rating to predict Priya's one missing value. A larger
+5 × 5 matrix then lets the player compare more customers, including a prediction based on the
+average of two ratings. Corrections label each customer's original rating and color the player's
+guess green, yellow, or red. The lesson ends with a horizontally scrollable 5 × 9 sparse matrix whose
+many empty cells motivate the need for a method that can fill incomplete real-world ratings data.
 
-### Level 5 — Market-gap research and movie making
+### Level 5 — Matrix factorization
 
-The optimized matrix reveals an underserved Spooky + Funny audience. The player combines weighted
-cutouts on a corkboard, matches the target latent profile, and greenlights the resulting movie.
+Wendell, Dot, and Hank introduce a small 3 × 3 ratings table summarized by two unnamed hidden
+factors. The player adjusts customer and movie profiles by hand until the average gap
+between predicted and original ratings falls below 0.35. The lesson then expands to four factors and
+a 5 × 5 table. The optimizer is introduced only after the player experiences the extra manual work;
+it runs gradient descent to reduce error and expose missing ratings. Its success also triggers the
+privacy and popularity-bias scenarios, while money, trust, and narrative flags retain consequences.
 
 ## State and scenario model
 

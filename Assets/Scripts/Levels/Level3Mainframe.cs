@@ -7,11 +7,9 @@ using MadFact.Telemetry;
 namespace MadFact
 {
     /// <summary>
-    /// Level 4 — Collaborative Filtering (Matrix Factorization). The CRT Mainframe shows a
-    /// Customers x Movies grid. Each known cell has a Target and a live Guess = 1 + 4·dot(U,V).
-    /// Clicking a row (customer) or column (movie) opens four plastic latent-feature sliders.
-    /// Tuning one cell breaks others (red glow + audio static): the player feels the coupling.
-    /// The OPTIMIZER runs real gradient descent to balance the whole board at once.
+    /// Shared interface for Level 4 collaborative filtering and Level 5 matrix
+    /// factorization. Level 4 predicts missing ratings by comparing similar customers;
+    /// Level 5 introduces latent-factor sliders and optimization.
     /// </summary>
     public class Level3Mainframe : MonoBehaviour
     {
@@ -19,6 +17,8 @@ namespace MadFact
         MfModel _previewModel;
         MfModel M => GameManager.I != null ? GameManager.I.Matrix : (_previewModel ??= new MfModel());
         MatrixTutorialModel _tutorial;
+        CollaborativeFilteringTutorialModel _collabTutorial;
+        SparseRatingsTutorialModel _sparseTutorial;
 
         Image[,] _cellBg; Image[,] _cellGlow; Text[,] _cellGuess; Text[,] _cellTarget;
         Button[] _rowBtn; Button[] _colBtn;
@@ -26,6 +26,7 @@ namespace MadFact
         Image[] _rowSel; Image[] _colSel;
 
         [SerializeField] Slider[] _sliders = new Slider[4];
+        [SerializeField] Text[] _sliderName = new Text[4];
         [SerializeField] Text[] _sliderVal = new Text[4];
         [SerializeField] Text _editLabel, _lossLabel, _hint;
         [SerializeField] Image _lossFill;
@@ -47,9 +48,16 @@ namespace MadFact
         bool _miniTutorial;
         bool _miniDialChanged;
         int[,] _stage1Guess;
-        GameObject _sliderPanel, _pickerRoot, _lossBox;
-        Text _pickerLabel;
+        [SerializeField] GameObject _sliderPanel, _pickerRoot, _lossBox;
+        [SerializeField] Text _pickerLabel;
+        [SerializeField] GameObject _standardGrid, _sparseRoot;
         Button[,] _cellBtn;
+        Image[,] _sparseCellBg;
+        Text[,] _sparseCellValue, _sparseCellOriginal;
+        Button[,] _sparseCellButton;
+        int[,] _sparseGuess;
+        int _sparsePickRow = -1, _sparsePickColumn = -1;
+        bool _sparseTask, _sparseEvaluated;
         int _pickI = -1, _pickJ = -1;
         // A single slider drag fires OnValueChanged dozens of times, so raw event counts
         // trigger the power-on beat almost instantly. Gate on wall-clock time playing with
@@ -61,12 +69,15 @@ namespace MadFact
         const int MainframeStageBase = 100; // first of three post-optimizer payout stages
         const string FlagStage1Done = "mf_stage1_done";
         const string FlagStage1Intro = "mf_stage1_intro";
-        const string FlagStage2Intro = "mf_stage2_intro";
-        const string FlagGroundMiniDone = "mf_ground_3x3_done";
-        const string FlagFactorMiniDone = "mf_factor_3x3_done";
+        const string FlagStage2Intro = "mf_stage2_two_factor_intro";
+        const string FlagGroundMiniDone = "mf_collaborative_2x5_done";
+        const string FlagFactorMiniDone = "mf_factor_3x3_two_factor_done";
         const string FlagPowered = "mf_optimizer_powered";
 
         const int CellW = 70, CellH = 50, GapX = 6, GapY = 6, RowHeadW = 116, ColHeadH = 40;
+        const int SparseCellW = 68, SparseCellH = 46, SparseRowHeadW = 108;
+        const int AverageTruthRow = 4, AverageTruthColumn = 2;
+        const int AverageSourceRowA = 1, AverageSourceRowB = 2;
 
         void Awake()
         {
@@ -80,6 +91,28 @@ namespace MadFact
             _rowBtn = new Button[rows]; _colBtn = new Button[cols];
             _rowLabel = new Text[rows]; _colLabel = new Text[cols];
             _rowSel = new Image[rows]; _colSel = new Image[cols];
+            _cellBtn = new Button[rows, cols];
+            if (_sliderName == null || _sliderName.Length != Latent.Dim)
+                _sliderName = new Text[Latent.Dim];
+
+            // These references were originally assigned only while the UI builder ran.
+            // Unity does not preserve non-serialized fields in a prefab, so restore every
+            // stage-specific panel by its stable authored name before Open() switches stages.
+            _sliderPanel = FindObject("Sliders");
+            _pickerRoot = FindObject("Picker");
+            _lossBox = FindObject("LossBox");
+            _standardGrid = FindObject("Grid");
+            _sparseRoot = FindObject("SparseMatrix");
+            _pickerLabel = UIFactory.FindDeep<Text>(transform, "PickLbl");
+            _editLabel = UIFactory.FindDeep<Text>(transform, "Edit");
+            _lossLabel = UIFactory.FindDeep<Text>(transform, "LossLbl");
+            Transform lossBar = _lossBox != null
+                ? UIFactory.FindDeep<Transform>(_lossBox.transform, "BarBg")
+                : null;
+            _lossFill = lossBar != null ? UIFactory.FindDeep<Image>(lossBar, "Fill") : null;
+            _hint = UIFactory.FindDeep<Text>(transform, "Hint");
+            _optimizeBtn = UIFactory.FindDeep<Button>(transform, "Optimize");
+            _resetBtn = UIFactory.FindDeep<Button>(transform, "Reset");
 
             for (int j = 0; j < cols; j++)
             {
@@ -105,17 +138,37 @@ namespace MadFact
                     _cellGlow[i, j] = UIFactory.FindDeep<Image>(cell.transform, "Glow");
                     _cellTarget[i, j] = UIFactory.FindDeep<Text>(cell.transform, "T");
                     _cellGuess[i, j] = UIFactory.FindDeep<Text>(cell.transform, "G");
+                    int row = i, column = j;
+                    _cellBtn[i, j] = cell.GetComponent<Button>();
+                    if (_cellBtn[i, j] != null)
+                    {
+                        _cellBtn[i, j].onClick.RemoveAllListeners();
+                        _cellBtn[i, j].onClick.AddListener(() => OnCellClicked(row, column));
+                    }
                 }
             }
             for (int d = 0; d < _sliders.Length; d++)
             {
                 int index = d;
+                _sliderName[d] = UIFactory.FindDeep<Text>(transform, "SN" + d);
                 _sliders[d].onValueChanged.RemoveAllListeners();
                 _sliders[d].onValueChanged.AddListener(value => OnSlider(index, value));
             }
             Bind("Leave", () => MadFactBootstrap.I.GoStorefront());
             Bind("Reset", ResetTastes);
             Bind("Optimize", RunOptimizer);
+            for (int rating = 1; rating <= 5; rating++)
+            {
+                int selectedRating = rating;
+                Bind("Pick" + rating, () => PickValue(selectedRating));
+            }
+            BindSparseGrid();
+        }
+
+        GameObject FindObject(string name)
+        {
+            Transform found = UIFactory.FindDeep<Transform>(transform, name);
+            return found != null ? found.gameObject : null;
         }
 
         void Bind(string name, UnityEngine.Events.UnityAction action)
@@ -149,6 +202,7 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(title.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(700, 22), new Vector2(20, -12));
 
             BuildGrid(screen.transform);
+            BuildSparseGrid(screen.transform);
             BuildSliderPanel(screen.transform);
             BuildBottom(screen.transform);
 
@@ -170,6 +224,7 @@ namespace MadFact
         {
             int rows = M.Rows, cols = M.Cols;
             var gridRoot = UIFactory.Node(screen, "Grid");
+            _standardGrid = gridRoot;
             var grt = UIFactory.RT(gridRoot);
             grt.anchorMin = new Vector2(0, 1); grt.anchorMax = new Vector2(0, 1); grt.pivot = new Vector2(0, 1);
             grt.anchoredPosition = new Vector2(20, -44);
@@ -210,7 +265,10 @@ namespace MadFact
 
                 for (int j = 0; j < cols; j++)
                 {
-                    var cell = UIFactory.Bevel(gridRoot.transform, $"C{i}_{j}", Theme.CrtBgSoft, sunken: true);
+                    // Matrix cells use a plain fill instead of the old inset sprite. This
+                    // keeps the numbers crisp and lets the state colour carry the meaning.
+                    var cell = UIFactory.Image(gridRoot.transform, $"C{i}_{j}", Theme.CrtBgSoft,
+                        Theme.Solid, Image.Type.Simple);
                     UIFactory.Place(UIFactory.RT(cell.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(CellW, CellH),
                         new Vector2(RowHeadW + j * (CellW + GapX), -(ColHeadH + i * (CellH + GapY))));
                     _cellBg[i, j] = cell;
@@ -227,8 +285,14 @@ namespace MadFact
                     UIFactory.Fill(UIFactory.RT(glow.gameObject), -6, -6, -6, -6);
                     _cellGlow[i, j] = glow;
 
-                    var tgt = UIFactory.Text(cell.transform, "T", "", 11, Theme.CrtGreenDim, Theme.Typewriter, TextAnchor.UpperLeft, false);
-                    UIFactory.Place(UIFactory.RT(tgt.gameObject), new Vector2(0, 1), new Vector2(0, 1), new Vector2(CellW, 16), new Vector2(4, -2));
+                    var tgt = UIFactory.Text(cell.transform, "T", "", 13, Theme.CrtAmber, Theme.Typewriter,
+                        TextAnchor.UpperCenter, false, FontStyle.Bold);
+                    UIFactory.Place(UIFactory.RT(tgt.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                        new Vector2(CellW, 18), new Vector2(0, -1));
+                    var targetStroke = tgt.gameObject.AddComponent<Outline>();
+                    targetStroke.effectColor = new Color(0f, 0f, 0f, 0.9f);
+                    targetStroke.effectDistance = new Vector2(1f, -1f);
+                    targetStroke.useGraphicAlpha = true;
                     _cellTarget[i, j] = tgt;
 
                     var gss = UIFactory.Text(cell.transform, "G", "", 22, Theme.CrtGreen, Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
@@ -236,6 +300,153 @@ namespace MadFact
                     _cellGuess[i, j] = gss;
                 }
             }
+        }
+
+        /// <summary>
+        /// Builds the final Level 4 exercise as a horizontally scrollable 5 by 9 table.
+        /// The table deliberately keeps most cells empty: only five ? cells are tasks.
+        /// </summary>
+        void BuildSparseGrid(Transform screen)
+        {
+            _sparseTutorial = new SparseRatingsTutorialModel();
+            _sparseRoot = UIFactory.Node(screen, "SparseMatrix");
+            RectTransform rootRt = UIFactory.RT(_sparseRoot);
+            rootRt.anchorMin = Vector2.zero;
+            rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = Vector2.zero;
+            rootRt.offsetMax = Vector2.zero;
+
+            var viewport = UIFactory.Bevel(_sparseRoot.transform, "SparseViewport", Theme.CrtBgSoft, sunken: true);
+            UIFactory.Place(UIFactory.RT(viewport.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(548, 310), new Vector2(20, -44));
+            viewport.gameObject.AddComponent<RectMask2D>();
+            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = true;
+            scroll.vertical = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 28f;
+            scroll.viewport = UIFactory.RT(viewport.gameObject);
+
+            var content = UIFactory.Node(viewport.transform, "SparseContent");
+            RectTransform contentRt = UIFactory.RT(content);
+            contentRt.anchorMin = new Vector2(0, 1);
+            contentRt.anchorMax = new Vector2(0, 1);
+            contentRt.pivot = new Vector2(0, 1);
+            contentRt.anchoredPosition = Vector2.zero;
+            contentRt.sizeDelta = new Vector2(
+                SparseRowHeadW + SparseRatingsTutorialModel.Columns * (SparseCellW + GapX) + 8,
+                ColHeadH + SparseRatingsTutorialModel.Rows * (SparseCellH + GapY));
+            scroll.content = contentRt;
+
+            _sparseCellBg = new Image[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparseCellValue = new Text[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparseCellOriginal = new Text[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparseCellButton = new Button[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+
+            for (int column = 0; column < SparseRatingsTutorialModel.Columns; column++)
+            {
+                var header = UIFactory.Bevel(content.transform, "SparseCol" + column,
+                    new Color(0.78f, 0.79f, 0.70f), sunken: false);
+                UIFactory.Place(UIFactory.RT(header.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                    new Vector2(SparseCellW, ColHeadH - 2),
+                    new Vector2(SparseRowHeadW + column * (SparseCellW + GapX), 0));
+                var label = UIFactory.Text(header.transform, "Label",
+                    SparseRatingsTutorialModel.MovieNames[column].Replace(" ", "\n"),
+                    7, Color.black, Theme.Typewriter, TextAnchor.MiddleCenter, true, FontStyle.Bold);
+                UIFactory.Fill(UIFactory.RT(label.gameObject), 2, 2, 2, 2);
+            }
+
+            for (int row = 0; row < SparseRatingsTutorialModel.Rows; row++)
+            {
+                var rowHeader = UIFactory.Bevel(content.transform, "SparseRow" + row,
+                    new Color(0.78f, 0.79f, 0.70f), sunken: false);
+                UIFactory.Place(UIFactory.RT(rowHeader.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                    new Vector2(SparseRowHeadW - 4, SparseCellH),
+                    new Vector2(0, -(ColHeadH + row * (SparseCellH + GapY))));
+                var rowLabel = UIFactory.Text(rowHeader.transform, "Label",
+                    SparseRatingsTutorialModel.CustomerNames[row], 9, Color.black,
+                    Theme.Typewriter, TextAnchor.MiddleLeft, true, FontStyle.Bold);
+                UIFactory.Fill(UIFactory.RT(rowLabel.gameObject), 8, 2, 4, 2);
+
+                for (int column = 0; column < SparseRatingsTutorialModel.Columns; column++)
+                {
+                    int capturedRow = row, capturedColumn = column;
+                    var cell = UIFactory.Image(content.transform, $"SCell_{row}_{column}",
+                        new Color(0.78f, 0.79f, 0.70f), Theme.Solid, Image.Type.Simple);
+                    UIFactory.Place(UIFactory.RT(cell.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                        new Vector2(SparseCellW, SparseCellH),
+                        new Vector2(SparseRowHeadW + column * (SparseCellW + GapX),
+                            -(ColHeadH + row * (SparseCellH + GapY))));
+                    _sparseCellBg[row, column] = cell;
+
+                    var button = cell.gameObject.AddComponent<Button>();
+                    button.transition = Selectable.Transition.None;
+                    button.onClick.AddListener(() => OnSparseCellClicked(capturedRow, capturedColumn));
+                    _sparseCellButton[row, column] = button;
+
+                    var original = UIFactory.Text(cell.transform, "Original", "", 7, Color.white,
+                        Theme.Typewriter, TextAnchor.UpperCenter, false, FontStyle.Bold);
+                    UIFactory.Place(UIFactory.RT(original.gameObject), new Vector2(0, 1), new Vector2(1, 1),
+                        new Vector2(0, 13), new Vector2(0, -2));
+                    _sparseCellOriginal[row, column] = original;
+
+                    var value = UIFactory.Text(cell.transform, "Value", "", 18, Color.black,
+                        Theme.Typewriter, TextAnchor.MiddleCenter, false, FontStyle.Bold);
+                    UIFactory.Fill(UIFactory.RT(value.gameObject), 0, 10, 0, 0);
+                    _sparseCellValue[row, column] = value;
+                }
+            }
+
+            var track = UIFactory.Image(_sparseRoot.transform, "SparseScrollbar", new Color(0.05f, 0.08f, 0.05f, 0.95f));
+            UIFactory.Place(UIFactory.RT(track.gameObject), new Vector2(0, 1), new Vector2(0, 1),
+                new Vector2(548, 18), new Vector2(20, -360));
+            var scrollbar = track.gameObject.AddComponent<Scrollbar>();
+            scrollbar.direction = Scrollbar.Direction.LeftToRight;
+            scrollbar.numberOfSteps = 0;
+            var slidingArea = UIFactory.Node(track.transform, "Sliding Area");
+            UIFactory.Fill(UIFactory.RT(slidingArea), 3, 3, 3, 3);
+            var handle = UIFactory.Image(slidingArea.transform, "Handle", Theme.CrtAmber);
+            RectTransform handleRt = UIFactory.RT(handle.gameObject);
+            handleRt.anchorMin = Vector2.zero;
+            handleRt.anchorMax = new Vector2(0.38f, 1);
+            handleRt.offsetMin = Vector2.zero;
+            handleRt.offsetMax = Vector2.zero;
+            scrollbar.handleRect = handleRt;
+            scrollbar.targetGraphic = handle;
+            scrollbar.value = 0f;
+            scroll.horizontalScrollbar = scrollbar;
+            scroll.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+
+            _sparseRoot.SetActive(false);
+        }
+
+        /// <summary>Restores the non-serialized sparse-table lookup arrays in scene instances.</summary>
+        void BindSparseGrid()
+        {
+            if (_sparseRoot == null) return;
+            _sparseTutorial = new SparseRatingsTutorialModel();
+            _sparseCellBg = new Image[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparseCellValue = new Text[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparseCellOriginal = new Text[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparseCellButton = new Button[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+
+            for (int row = 0; row < SparseRatingsTutorialModel.Rows; row++)
+                for (int column = 0; column < SparseRatingsTutorialModel.Columns; column++)
+                {
+                    Transform cell = UIFactory.FindDeep<Transform>(_sparseRoot.transform, $"SCell_{row}_{column}");
+                    if (cell == null) continue;
+                    _sparseCellBg[row, column] = cell.GetComponent<Image>();
+                    _sparseCellValue[row, column] = UIFactory.FindDeep<Text>(cell, "Value");
+                    _sparseCellOriginal[row, column] = UIFactory.FindDeep<Text>(cell, "Original");
+                    Button button = cell.GetComponent<Button>();
+                    _sparseCellButton[row, column] = button;
+                    if (button != null)
+                    {
+                        int capturedRow = row, capturedColumn = column;
+                        button.onClick.RemoveAllListeners();
+                        button.onClick.AddListener(() => OnSparseCellClicked(capturedRow, capturedColumn));
+                    }
+                }
         }
 
         void BuildSliderPanel(Transform screen)
@@ -247,8 +458,6 @@ namespace MadFact
             _editLabel = UIFactory.Text(panel.transform, "Edit", "SELECT A ROW OR COLUMN", 14, Theme.CrtAmber, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
             UIFactory.Place(UIFactory.RT(_editLabel.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(280, 40), new Vector2(0, -8));
 
-            // The dials are deliberately UNLABELED: the whole point of matrix
-            // factorization is that the machine discovers what they mean on its own.
             var dialGrey = new Color(0.55f, 0.62f, 0.55f);
             for (int d = 0; d < 4; d++)
             {
@@ -256,6 +465,7 @@ namespace MadFact
                 float x = -114 + d * 76;
                 var nameT = UIFactory.Text(panel.transform, "SN" + d, "FEATURE\n" + (d + 1), 9, dialGrey, Theme.Typewriter, TextAnchor.UpperCenter, true, FontStyle.Bold);
                 UIFactory.Place(UIFactory.RT(nameT.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(72, 34), new Vector2(x, -50));
+                _sliderName[d] = nameT;
 
                 var s = UIFactory.VSlider(panel.transform, 0f, 1.2f, 0.5f, dialGrey, v => OnSlider(cd, v));
                 UIFactory.Place(UIFactory.RT(s.gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(46, 146), new Vector2(x, -98));
@@ -265,8 +475,13 @@ namespace MadFact
                 UIFactory.Place(UIFactory.RT(_sliderVal[d].gameObject), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(72, 18), new Vector2(x, -250));
             }
             SetSlidersInteractable(false);
+            ConfigureFactorControls(true);
 
             BuildStage1Picker(screen);
+            // Level 4 is the default authored preview. Its right-hand panel asks for a
+            // star rating; Level 5 switches to the hidden-factor sliders in Open().
+            _sliderPanel.SetActive(false);
+            _pickerRoot.SetActive(true);
         }
 
         /// <summary>Stage-1 rating picker; occupies the slider panel's spot while it's hidden.</summary>
@@ -310,9 +525,10 @@ namespace MadFact
             UIFactory.Place(UIFactory.RT(_resetBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(150, 34), new Vector2(-180, 16));
             UIFactory.ButtonIcon(_resetBtn, ArtSprites.Reset(), 24f);
 
-            _optimizeBtn = UIFactory.Button(screen.transform, "Optimize", "RUN OPTIMIZER", RunOptimizer, Theme.CrtBgSoft, 16, Theme.SystemSans, Theme.CrtAmber);
+            _optimizeBtn = UIFactory.Button(screen.transform, "Optimize", "CHECK ERROR", RunOptimizer, Theme.CrtBgSoft, 16, Theme.SystemSans, Theme.CrtAmber);
             UIFactory.Place(UIFactory.RT(_optimizeBtn.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(180, 38), new Vector2(-20, 14));
-            UIFactory.ButtonIcon(_optimizeBtn, ArtSprites.Optimize(), 28f);
+            UIFactory.ButtonIcon(_optimizeBtn, ArtSprites.Confirm(), 28f);
+            _optimizeBtn.interactable = false;
         }
 
         // ---- Open / refresh ----------------------------------------------
@@ -321,25 +537,31 @@ namespace MadFact
             transform.SetAsLastSibling();
             _root.SetActive(true);
             MadFactBootstrap.I.Storefront.SetLine(0);
+            _sparseTask = false;
+            _sparsePickRow = _sparsePickColumn = -1;
 
-            // This UI is shared by two dedicated lessons. Level 4 owns only the
-            // ground-truth ledger; Level 5 starts at the latent-factor controls.
+            // This UI is shared by two dedicated lessons. Level 4 predicts ratings
+            // through collaborative filtering; Level 5 starts at latent factors.
             _stage2 = GameManager.I.CurrentLevel == 5;
             _miniTutorial = _stage2
                 ? !GameManager.I.Run.HasFlag(FlagFactorMiniDone)
                 : !GameManager.I.Run.HasFlag(FlagGroundMiniDone);
-            if (_miniTutorial) _tutorial = new MatrixTutorialModel();
+            if (_miniTutorial)
+            {
+                if (_stage2) _tutorial = new MatrixTutorialModel();
+                else _collabTutorial = new CollaborativeFilteringTutorialModel();
+            }
             _miniDialChanged = false;
             if (_stage2) GameManager.I.Run.SetFlag(FlagStage1Done);
             Text screenTitle = UIFactory.FindDeep<Text>(_root.transform, "Title");
             if (screenTitle != null)
                 screenTitle.text = _stage2
                     ? (_miniTutorial
-                        ? "█ 3×3 TRAINING ░ FACTORIZATION ENGINE █"
+                        ? "█ 3×3 TRAINING ░ TWO-FACTOR PROFILES █"
                         : "█ MAD-FACT MAINFRAME ░ MATRIX FACTORIZATION ENGINE █")
                     : (_miniTutorial
-                        ? "█ 3×3 TRAINING ░ GROUND-TRUTH RATINGS MATRIX █"
-                        : "█ MAD-FACT MAINFRAME ░ GROUND-TRUTH RATINGS MATRIX █");
+                        ? "█ 2×5 TRAINING ░ COLLABORATIVE FILTERING █"
+                        : "█ MAD-FACT MAINFRAME ░ COLLABORATIVE FILTERING █");
             if (_stage1Guess == null)
                 _stage1Guess = new int[M.Rows, M.Cols];
             if (_stage2 && _stage2StartTime < 0f) { _stage2StartTime = Time.unscaledTime; _slidersSeen.Clear(); }
@@ -352,26 +574,32 @@ namespace MadFact
                 GameManager.I.Run.SetFlag(FlagStage1Intro);
                 string[] lines =
                 {
-                    "This 3 by 3 training matrix has one missing rating. The saved ratings are the ground truth.",
-                    "Compare its row and column, then click the ? and choose the rating that fits."
+                    "Collaborative filtering uses ratings from people with similar tastes to predict a missing rating.",
+                    "Once we predict ratings, the movies with the highest predicted ratings are probably the best ones to recommend to each customer.",
+                    "Wendell and Priya rated four movies the same way. Click Priya's ? and use Wendell's rating for that movie as your clue."
                 };
                 RectTransform grid = UIFactory.FindDeep<RectTransform>(_root.transform, "Grid");
-                RectTransform missingCell = UIFactory.RT(_cellBg[2, 2].gameObject);
+                RectTransform missingCell = UIFactory.RT(_cellBg[
+                    _collabTutorial.MissingRow, _collabTutorial.MissingColumn].gameObject);
                 MadFactBootstrap.I.Comms.ShowFocused(Speaker.OldDude, lines,
-                    new[] { grid, missingCell });
+                    new[] { grid, grid, missingCell });
             }
             else if (_stage2 && !GameManager.I.Run.HasFlag(FlagStage2Intro))
             {
                 GameManager.I.Run.SetFlag(FlagStage2Intro);
                 string[] lines =
                 {
-                    "Each customer and tape has hidden dials called LATENT FACTORS. Move one and watch several guesses change.",
-                    "Then press TEST 3×3 OPTIMIZER so the machine can reduce its error."
+                    "Matrix factorization is a way to summarize a ratings table. It gives each customer and movie a short taste profile.",
+                    "This training board has two factors. Each factor represents a movie taste. The slider value for that factor shows how much a movie satisfies that taste and how much a user is into that taste. Keep in mind that we are training a robot. It does not know what a taste is, so the factors are nameless.",
+                    "ORIG is the original rating. The larger number is the rating predicted from the customer's factors and the movie's factors. Unknown cells show PRED values that update when you move a slider.",
+                    "ERROR is the average gap between the predictions and the original ratings. Adjust the two factors and lower ERROR below 0.35, then press CHECK ERROR."
                 };
+                RectTransform grid = UIFactory.FindDeep<RectTransform>(_root.transform, "Grid");
                 RectTransform sliders = UIFactory.RT(_sliderPanel);
-                RectTransform optimizer = UIFactory.RT(_optimizeBtn.gameObject);
+                RectTransform exampleCell = UIFactory.RT(_cellBg[0, 0].gameObject);
+                RectTransform error = UIFactory.RT(_lossBox);
                 MadFactBootstrap.I.Comms.ShowFocused(Speaker.OldDude, lines,
-                    new[] { sliders, optimizer });
+                    new[] { grid, sliders, exampleCell, error });
             }
         }
         public void Close() { _root.SetActive(false); if (AudioTension.I != null) AudioTension.I.Silence(); }
@@ -379,7 +607,16 @@ namespace MadFact
         void ApplyStage()
         {
             bool powered = GameManager.I.Run.HasFlag(FlagPowered);
-            SetGridSize(_miniTutorial ? 3 : M.Rows);
+            if (_standardGrid != null) _standardGrid.SetActive(true);
+            if (_sparseRoot != null) _sparseRoot.SetActive(false);
+            int activeRows = _miniTutorial
+                ? (_stage2 ? 3 : CollaborativeFilteringTutorialModel.Rows)
+                : M.Rows;
+            int activeColumns = _miniTutorial
+                ? (_stage2 ? 3 : CollaborativeFilteringTutorialModel.Columns)
+                : M.Cols;
+            SetGridDimensions(activeRows, activeColumns);
+            ConfigureFactorControls(_stage2 && _miniTutorial);
             if (_sliderPanel != null) _sliderPanel.SetActive(_stage2);
             if (_pickerRoot != null) _pickerRoot.SetActive(!_stage2);
             if (_lossBox != null) _lossBox.SetActive(_stage2);
@@ -387,43 +624,53 @@ namespace MadFact
             {
                 _optimizeBtn.gameObject.SetActive(_stage2 && (_miniTutorial || powered));
                 Text label = _optimizeBtn.GetComponentInChildren<Text>();
-                if (label != null) label.text = _miniTutorial ? "TEST 3×3 OPTIMIZER" : "RUN OPTIMIZER";
-                _optimizeBtn.interactable = !_miniTutorial || _miniDialChanged;
+                if (label != null) label.text = _miniTutorial ? "CHECK ERROR" : "RUN OPTIMIZER";
+                Image icon = UIFactory.FindDeep<Image>(_optimizeBtn.transform, "Icon");
+                if (icon != null) icon.sprite = _miniTutorial ? ArtSprites.Confirm() : ArtSprites.Optimize();
+                _optimizeBtn.interactable = _miniTutorial ? _miniDialChanged : powered;
             }
             if (_resetBtn != null) _resetBtn.gameObject.SetActive(_stage2);
             if (_hint != null)
                 _hint.text = !_stage2
                     ? (_miniTutorial
-                        ? "3×3 TASK: One rating is missing. Read the two matching rows and columns, then fill the ?."
-                        : "MAIN TASK: Five ratings are missing. Fill each ? by reading the rows and columns around it.")
+                        ? "2×5 TASK: Wendell and Priya match on four movies. Use Wendell's last rating to fill Priya's ?."
+                        : "MAIN TASK: Fill each ? by comparing customers with similar rating patterns.")
                     : _miniTutorial
-                        ? "3×3 TASK: Select a row or column, move one hidden-factor dial, then test the optimizer."
+                        ? $"3×3 TASK: Adjust FACTOR 1 and FACTOR 2. Lower mean ERROR below {MatrixTutorialModel.GoalMeanError:0.00}, then press CHECK ERROR."
                     : powered
                         ? "STAGE 2: The optimizer is powered. Hit OPTIMIZE and watch it guess-and-check every dial."
                         : "STAGE 2: Four unlabeled dials per row and column. Grab a row or a tape and tune the board by hand.";
         }
 
-        void SetGridSize(int size)
+        void SetGridDimensions(int rows, int columns)
         {
             for (int i = 0; i < M.Rows; i++)
             {
-                _rowBtn[i].gameObject.SetActive(i < size);
-                if (i < size)
+                _rowBtn[i].gameObject.SetActive(i < rows);
+                if (i < rows)
                 {
-                    string name = _miniTutorial ? MatrixTutorialModel.CustomerNames[i] : M.Customers[i].Name;
+                    string name = _miniTutorial
+                        ? (_stage2
+                            ? MatrixTutorialModel.CustomerNames[i]
+                            : CollaborativeFilteringTutorialModel.CustomerNames[i])
+                        : M.Customers[i].Name;
                     if (_rowLabel[i] != null) _rowLabel[i].text = name;
                     Image icon = UIFactory.FindDeep<Image>(_rowBtn[i].transform, "Icon");
                     if (icon != null) icon.sprite = ArtSprites.CustomerPortrait(name);
                 }
                 for (int j = 0; j < M.Cols; j++)
-                    _cellBg[i, j].gameObject.SetActive(i < size && j < size);
+                    _cellBg[i, j].gameObject.SetActive(i < rows && j < columns);
             }
             for (int j = 0; j < M.Cols; j++)
             {
-                _colBtn[j].gameObject.SetActive(j < size);
-                if (j < size && _colLabel[j] != null)
+                _colBtn[j].gameObject.SetActive(j < columns);
+                if (j < columns && _colLabel[j] != null)
                 {
-                    string movie = _miniTutorial ? MatrixTutorialModel.MovieNames[j] : M.Movies[j].Short;
+                    string movie = _miniTutorial
+                        ? (_stage2
+                            ? MatrixTutorialModel.MovieNames[j]
+                            : CollaborativeFilteringTutorialModel.MovieNames[j])
+                        : M.Movies[j].Short;
                     _colLabel[j].text = movie.Replace(" ", "\n");
                 }
             }
@@ -432,28 +679,46 @@ namespace MadFact
         // ---- Stage 1: fill in the blanks ----------------------------------
         void OnCellClicked(int i, int j)
         {
-            bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+            bool known = _miniTutorial ? _collabTutorial.Known[i, j] : M.Known[i, j];
             if (_stage2 || known || _stage1Guess == null) return;
             _pickI = i; _pickJ = j;
-            string customer = _miniTutorial ? MatrixTutorialModel.CustomerNames[i] : M.Customers[i].Name;
-            string movie = _miniTutorial ? MatrixTutorialModel.MovieNames[j] : M.Movies[j].Title;
-            _pickerLabel.text = $"HOW WOULD\n{customer}\nRATE '{movie}'?\n\nRead their row.\nRead the tape's column.";
+            string customer = _miniTutorial
+                ? CollaborativeFilteringTutorialModel.CustomerNames[i]
+                : M.Customers[i].Name;
+            string movie = _miniTutorial
+                ? CollaborativeFilteringTutorialModel.MovieNames[j]
+                : M.Movies[j].Title;
+            if (!_miniTutorial && i == AverageTruthRow && j == AverageTruthColumn)
+            {
+                int first = Mathf.RoundToInt(M.Target[AverageSourceRowA, j]);
+                int second = Mathf.RoundToInt(M.Target[AverageSourceRowB, j]);
+                _pickerLabel.text = $"AVERAGE TWO RATINGS\n\nDOT: {first}★   HANK: {second}★\n({first} + {second}) ÷ 2\n\nChoose their average.";
+            }
+            else
+                _pickerLabel.text = $"HOW WOULD\n{customer}\nRATE '{movie}'?\n\nRead their row.\nRead the tape's column.";
+            RefreshGrid();
             if (AudioTension.I != null) AudioTension.I.Beep();
         }
 
         void PickValue(int value)
         {
+            if (_sparseTask)
+            {
+                PickSparseValue(value);
+                return;
+            }
             if (_stage2 || _pickI < 0) return;
             _stage1Guess[_pickI, _pickJ] = value;
             _pickI = -1; _pickJ = -1;
             if (AudioTension.I != null) AudioTension.I.Clunk();
 
             int filled = 0, blanks = 0;
-            int taskSize = _miniTutorial ? 3 : M.Rows;
-            for (int i = 0; i < taskSize; i++)
-                for (int j = 0; j < taskSize; j++)
+            int taskRows = _miniTutorial ? CollaborativeFilteringTutorialModel.Rows : M.Rows;
+            int taskColumns = _miniTutorial ? CollaborativeFilteringTutorialModel.Columns : M.Cols;
+            for (int i = 0; i < taskRows; i++)
+                for (int j = 0; j < taskColumns; j++)
                 {
-                    bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                    bool known = _miniTutorial ? _collabTutorial.Known[i, j] : M.Known[i, j];
                     if (!known) { blanks++; if (_stage1Guess[i, j] > 0) filled++; }
                 }
 
@@ -467,48 +732,90 @@ namespace MadFact
         void Stage1Evaluate()
         {
             int correct = 0, blanks = 0;
-            int taskSize = _miniTutorial ? 3 : M.Rows;
-            for (int i = 0; i < taskSize; i++)
-                for (int j = 0; j < taskSize; j++)
+            int taskRows = _miniTutorial ? CollaborativeFilteringTutorialModel.Rows : M.Rows;
+            int taskColumns = _miniTutorial ? CollaborativeFilteringTutorialModel.Columns : M.Cols;
+            for (int i = 0; i < taskRows; i++)
+                for (int j = 0; j < taskColumns; j++)
                 {
-                    bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                    bool known = _miniTutorial ? _collabTutorial.Known[i, j] : M.Known[i, j];
                     if (known) continue;
                     blanks++;
                     float truth = _miniTutorial
-                        ? _tutorial.Target[i, j]
-                        : GameData.TrueRating(M.Customers[i], M.Movies[j]);
-                    bool ok = Mathf.Abs(_stage1Guess[i, j] - truth) <= 0.75f;
-                    if (ok) correct++;
-                    _cellTarget[i, j].text = "t" + (Mathf.Round(truth * 2f) / 2f).ToString("0.0");
-                    _cellGuess[i, j].color = ok ? new Color(0.33f, 0.95f, 0.40f) : Theme.ErrorRed;
+                        ? _collabTutorial.Target[i, j]
+                        : FullStageTruth(i, j);
+                    float difference = Mathf.Abs(_stage1Guess[i, j] - truth);
+                    bool exact = difference <= 0.25f;
+                    if (exact) correct++;
+                    ShowOriginalRating(_cellTarget[i, j], _cellGlow[i, j], truth);
+                    _cellGuess[i, j].color = PredictionColor(difference);
                 }
 
             if (AudioTension.I != null) { if (correct == blanks) AudioTension.I.ChaChing(); else AudioTension.I.Buzzer(); }
 
             if (_miniTutorial)
             {
+                MadFactLokiLogger.Instance?.Log("level_4_collaborative_rating_submitted",
+                    correct == blanks
+                        ? "Collaborative filtering tutorial rating was correct"
+                        : "Collaborative filtering tutorial rating was incorrect",
+                    new
+                    {
+                        customer = CollaborativeFilteringTutorialModel.CustomerNames[_collabTutorial.MissingRow],
+                        movie = CollaborativeFilteringTutorialModel.MovieNames[_collabTutorial.MissingColumn],
+                        selected_rating = _stage1Guess[_collabTutorial.MissingRow, _collabTutorial.MissingColumn],
+                        correct_rating = _collabTutorial.MissingRating,
+                        correct = correct == blanks
+                    });
                 MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
                 {
                     correct == blanks
-                        ? "You found the missing rating. The row and column patterns agreed."
-                        : "That guess did not match the saved answer, but the pattern-checking method is what matters.",
-                    "Now solve the full 5 by 5 matrix using the same row-and-column clues."
-                }, BeginFullGroundTruthTask);
+                        ? "Correct. Wendell and Priya rated the first four movies alike, so Wendell's last rating was a strong clue."
+                        : "That rating did not match. Compare Priya's pattern with Wendell's matching row and try again.",
+                    correct == blanks
+                        ? "This is collaborative filtering: use ratings from similar people to help predict a missing rating."
+                        : "Look at Wendell's rating in the same movie column as Priya's ?.",
+                    "ORIGINAL shows the rating the customer actually gave. Green is exact, yellow is close, and red is far away."
+                }, correct == blanks ? BeginFullCollaborativeTask : ResetCollaborativeTutorialGuess);
                 return;
             }
 
             MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
             {
-                $"{correct} of {blanks} guesses were within one star. Comparing similar customers is collaborative filtering by hand.",
-                "These saved ratings are ground truth. Next, the machine will use them to learn hidden factors."
-            }, () =>
-            {
-                GameManager.I.Run.SetFlag(FlagStage1Done);
-                MadFactBootstrap.I.OnGroundTruthMatrixGoal();
-            });
+                $"{correct} of {blanks} guesses exactly matched the original ratings.",
+                "ORIGINAL is the rating the customer actually gave. Green is exact, yellow is close, and red is far away.",
+                "One answer used the average of Dot's and Hank's ratings. Similar customers can provide more than one clue."
+            }, BeginSparseTask);
         }
 
-        void BeginFullGroundTruthTask()
+        float FullStageTruth(int row, int column)
+        {
+            if (row == AverageTruthRow && column == AverageTruthColumn)
+            {
+                int first = Mathf.RoundToInt(M.Target[AverageSourceRowA, column]);
+                int second = Mathf.RoundToInt(M.Target[AverageSourceRowB, column]);
+                return (first + second) * 0.5f;
+            }
+            return Mathf.Round(M.Target[row, column]);
+        }
+
+        static Color PredictionColor(float difference)
+        {
+            if (difference <= 0.25f) return new Color(0.20f, 0.95f, 0.35f);
+            if (difference <= 1.25f) return new Color(1f, 0.78f, 0.12f);
+            return new Color(0.95f, 0.20f, 0.22f);
+        }
+
+        static void ShowOriginalRating(Text label, Image glow, float truth)
+        {
+            label.text = "ORIGINAL " + truth.ToString("0.0");
+            label.fontSize = 7;
+            label.fontStyle = FontStyle.Bold;
+            label.alignment = TextAnchor.UpperCenter;
+            label.color = Color.white;
+            glow.color = new Color(1f, 0.78f, 0.12f, 0.52f);
+        }
+
+        void BeginFullCollaborativeTask()
         {
             GameManager.I.Run.SetFlag(FlagGroundMiniDone);
             _miniTutorial = false;
@@ -516,10 +823,163 @@ namespace MadFact
             _stage1Guess = new int[M.Rows, M.Cols];
             Text screenTitle = UIFactory.FindDeep<Text>(_root.transform, "Title");
             if (screenTitle != null)
-                screenTitle.text = "█ MAD-FACT MAINFRAME ░ GROUND-TRUTH RATINGS MATRIX █";
+                screenTitle.text = "█ MAD-FACT MAINFRAME ░ COLLABORATIVE FILTERING █";
             ApplyStage();
             RefreshGrid();
-            _pickerLabel.text = "MAIN TASK: FILL THE LEDGER\n\nClick a ? cell on the board,\nthen give your best guess.";
+            _pickerLabel.text = "MAIN TASK: PREDICT RATINGS\n\nClick a ? cell, compare similar\ncustomers, then choose 1 to 5 stars.";
+        }
+
+        void ResetCollaborativeTutorialGuess()
+        {
+            _pickI = _pickJ = -1;
+            _stage1Guess = new int[M.Rows, M.Cols];
+            _cellTarget[_collabTutorial.MissingRow, _collabTutorial.MissingColumn].text = "";
+            RefreshGrid();
+            _pickerLabel.text = "TRY AGAIN\n\nClick Priya's ?, then check\nWendell's rating in that column.";
+        }
+
+        void BeginSparseTask()
+        {
+            _sparseTutorial = new SparseRatingsTutorialModel();
+            _sparseGuess = new int[SparseRatingsTutorialModel.Rows, SparseRatingsTutorialModel.Columns];
+            _sparsePickRow = _sparsePickColumn = -1;
+            _sparseTask = true;
+            _sparseEvaluated = false;
+
+            if (_standardGrid != null) _standardGrid.SetActive(false);
+            if (_sparseRoot != null) _sparseRoot.SetActive(true);
+            if (_sliderPanel != null) _sliderPanel.SetActive(false);
+            if (_pickerRoot != null) _pickerRoot.SetActive(true);
+            if (_lossBox != null) _lossBox.SetActive(false);
+            if (_resetBtn != null) _resetBtn.gameObject.SetActive(false);
+            if (_optimizeBtn != null) _optimizeBtn.gameObject.SetActive(false);
+
+            Text screenTitle = UIFactory.FindDeep<Text>(_root.transform, "Title");
+            if (screenTitle != null)
+                screenTitle.text = "█ 5×9 REAL-WORLD RATINGS ░ SPARSE MATRIX █";
+            if (_hint != null)
+                _hint.text = "SPARSE TASK: Predict the five ? cells. Drag the gold bar to see all nine movie columns.";
+            if (_pickerLabel != null)
+                _pickerLabel.text = "SPARSE RATINGS TABLE\n\nClick a ? cell, compare the\nratings you can see, then choose\n1 to 5 stars.";
+            RefreshSparseGrid();
+
+            RectTransform viewport = UIFactory.FindDeep<RectTransform>(_sparseRoot.transform, "SparseViewport");
+            RectTransform scrollbar = UIFactory.FindDeep<RectTransform>(_sparseRoot.transform, "SparseScrollbar");
+            MadFactBootstrap.I.Comms.ShowFocused(Speaker.OldDude, new[]
+            {
+                "This table has more movies and far more blanks. Drag the gold bar to see all nine columns, then predict the five ? cells."
+            }, new[] { viewport, scrollbar });
+        }
+
+        void OnSparseCellClicked(int row, int column)
+        {
+            if (!_sparseTask || _sparseEvaluated || _sparseTutorial == null ||
+                !_sparseTutorial.Task[row, column]) return;
+            _sparsePickRow = row;
+            _sparsePickColumn = column;
+            _pickerLabel.text = $"HOW WOULD\n{SparseRatingsTutorialModel.CustomerNames[row]}\nRATE\n'{SparseRatingsTutorialModel.MovieNames[column]}'?\n\nUse the ratings that are visible.";
+            RefreshSparseGrid();
+            if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        void PickSparseValue(int value)
+        {
+            if (!_sparseTask || _sparseEvaluated || _sparsePickRow < 0 || _sparsePickColumn < 0) return;
+            int row = _sparsePickRow;
+            int column = _sparsePickColumn;
+            _sparseGuess[row, column] = value;
+            _sparsePickRow = _sparsePickColumn = -1;
+            if (AudioTension.I != null) AudioTension.I.Clunk();
+
+            int filled = 0;
+            for (int r = 0; r < SparseRatingsTutorialModel.Rows; r++)
+                for (int c = 0; c < SparseRatingsTutorialModel.Columns; c++)
+                    if (_sparseTutorial.Task[r, c] && _sparseGuess[r, c] > 0) filled++;
+
+            _pickerLabel.text = filled < _sparseTutorial.TaskCount
+                ? $"LOGGED {filled} OF {_sparseTutorial.TaskCount}.\n\nDrag the bar if needed, then\nclick the next ? cell."
+                : "SPARSE TASK COMPLETE.\n\nChecking the original ratings...";
+            RefreshSparseGrid();
+            if (filled == _sparseTutorial.TaskCount) EvaluateSparseTask();
+        }
+
+        void RefreshSparseGrid()
+        {
+            if (_sparseTutorial == null || _sparseCellBg == null) return;
+            Color paper = new Color(0.78f, 0.79f, 0.70f);
+            Color blank = new Color(0.08f, 0.12f, 0.09f);
+            for (int row = 0; row < SparseRatingsTutorialModel.Rows; row++)
+                for (int column = 0; column < SparseRatingsTutorialModel.Columns; column++)
+                {
+                    bool known = _sparseTutorial.Known[row, column];
+                    bool task = _sparseTutorial.Task[row, column];
+                    bool selected = task && row == _sparsePickRow && column == _sparsePickColumn;
+                    if (_sparseCellBg[row, column] == null) continue;
+                    _sparseCellOriginal[row, column].text = selected ? "SELECTED" : "";
+                    _sparseCellOriginal[row, column].color = selected ? Color.black : Color.white;
+                    _sparseCellBg[row, column].color = selected ? Theme.CrtAmber : known ? paper : blank;
+                    _sparseCellValue[row, column].text = known
+                        ? _sparseTutorial.Target[row, column].ToString()
+                        : task
+                            ? (_sparseGuess[row, column] > 0 ? _sparseGuess[row, column].ToString() : "?")
+                            : "·";
+                    _sparseCellValue[row, column].color = selected || known
+                        ? Color.black
+                        : task ? Theme.CrtAmber : new Color(0.36f, 0.45f, 0.38f);
+                    if (_sparseCellButton[row, column] != null)
+                        _sparseCellButton[row, column].interactable = task && !_sparseEvaluated;
+                }
+        }
+
+        void EvaluateSparseTask()
+        {
+            _sparseEvaluated = true;
+            int correct = 0;
+            for (int row = 0; row < SparseRatingsTutorialModel.Rows; row++)
+                for (int column = 0; column < SparseRatingsTutorialModel.Columns; column++)
+                {
+                    if (!_sparseTutorial.Task[row, column]) continue;
+                    int truth = _sparseTutorial.Target[row, column];
+                    int guess = _sparseGuess[row, column];
+                    float difference = Mathf.Abs(guess - truth);
+                    if (difference <= 0.25f) correct++;
+                    _sparseCellBg[row, column].color = new Color(0.24f, 0.17f, 0.04f);
+                    _sparseCellOriginal[row, column].text = "ORIGINAL " + truth;
+                    _sparseCellOriginal[row, column].color = Color.white;
+                    _sparseCellValue[row, column].color = PredictionColor(difference);
+
+                    MadFactLokiLogger.Instance?.Log("level_4_sparse_rating_submitted",
+                        "Player predicted a rating in the sparse ratings table", new
+                        {
+                            customer = SparseRatingsTutorialModel.CustomerNames[row],
+                            movie = SparseRatingsTutorialModel.MovieNames[column],
+                            selected_rating = guess,
+                            original_rating = truth,
+                            correct = difference <= 0.25f
+                        });
+                }
+
+            if (AudioTension.I != null) AudioTension.I.ChaChing();
+            MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+            {
+                $"{correct} of {_sparseTutorial.TaskCount} predictions exactly matched the original ratings.",
+                "ORIGINAL is the rating that customer actually gave. Green is exact, yellow is close, and red is far away.",
+                "Most cells are empty because not everyone has watched every movie. Real ratings tables are sparse.",
+                "We need a way to learn from the ratings we do have and fill a matrix that is not very full."
+            }, () =>
+            {
+                _sparseTask = false;
+                GameManager.I.Run.SetFlag(FlagStage1Done);
+                MadFactLokiLogger.Instance?.Log("level_4_sparse_matrix_completed",
+                    "Player completed the sparse ratings table", new
+                    {
+                        correct_predictions = correct,
+                        total_predictions = _sparseTutorial.TaskCount,
+                        rows = SparseRatingsTutorialModel.Rows,
+                        columns = SparseRatingsTutorialModel.Columns
+                    });
+                MadFactBootstrap.I.OnCollaborativeFilteringGoal();
+            });
         }
 
         void SelectRow(int i)
@@ -529,7 +989,8 @@ namespace MadFact
             HighlightSelection();
             var u = _miniTutorial ? _tutorial.U[i] : M.U[i];
             string customer = _miniTutorial ? MatrixTutorialModel.CustomerNames[i] : M.Customers[i].Name;
-            _editLabel.text = "CUSTOMER: " + customer + "\n(four hidden dials)";
+            _editLabel.text = "CUSTOMER: " + customer +
+                (_miniTutorial ? "\n(two taste factors)" : "\n(four hidden factors)");
             LoadSliders(u);
             SetSlidersInteractable(true);
             MaybePowerOn();
@@ -550,7 +1011,8 @@ namespace MadFact
             HighlightSelection();
             var v = _miniTutorial ? _tutorial.V[j] : M.V[j];
             string movie = _miniTutorial ? MatrixTutorialModel.MovieNames[j] : M.Movies[j].Title;
-            _editLabel.text = "MOVIE: " + movie + "\n(four hidden dials)";
+            _editLabel.text = "MOVIE: " + movie +
+                (_miniTutorial ? "\n(two taste factors)" : "\n(four hidden factors)");
             LoadSliders(v);
             SetSlidersInteractable(true);
             MaybePowerOn();
@@ -568,7 +1030,9 @@ namespace MadFact
         {
             _editingRow = false; _editIndex = -1;
             HighlightSelection();
-            _editLabel.text = "SELECT A ROW (customer)\nOR COLUMN (movie)";
+            _editLabel.text = _miniTutorial
+                ? "SELECT A CUSTOMER OR MOVIE\nTHEN ADJUST TWO FACTORS"
+                : "SELECT A ROW (customer)\nOR COLUMN (movie)";
             SetSlidersInteractable(false);
         }
 
@@ -578,16 +1042,54 @@ namespace MadFact
             for (int j = 0; j < M.Cols; j++) _colSel[j].gameObject.SetActive(!_editingRow && _editIndex == j);
         }
 
+        void ConfigureFactorControls(bool twoFactorTutorial)
+        {
+            int visibleCount = twoFactorTutorial ? MatrixTutorialModel.FactorCount : Latent.Dim;
+            for (int dimension = 0; dimension < Latent.Dim; dimension++)
+            {
+                bool visible = dimension < visibleCount;
+                float x = twoFactorTutorial ? -66f + dimension * 132f : -114f + dimension * 76f;
+                Color color = twoFactorTutorial
+                    ? (dimension == 0 ? Latent.Colors[0] : Latent.Colors[3])
+                    : new Color(0.55f, 0.62f, 0.55f);
+
+                if (_sliderName[dimension] != null)
+                {
+                    _sliderName[dimension].gameObject.SetActive(visible);
+                    _sliderName[dimension].text = $"FACTOR\n{dimension + 1}";
+                    _sliderName[dimension].color = color;
+                    RectTransform rt = _sliderName[dimension].rectTransform;
+                    rt.anchoredPosition = new Vector2(x, rt.anchoredPosition.y);
+                }
+                if (_sliders[dimension] != null)
+                {
+                    _sliders[dimension].gameObject.SetActive(visible);
+                    RectTransform rt = UIFactory.RT(_sliders[dimension].gameObject);
+                    rt.anchoredPosition = new Vector2(x, rt.anchoredPosition.y);
+                }
+                if (_sliderVal[dimension] != null)
+                {
+                    _sliderVal[dimension].gameObject.SetActive(visible);
+                    _sliderVal[dimension].color = color;
+                    RectTransform rt = _sliderVal[dimension].rectTransform;
+                    rt.anchoredPosition = new Vector2(x, rt.anchoredPosition.y);
+                }
+            }
+        }
+
         void LoadSliders(Latent v)
         {
             _suppressSliderEvents = true;
-            for (int d = 0; d < 4; d++) { _sliders[d].value = v[d]; _sliderVal[d].text = v[d].ToString("0.00"); }
+            int count = _miniTutorial ? MatrixTutorialModel.FactorCount : Latent.Dim;
+            for (int d = 0; d < count; d++) { _sliders[d].value = v[d]; _sliderVal[d].text = v[d].ToString("0.00"); }
             _suppressSliderEvents = false;
         }
 
         void SetSlidersInteractable(bool on)
         {
-            for (int d = 0; d < 4; d++) if (_sliders[d] != null) _sliders[d].interactable = on;
+            int count = _miniTutorial ? MatrixTutorialModel.FactorCount : Latent.Dim;
+            for (int d = 0; d < Latent.Dim; d++)
+                if (_sliders[d] != null) _sliders[d].interactable = on && d < count;
         }
 
         void OnSlider(int d, float value)
@@ -613,12 +1115,13 @@ namespace MadFact
             {
                 _miniDialChanged = true;
                 if (_optimizeBtn != null) _optimizeBtn.interactable = true;
-                _hint.text = "Good. Several guesses changed together. Now press TEST 3×3 OPTIMIZER.";
             }
             // one distinct dial (this entity + this dimension) counts once no matter how
             // many OnValueChanged events the drag that touched it fired.
             _slidersSeen.Add((_editingRow ? 1000 : 0) + _editIndex * 4 + d);
             RefreshGrid();
+            if (_miniTutorial)
+                _hint.text = $"MEAN ERROR {_tutorial.MeanError():0.00}. Goal: below {MatrixTutorialModel.GoalMeanError:0.00}. Adjust FACTOR 1 and FACTOR 2, then press CHECK ERROR.";
             MaybePowerOn();
 
             if (Time.unscaledTime - _lastTelemetryTime[d] >= 0.2f ||
@@ -637,7 +1140,7 @@ namespace MadFact
                                 ? MatrixTutorialModel.CustomerNames[_editIndex]
                                 : MatrixTutorialModel.MovieNames[_editIndex])
                             : (_editingRow ? M.Customers[_editIndex].Name : M.Movies[_editIndex].Title),
-                        dimension = Latent.Names[d],
+                        dimension = d + 1,
                         previous_value = previous,
                         new_value = value,
                         mean_error = _miniTutorial ? _tutorial.MeanError() : M.MeanError()
@@ -662,16 +1165,17 @@ namespace MadFact
         void PowerOnBeat()
         {
             var comms = MadFactBootstrap.I.Comms;
-            comms.Show(Speaker.OldDude, new[]
+            GameManager.I.Run.SetFlag(FlagPowered);
+            ApplyStage();
+            RectTransform error = UIFactory.RT(_lossBox);
+            RectTransform optimizer = UIFactory.RT(_optimizeBtn.gameObject);
+            comms.ShowFocused(Speaker.OldDude, new[]
             {
-                "Wait. Have you been moving all those dials by hand?",
-                "That is my mistake. I forgot to turn on the OPTIMIZER, the part that improves the guesses.",
-                "It does the same steps you did: move a dial, check the error, and keep changes that help. It can do this very fast.",
-                "I am turning it on now. Press OPTIMIZE and watch it work."
-            }, () =>
+                "This 5 by 5 table has many more factor values to adjust. Doing every change by hand would take a long time.",
+                "Now meet the OPTIMIZER. It checks the error, changes the factors, and keeps changes that make the error smaller.",
+                "Press RUN OPTIMIZER and watch it improve the customer and movie profiles together."
+            }, new[] { error, optimizer, optimizer }, () =>
             {
-                GameManager.I.Run.SetFlag(FlagPowered);
-                ApplyStage();
                 if (AudioTension.I != null) AudioTension.I.Whir();
             });
         }
@@ -679,7 +1183,13 @@ namespace MadFact
         void ResetTastes()
         {
             if (_miniTutorial)
+            {
                 _tutorial.Reset();
+                _miniDialChanged = false;
+                if (_optimizeBtn != null) _optimizeBtn.interactable = false;
+                if (_hint != null)
+                    _hint.text = $"3×3 TASK: Adjust FACTOR 1 and FACTOR 2. Lower mean ERROR below {MatrixTutorialModel.GoalMeanError:0.00}, then press CHECK ERROR.";
+            }
             else
                 M.ResetCustomerTaste();
             if (_editIndex >= 0)
@@ -703,26 +1213,38 @@ namespace MadFact
             // guesses, no error glow, no audio tension. The machine hasn't started.
             if (!_stage2)
             {
-                int taskSize = _miniTutorial ? 3 : M.Rows;
-                for (int i = 0; i < taskSize; i++)
-                    for (int j = 0; j < taskSize; j++)
+                int taskRows = _miniTutorial ? CollaborativeFilteringTutorialModel.Rows : M.Rows;
+                int taskColumns = _miniTutorial ? CollaborativeFilteringTutorialModel.Columns : M.Cols;
+                for (int i = 0; i < taskRows; i++)
+                    for (int j = 0; j < taskColumns; j++)
                     {
                         _cellGlow[i, j].color = Color.clear;
-                        _cellBg[i, j].color = Theme.CrtBgSoft;
-                        bool known = _miniTutorial ? _tutorial.Known[i, j] : M.Known[i, j];
+                        bool known = _miniTutorial ? _collabTutorial.Known[i, j] : M.Known[i, j];
                         if (known)
                         {
+                            // Saved ratings are reference data, so give them a quiet paper
+                            // treatment. The player's amber/red/yellow/green choices now stand out.
+                            _cellBg[i, j].color = new Color(0.78f, 0.79f, 0.70f);
                             _cellTarget[i, j].text = "";
-                            float target = _miniTutorial ? _tutorial.Target[i, j] : M.Target[i, j];
+                            float target = _miniTutorial ? _collabTutorial.Target[i, j] : M.Target[i, j];
                             _cellGuess[i, j].text = target.ToString("0.0");
-                            _cellGuess[i, j].color = Theme.CrtGreen;
+                            _cellGuess[i, j].color = Color.black;
                         }
                         else
                         {
+                            bool selected = i == _pickI && j == _pickJ;
+                            _cellBg[i, j].color = selected ? Theme.CrtAmber : Theme.CrtBgSoft;
                             int guessed = _stage1Guess != null ? _stage1Guess[i, j] : 0;
-                            _cellTarget[i, j].text = "";
+                            _cellTarget[i, j].text = selected ? "SELECTED" : "";
+                            _cellTarget[i, j].fontSize = 7;
+                            _cellTarget[i, j].fontStyle = FontStyle.Bold;
+                            _cellTarget[i, j].alignment = TextAnchor.UpperCenter;
+                            _cellTarget[i, j].color = selected ? Color.black : Theme.CrtGreenDim;
                             _cellGuess[i, j].text = guessed > 0 ? guessed.ToString("0") : "?";
-                            _cellGuess[i, j].color = Theme.CrtAmber;
+                            _cellGuess[i, j].color = selected ? Color.black : Theme.CrtAmber;
+                            _cellGlow[i, j].color = selected
+                                ? new Color(1f, 0.78f, 0.12f, 0.9f)
+                                : Color.clear;
                         }
                     }
                 return;
@@ -738,7 +1260,11 @@ namespace MadFact
                     {
                         float t = _miniTutorial ? _tutorial.Target[i, j] : M.Target[i, j];
                         float err = Mathf.Abs(t - g);
-                        _cellTarget[i, j].text = "t" + t.ToString("0.0");
+                        _cellTarget[i, j].text = "ORIG " + t.ToString("0.0");
+                        _cellTarget[i, j].fontSize = 13;
+                        _cellTarget[i, j].fontStyle = FontStyle.Bold;
+                        _cellTarget[i, j].alignment = TextAnchor.UpperCenter;
+                        _cellTarget[i, j].color = Theme.CrtAmber;
                         _cellGuess[i, j].text = g.ToString("0.0");
                         var c = ErrColor(err);
                         _cellGuess[i, j].color = c;
@@ -747,11 +1273,21 @@ namespace MadFact
                     }
                     else
                     {
-                        _cellTarget[i, j].text = _revealed ? "pred" : "?";
-                        _cellGuess[i, j].text = _revealed ? g.ToString("0.0") : "?";
-                        _cellGuess[i, j].color = _revealed ? new Color(0.5f, 0.9f, 1f) : Theme.CrtGreenDim;
-                        _cellGlow[i, j].color = new Color(0.4f, 0.8f, 1f, _revealed ? 0.25f : 0f);
-                        _cellBg[i, j].color = Theme.CrtBgSoft;
+                        bool showLivePrediction = _revealed || _slidersSeen.Count > 0;
+                        _cellTarget[i, j].text = showLivePrediction ? "PRED" : "";
+                        _cellTarget[i, j].fontSize = 10;
+                        _cellTarget[i, j].fontStyle = FontStyle.Bold;
+                        _cellTarget[i, j].alignment = TextAnchor.UpperCenter;
+                        _cellTarget[i, j].color = new Color(0.5f, 0.9f, 1f);
+                        _cellGuess[i, j].text = showLivePrediction ? g.ToString("0.0") : "?";
+                        _cellGuess[i, j].color = showLivePrediction
+                            ? new Color(0.5f, 0.9f, 1f)
+                            : Theme.CrtGreenDim;
+                        _cellGlow[i, j].color = new Color(0.4f, 0.8f, 1f,
+                            showLivePrediction ? 0.25f : 0f);
+                        _cellBg[i, j].color = showLivePrediction
+                            ? Color.Lerp(Theme.CrtBgSoft, new Color(0.04f, 0.16f, 0.20f), 0.55f)
+                            : Theme.CrtBgSoft;
                     }
                 }
             if (_miniTutorial)
@@ -769,7 +1305,7 @@ namespace MadFact
             _lossFill.color = ErrColor(mean);
             var lf = UIFactory.RT(_lossFill.gameObject);
             lf.anchorMax = new Vector2(norm, 1f);
-            _lossLabel.text = "ERROR " + mean.ToString("0.00");
+            _lossLabel.text = (_miniTutorial ? "MEAN ERROR " : "ERROR ") + mean.ToString("0.00");
         }
 
         static Color ErrColor(float e)
@@ -785,7 +1321,7 @@ namespace MadFact
             if (_optimizing) return;
             if (_miniTutorial)
             {
-                StartCoroutine(RunMiniOptimizer());
+                CheckMiniManualTask();
                 return;
             }
             MadFactLokiLogger.Instance?.Log("optimizer_started",
@@ -794,39 +1330,34 @@ namespace MadFact
             StartCoroutine(OptimizeRoutine());
         }
 
-        IEnumerator RunMiniOptimizer()
+        void CheckMiniManualTask()
         {
-            _optimizing = true;
+            if (!_miniDialChanged) return;
+            float error = _tutorial.MeanError();
+            bool passed = error < MatrixTutorialModel.GoalMeanError;
             _optimizeBtn.interactable = false;
-            _resetBtn.interactable = false;
-            SetSlidersInteractable(false);
-            float initialError = _tutorial.MeanError();
-            _hint.text = $"3×3 OPTIMIZER: Starting error {initialError:0.00}. Guessing and checking...";
-            if (AudioTension.I != null) AudioTension.I.Whir();
+            MadFactLokiLogger.Instance?.Log("matrix_3x3_manual_error_checked",
+                "Player checked the manually tuned 3 by 3 matrix factorization error",
+                new { level_id = 5, mean_error = error, goal_error = MatrixTutorialModel.GoalMeanError, passed });
 
-            for (int step = 0; step < 80; step++)
+            if (passed)
             {
-                _tutorial.StepGradient(0.004f);
-                RefreshGrid();
-                if (step % 8 == 0)
-                    _hint.text = $"3×3 OPTIMIZER: Step {step + 1} of 80 · error {_tutorial.MeanError():0.00}";
-                yield return new WaitForSecondsRealtime(0.025f);
+                SetSlidersInteractable(false);
+                if (AudioTension.I != null) AudioTension.I.ChaChing();
+                MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+                {
+                    $"You lowered the mean error to {error:0.00}. Your two-factor profiles now summarize this small ratings table well.",
+                    "Next is a 5 by 5 table with four factors. Try adjusting it by hand and notice how much more work it takes."
+                }, BeginFullFactorizationTask);
+                return;
             }
 
-            float finalError = _tutorial.MeanError();
-            _revealed = true;
-            RefreshGrid();
-            _optimizing = false;
-            if (AudioTension.I != null) { AudioTension.I.Silence(); AudioTension.I.Clunk(); }
-            MadFactLokiLogger.Instance?.Log("matrix_3x3_tutorial_completed",
-                "Player completed the 3 by 3 matrix factorization tutorial",
-                new { level_id = 5, initial_mean_error = initialError, final_mean_error = finalError });
-
-            MadFactBootstrap.I.Comms.Show(Speaker.OldDude, new[]
+            if (AudioTension.I != null) AudioTension.I.Beep();
+            RectTransform errorBox = UIFactory.RT(_lossBox);
+            MadFactBootstrap.I.Comms.ShowFocused(Speaker.OldDude, errorBox, new[]
             {
-                $"The 3 by 3 optimizer lowered its error from {initialError:0.00} to {finalError:0.00}.",
-                "Now explore the full 5 by 5 matrix before powering its optimizer."
-            }, BeginFullFactorizationTask);
+                $"The mean error is {error:0.00}. Keep adjusting FACTOR 1 and FACTOR 2 so the predictions move closer to ORIG. Your goal is below {MatrixTutorialModel.GoalMeanError:0.00}."
+            }, () => _optimizeBtn.interactable = true);
         }
 
         void BeginFullFactorizationTask()

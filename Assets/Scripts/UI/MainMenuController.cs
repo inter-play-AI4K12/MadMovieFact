@@ -271,7 +271,7 @@ namespace MadFact
             BindButton(_confirmPanel, "CANCEL", () => ShowOnly(_mainPanel));
             BindButton(_levelsPanel, "BACK", () => ShowOnly(_mainPanel));
 
-            for (int level = 1; level <= 7; level++)
+            for (int level = 1; level <= LevelSceneCatalog.ComingSoonLevel; level++)
             {
                 int selectedLevel = level;
                 BindButton(_levelsPanel, "Level" + level, () => StartLevel(selectedLevel));
@@ -307,7 +307,7 @@ namespace MadFact
             AddTitle(_levelsPanel.transform, "CHOOSE A SHIFT", "SELECT A LEVEL TO START A NEW RUN");
             AddDayColumn("DAY 1", -260, new[] { 1, 2 });
             AddDayColumn("DAY 2", 0, new[] { 3, 4, 5 });
-            AddDayColumn("DAY 3", 260, new[] { 6, 7 });
+            AddDayColumn("DAY 3", 260, new[] { 6, 7, 8 });
             AddButton(_levelsPanel.transform, "BACK", -185, () => ShowOnly(_mainPanel), 160);
         }
 
@@ -324,12 +324,15 @@ namespace MadFact
             {
                 int level = levels[i];
                 var button = UIFactory.Button(column.transform, "Level" + level,
-                    level <= 6 ? "LEVEL " + level : "LEVEL " + level + " · COMING SOON",
-                    () => StartLevel(level), level <= 6 ? Theme.Cash : Theme.FaceDark, 14,
+                    level <= LevelSceneCatalog.MaxPlayableLevel
+                        ? "LEVEL " + level
+                        : "LEVEL " + level + " · COMING SOON",
+                    () => StartLevel(level),
+                    level <= LevelSceneCatalog.MaxPlayableLevel ? Theme.Cash : Theme.FaceDark, 14,
                     Theme.SystemSans, Theme.TitleText);
                 UIFactory.Place(UIFactory.RT(button.gameObject), new Vector2(.5f, 1), new Vector2(.5f, 1),
                     new Vector2(185, 42), new Vector2(0, -78 - i * 56));
-                button.interactable = level <= 6;
+                button.interactable = level <= LevelSceneCatalog.MaxPlayableLevel;
             }
         }
 
@@ -587,7 +590,7 @@ namespace MadFact
 
         void StartLevel(int level)
         {
-            if (level < 1 || level > 6) return;
+            if (level < 1 || level > LevelSceneCatalog.MaxPlayableLevel) return;
             Time.timeScale = 1f;
             GameManager.I.StartNewAtLevel(level);
             MadFactLokiLogger.Instance?.Log("game_started", "Game started from level select",
