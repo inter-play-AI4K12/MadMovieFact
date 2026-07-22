@@ -3,6 +3,8 @@ $ErrorActionPreference = "Stop"
 $ScriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDirectory
 $DevelopmentBuildDirectory = Join-Path $ProjectRoot "Builds\WebGL"
+$PosterGenerationCounts = @{}
+$MaximumPostersPerSession = 7
 
 # In a distributed WebGL ZIP this script sits beside index.html. In a project
 # checkout it sits under scripts/, so fall back to Builds/WebGL.
@@ -53,7 +55,7 @@ foreach ($EnvCandidate in @(
     }
 }
 
-$Port = 8080
+$Port = 8081
 if ($env:PORT) {
     $ParsedPort = 0
     if (-not [int]::TryParse($env:PORT, [ref]$ParsedPort) -or
@@ -342,6 +344,150 @@ function Send-Telemetry {
     }
 }
 
+function Test-PosterPayload {
+    param([object]$Payload)
+
+    if (-not $Payload) {
+        return "Poster request must be a JSON object."
+    }
+    $SessionId = [string]$Payload.session_id
+    if (-not $SessionId -or $SessionId -notmatch "^[A-Za-z0-9_-]{8,128}$") {
+        return "Poster session ID is invalid."
+    }
+    $Prompt = [string]$Payload.prompt
+    if (-not $Prompt -or $Prompt.Trim().Length -lt 20) {
+        return "Poster prompt needs more detail."
+    }
+    if ($Prompt.Length -gt 4000) {
+        return "Poster prompt is too long."
+    }
+    if ($Prompt.Contains([char]0)) {
+        return "Poster prompt contains invalid text."
+    }
+    return $null
+}
+
+function Send-PosterGeneration {
+    param(
+        [IO.Stream]$Stream,
+        [byte[]]$BodyBytes
+    )
+
+    if (-not $env:OPENAI_API_KEY) {
+        Write-JsonResponse $Stream 503 "Service Unavailable" @{
+            error = "Poster generation is not configured. Add OPENAI_API_KEY to the local server's .env file."
+            code = "poster_not_configured"
+        }
+        return
+    }
+
+    try {
+        $Body = [Text.Encoding]::UTF8.GetString($BodyBytes)
+        $Payload = $Body | ConvertFrom-Json
+    } catch {
+        Write-JsonResponse $Stream 400 "Bad Request" @{
+            error = "Poster request is not valid JSON."
+        }
+        return
+    }
+
+    $ValidationError = Test-PosterPayload $Payload
+    if ($ValidationError) {
+        Write-JsonResponse $Stream 400 "Bad Request" @{ error = $ValidationError }
+        return
+    }
+
+    $SessionId = [string]$Payload.session_id
+    $Count = if ($PosterGenerationCounts.ContainsKey($SessionId)) {
+        [int]$PosterGenerationCounts[$SessionId]
+    } else {
+        0
+    }
+    if ($Count -ge $MaximumPostersPerSession) {
+        Write-JsonResponse $Stream 429 "Too Many Requests" @{
+            error = "This game session has already generated seven posters."
+            code = "generation_limit"
+        }
+        return
+    }
+
+    $SafetyPrefix =
+        "Create fictional, family-friendly movie-poster artwork appropriate for sixth-grade students. " +
+        "Do not depict gore, graphic violence, sexual content, drugs, hateful imagery, or real-person likenesses. "
+    $OpenAIPayload = @{
+        model = "gpt-image-2"
+        prompt = $SafetyPrefix + ([string]$Payload.prompt).Trim()
+        size = "1024x1536"
+        quality = "medium"
+        output_format = "jpeg"
+        output_compression = 85
+        moderation = "auto"
+        n = 1
+    } | ConvertTo-Json -Compress
+
+    try {
+        $Response = Invoke-RestMethod `
+            -Uri "https://api.openai.com/v1/images/generations" `
+            -Method Post `
+            -Headers @{ Authorization = "Bearer " + $env:OPENAI_API_KEY } `
+            -ContentType "application/json" `
+            -Body ([Text.Encoding]::UTF8.GetBytes($OpenAIPayload)) `
+            -UseBasicParsing `
+            -TimeoutSec 150
+        $ImageBase64 = [string]$Response.data[0].b64_json
+        if (-not $ImageBase64) {
+            throw "Image response did not contain b64_json."
+        }
+    } catch {
+        $StatusCode = 0
+        $UpstreamCode = ""
+        try {
+            if ($_.Exception.Response) {
+                $StatusCode = [int]$_.Exception.Response.StatusCode
+                $Reader = [IO.StreamReader]::new($_.Exception.Response.GetResponseStream())
+                try {
+                    $ErrorPayload = $Reader.ReadToEnd() | ConvertFrom-Json
+                    $UpstreamCode = [string]$ErrorPayload.error.code
+                } finally {
+                    $Reader.Dispose()
+                }
+            }
+        } catch {
+            $UpstreamCode = ""
+        }
+
+        if ($UpstreamCode -eq "moderation_blocked") {
+            Write-JsonResponse $Stream 400 "Bad Request" @{
+                error = "That prompt was blocked by image safety checks."
+                code = "moderation_blocked"
+            }
+        } elseif ($StatusCode -eq 429) {
+            Write-JsonResponse $Stream 429 "Too Many Requests" @{
+                error = "The image service is busy. Try again shortly."
+                code = "upstream_rate_limit"
+            }
+        } elseif ($StatusCode -eq 401 -or $StatusCode -eq 403) {
+            Write-JsonResponse $Stream 503 "Service Unavailable" @{
+                error = "The local poster API credential was rejected."
+                code = "credential_rejected"
+            }
+        } else {
+            Write-JsonResponse $Stream 502 "Bad Gateway" @{
+                error = "The local poster relay could not generate an image."
+            }
+        }
+        return
+    }
+
+    $Count++
+    $PosterGenerationCounts[$SessionId] = $Count
+    Write-JsonResponse $Stream 200 "OK" @{
+        image_base64 = $ImageBase64
+        mime_type = "image/jpeg"
+        remaining = $MaximumPostersPerSession - $Count
+    }
+}
+
 $RootPath = [IO.Path]::GetFullPath($BuildDirectory)
 $RootPrefix = $RootPath.TrimEnd(
     [IO.Path]::DirectorySeparatorChar,
@@ -357,6 +503,11 @@ try {
         Write-Host "Telemetry relay: configured"
     } else {
         Write-Host "Telemetry relay: disabled (LOKI_PASSWORD is missing)"
+    }
+    if ($env:OPENAI_API_KEY) {
+        Write-Host "Poster generation: configured"
+    } else {
+        Write-Host "Poster generation: disabled (OPENAI_API_KEY is missing)"
     }
     if ($LoadedEnvPath) {
         Write-Host "Configuration: $LoadedEnvPath"
@@ -374,8 +525,8 @@ try {
         $Stream = $null
 
         try {
-            $Client.ReceiveTimeout = 10000
-            $Client.SendTimeout = 30000
+            $Client.ReceiveTimeout = 180000
+            $Client.SendTimeout = 180000
             $Stream = $Client.GetStream()
             $Request = Read-HttpRequest $Stream
             $Method = $Request.Method
@@ -387,6 +538,15 @@ try {
                     continue
                 }
                 Send-Telemetry $Stream $Request.Body
+                continue
+            }
+
+            if ($RawPath -eq "/api/poster/generate") {
+                if ($Method -ne "POST") {
+                    Write-ErrorResponse $Stream $Method 405 "Method Not Allowed"
+                    continue
+                }
+                Send-PosterGeneration $Stream $Request.Body
                 continue
             }
 

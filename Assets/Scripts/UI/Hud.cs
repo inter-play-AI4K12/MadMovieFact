@@ -208,7 +208,7 @@ namespace MadFact
                 case Phase.Level5: _level.text = "LEVEL 5 · MATRIX FACTORIZATION"; break;
                 case Phase.Level6: _level.text = "LEVEL 6 · CONTENT-BASED RECOMMENDATION"; break;
                 case Phase.Level7: _level.text = "LEVEL 7 · MARKET GAP RESEARCH"; break;
-                case Phase.Level8: _level.text = "LEVEL 8 · COMING SOON"; break;
+                case Phase.Level8: _level.text = "LEVEL 8 · POSTER GENERATION"; break;
                 case Phase.Win: _level.text = "★ BLOCKBUSTER ★"; break;
             }
             RefreshGoal();

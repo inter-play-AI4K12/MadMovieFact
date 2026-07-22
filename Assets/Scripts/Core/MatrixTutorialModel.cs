@@ -11,21 +11,21 @@ namespace MadFact
     {
         public const int FactorCount = 2;
         public const float GoalMeanError = 0.35f;
-        public static readonly string[] CustomerNames = { "WENDELL", "DOT", "HANK" };
-        public static readonly string[] MovieNames = { "STAR VOYAGE", "BOOM PATROL", "GALAXY RAIDERS" };
+        public static readonly string[] CustomerNames = { "WENDELL", "PRIYA", "HANK" };
+        public static readonly string[] MovieNames = { "STAR DRIFTER", "ASTRO BLASTERS", "BOOM TOWN" };
 
         public readonly float[,] Target =
         {
-            { 5f, 1f, 4f },
-            { 1f, 5f, 4f },
-            { 4f, 4f, 5f }
+            { 5f, 4f, 2f },
+            { 5f, 4f, 2f },
+            { 4f, 5f, 3f }
         };
 
         public readonly bool[,] Known =
         {
             { true, true, true },
-            { true, true, true },
-            { true, true, false }
+            { true, true, false },
+            { true, true, true }
         };
 
         public readonly Latent[] U = new Latent[3];

@@ -55,8 +55,8 @@ namespace MadFact
 
         public static readonly string[] GreenlitOldDude =
         {
-            "That is it: spooky AND funny, just like the ratings showed.",
-            "You used hand choices, rules, ratings, and computer systems to recommend and even design a movie. I am proud of you."
+            "That poster brings your spooky and funny idea to life.",
+            "You used choices, rules, ratings, computer systems, and a creative prompt to design a movie for real customer needs."
         };
     }
 }

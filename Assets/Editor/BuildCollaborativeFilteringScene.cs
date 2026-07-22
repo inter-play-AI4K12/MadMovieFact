@@ -19,6 +19,7 @@ public static class BuildCollaborativeFilteringScene
     public static void Rebuild()
     {
         RefreshAuthoredLevelPrefabs.RefreshCollaborativeFiltering();
+        RefreshAuthoredLevelPrefabs.RefreshDialogueBox();
         ConfigureCollaborativeScene();
         ConfigureFactorizationScene();
         BuildRatingsLevelScene.UpdateBuildSettings();
@@ -94,11 +95,27 @@ public static class BuildCollaborativeFilteringScene
         for (int row = 0; row < GameData.MatrixCustomers.Length; row++)
         {
             SetActive(level, "Row" + row, row < 3);
+            if (row < 3)
+                SetText(level, "Row" + row, MatrixTutorialModel.CustomerNames[row]);
             for (int column = 0; column < GameData.MatrixMovieSet.Count; column++)
+            {
                 SetActive(level, $"C{row}_{column}", row < 3 && column < 3);
+                if (row < 3 && column < 3)
+                {
+                    var model = new MatrixTutorialModel();
+                    SetNestedText(level, $"C{row}_{column}", "T",
+                        model.Known[row, column] ? "ORIG " + model.Target[row, column].ToString("0.0") : "PRED");
+                    SetNestedText(level, $"C{row}_{column}", "G",
+                        model.Known[row, column] ? model.Guess(row, column).ToString("0.0") : "?");
+                }
+            }
         }
         for (int column = 0; column < GameData.MatrixMovieSet.Count; column++)
+        {
             SetActive(level, "Col" + column, column < 3);
+            if (column < 3)
+                SetText(level, "Col" + column, MatrixTutorialModel.MovieNames[column].Replace(" ", "\n"));
+        }
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);

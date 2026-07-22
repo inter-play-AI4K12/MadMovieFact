@@ -5,7 +5,7 @@ Pellings Video, a struggling 1990s VHS store, and improves its recommendations a
 levels:
 
 **manual recommendations → rule-based recommendations → content-based recommendations →
-collaborative filtering → market-gap research and movie making**
+collaborative filtering → market-gap research → AI-assisted poster making**
 
 The project is developed by the inter.play Lab / AI4K12 project. Original design by Luca
 D'Stasio; supervision and development by Erfan Farhadi.
@@ -64,6 +64,7 @@ Before serving a telemetry-enabled build, create the ignored project-root `.env`
 ```text
 LOKI_USER=beetrap
 LOKI_PASSWORD=your_password_here
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 Then serve the latest export:
@@ -72,17 +73,20 @@ Then serve the latest export:
 ./scripts/serve-web.sh
 ```
 
-The launcher serves Unity's compressed files and exposes a same-origin `/api/telemetry` relay.
-The password stays in the local server process; it is never compiled into or returned to the
-WebGL client. Open <http://localhost:8080/> on the host, or use the host machine's LAN address,
-such as `http://192.168.1.20:8080/`, from another device. Set a different port when needed with
+The launcher serves Unity's compressed files and exposes same-origin `/api/telemetry` and
+`/api/poster/generate` relays. Loki and OpenAI credentials stay in the local server process; they
+are never compiled into or returned to the WebGL client. Level 8 uses OpenAI's `gpt-image-2`
+model to create portrait poster drafts, with a seven-image cap per game session. Open
+<http://localhost:8081/> on the host, or use the host machine's LAN address,
+such as `http://192.168.1.20:8081/`, from another device. Port 8081 avoids Unity's temporary
+Build & Run preview server, which commonly occupies 8080. Set a different port when needed with
 `PORT=9000 ./scripts/serve-web.sh`, and press `Ctrl+C` to stop the server.
 
 On a Windows computer without Unity, extract `MadMovieFact-WebGL.zip`, open the resulting `WebGL`
 folder, and double-click `serve-web.cmd`. The launcher starts a local compression-aware server and
 opens the game in the default browser. Copy `.env.example` to `.env` beside the launcher and set
-`LOKI_PASSWORD` to enable server logging. It uses only Windows PowerShell; Unity, Python, Node.js,
-and administrator access are not required.
+`LOKI_PASSWORD` to enable server logging and `OPENAI_API_KEY` to enable Level 8 poster generation.
+It uses only Windows PowerShell; Unity, Python, Node.js, and administrator access are not required.
 
 From Command Prompt inside the extracted `WebGL` folder, the same launcher can be started with:
 
@@ -127,6 +131,7 @@ This makes both workflows valid:
 | `Level05_MatrixFactorization.unity` | Explore latent-vibe sliders, prediction error, and gradient descent. |
 | `Level06_ContentBasedRecommendation.unity` | Rank the catalog from customer and movie features, then confront feature-model limits. |
 | `Level07_MarketGapResearch.unity` | Use learned rating patterns to assemble and greenlight a movie that fills the market gap. |
+| `Level08_PosterGeneration.unity` | Edit the Level 7 brief as a prompt, choose an art style, generate up to seven poster drafts, and compare their history. |
 | `MadMovieFact.unity` | Compatibility/all-in-one composition scene; retained for reference, but disabled in Build Settings. |
 
 `Assets/Scripts/Core/LevelSceneCatalog.cs` is the authoritative code-side map for these paths.
@@ -203,6 +208,20 @@ a 5 × 5 table. The optimizer is introduced only after the player experiences th
 it runs gradient descent to reduce error and expose missing ratings. Its success also triggers the
 privacy and popularity-bias scenarios, while money, trust, and narrative flags retain consequences.
 
+### Level 7 — Market-gap creative brief
+
+The player chooses from four categories—settings, characters, story ideas, and props/effects—to
+design a family-friendly spooky-comedy concept. Twenty-four options make the design space broader,
+while the market-gap meter still asks the player to balance the audience's spooky and funny tastes.
+The selected concepts become a categorized creative brief stored in the active run.
+
+### Level 8 — Poster generation
+
+The Level 7 brief becomes editable prompt text. The player can revise it, choose one of six visual
+styles, and generate up to seven poster drafts. Previous drafts remain visible as selectable
+thumbnails so the player can compare them and choose a final poster. The WebGL client sends the
+prompt to the local launcher; only that server reads `OPENAI_API_KEY` and calls the image API.
+
 ## State and scenario model
 
 - `CustomerData` contains a customer's persistent identity, age, genre profile, and true taste.
@@ -229,7 +248,7 @@ Assets/
 │   ├── Audio/Music/        Background music
 │   ├── Backgrounds/        Storefront and dedicated level backgrounds
 │   └── Characters/         Customer and queue sprites
-├── Scenes/                 Main menu, storefront, and five dedicated levels
+├── Scenes/                 Main menu, storefront, and eight dedicated levels
 └── Scripts/
     ├── Core/               Catalog, customer data, latent vectors, and matrix model
     ├── Levels/             Level mechanics and scene views
@@ -254,7 +273,7 @@ gates.
 
 `Assets/Docs/MadFact.md` contains earlier design and implementation notes. Treat the root README and
 the current scene/prefab hierarchy as authoritative when those historical notes differ from the
-present five-level build.
+present eight-level build.
 
 ## Repository notes
 

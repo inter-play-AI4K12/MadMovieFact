@@ -96,7 +96,7 @@ namespace MadFact
                 if (icon == null) continue;
                 string name = button.gameObject.name;
                 if (name == "Leave") icon.sprite = ArtSprites.Close();
-                else if (name == "Enter" || name == "Run") icon.sprite = ArtSprites.Play();
+                else if (name == "Enter" || name == "Run" || name == "Generate") icon.sprite = ArtSprites.Play();
                 else if (name == "GPrev")
                 {
                     icon.sprite = ArtSprites.Back();
@@ -111,7 +111,7 @@ namespace MadFact
                 else if (name == "Clr") icon.sprite = ArtSprites.Clear();
                 else if (name == "Reset") icon.sprite = ArtSprites.Reset();
                 else if (name == "Optimize") icon.sprite = ArtSprites.Optimize();
-                else if (name == "Green") icon.sprite = ArtSprites.Confirm();
+                else if (name == "Green" || name == "UsePoster") icon.sprite = ArtSprites.Confirm();
                 else if (name.StartsWith("M") && int.TryParse(name.Substring(1), out int movie)) icon.sprite = ArtSprites.MovieCover(movie);
                 else if (name.StartsWith("Q") && int.TryParse(name.Substring(1), out int question))
                     icon.sprite = Level1Counter.QuestionIcon(question);

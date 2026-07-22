@@ -44,12 +44,47 @@ namespace MadFact
         Visit _visit;
 
         const string FlagBubbleLesson = "filter_bubble_lesson";
-        const string FlagIntro = "l3_engine_intro";
+        const string FlagIntro = "level_6_content_engine_intro";
 
         void Awake()
         {
             if (_root == null) return;
+            ReconnectAuthoredView();
             Bind("Leave", () => MadFactBootstrap.I.GoStorefront());
+            Bind("Next", NextVisit);
+        }
+
+        /// <summary>
+        /// The generated UI assigns these references while Build runs, but Unity does not
+        /// serialize ordinary private fields when that hierarchy is saved as an authored
+        /// prefab. Restore every Level 6 reference by its stable object name so the scene
+        /// prefab follows the same code path as the generated fallback.
+        /// </summary>
+        void ReconnectAuthoredView()
+        {
+            _portrait = UIFactory.FindDeep<Image>(transform, "P");
+            _name = UIFactory.FindDeep<Text>(transform, "Name");
+            _quip = UIFactory.FindDeep<Text>(transform, "Quip");
+            _note = UIFactory.FindDeep<Text>(transform, "Note");
+            _profileCaption = UIFactory.FindDeep<Text>(transform, "PCap");
+            _result = UIFactory.FindDeep<Text>(transform, "Result");
+            _nextBtn = UIFactory.FindDeep<Button>(transform, "Next");
+            _browser = UIFactory.FindDeep<PosterBrowser>(transform, "Shelf");
+            _suggestRoot = UIFactory.FindDeep<Transform>(transform, "Suggestions")?.gameObject;
+
+            for (int g = 0; g < GenreInfo.Count; g++)
+                _profileFills[g] = UIFactory.FindDeep<Image>(transform, "pf" + g);
+
+            if (_browser != null)
+            {
+                _browser.OnRecommend = Recommend;
+                _browser.DetailExtra = mi =>
+                {
+                    if (_cust == null) return "";
+                    int pct = Mathf.RoundToInt(EngineMatch(mi) * 100f);
+                    return "ENGINE MATCH: " + pct + "%";
+                };
+            }
         }
 
         void Bind(string name, UnityEngine.Events.UnityAction action)
@@ -491,8 +526,8 @@ namespace MadFact
             GameManager.I.Run.RecordRecommendation("l6_visit_" + _visitIndex, _cust.Name, Phase.Level6, movie, tier, satisfaction);
             MadFactLokiLogger.Instance?.Log("movie_recommended", "Player accepted a content-based movie recommendation", new
             {
-                interaction_id = "l3_visit_" + _visitIndex,
-                level_id = 3,
+                interaction_id = "l6_visit_" + _visitIndex,
+                level_id = 6,
                 customer_id = _cust.Name,
                 movie_id = movie.Title,
                 engine_match_percent = enginePct,
@@ -502,7 +537,7 @@ namespace MadFact
             });
             MadFactLokiLogger.Instance?.Log("interaction_completed", "Content-based recommendation completed", new
             {
-                interaction_id = "l3_visit_" + _visitIndex,
+                interaction_id = "l6_visit_" + _visitIndex,
                 outcome = tier.ToString(),
                 engine_match_percent = enginePct
             });

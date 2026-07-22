@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -105,6 +106,71 @@ namespace MadFact
         }
     }
 
+    /// <summary>One categorized visual idea carried from Level 7 into the poster prompt.</summary>
+    [Serializable]
+    public class PosterConceptChoice
+    {
+        public string Category;
+        public string Label;
+
+        public PosterConceptChoice(string category, string label)
+        {
+            Category = category;
+            Label = label;
+        }
+    }
+
+    /// <summary>A generated Level 8 poster kept in memory for this active run.</summary>
+    [Serializable]
+    public class PosterGenerationRecord
+    {
+        public string Prompt;
+        public string Style;
+        public string ImageBase64;
+        public string MimeType;
+
+        public PosterGenerationRecord(string prompt, string style, string imageBase64, string mimeType)
+        {
+            Prompt = prompt;
+            Style = style;
+            ImageBase64 = imageBase64;
+            MimeType = mimeType;
+        }
+    }
+
+    /// <summary>
+    /// A player's completed rating table from Level 4. Level 5 keeps these in the
+    /// active run so the comparison screen can show their own earlier answers beside
+    /// matrix-factorization predictions.
+    /// </summary>
+    [Serializable]
+    public sealed class RatingsComparisonSnapshot
+    {
+        public string Key;
+        public string Title;
+        public int Rows;
+        public int Columns;
+        public float[] Values;
+        public float[] Originals;
+        public bool[] Tasks;
+
+        public RatingsComparisonSnapshot(string key, string title, int rows, int columns,
+            float[] values, float[] originals, bool[] tasks)
+        {
+            Key = key;
+            Title = title;
+            Rows = rows;
+            Columns = columns;
+            Values = values;
+            Originals = originals;
+            Tasks = tasks;
+        }
+
+        public float ValueAt(int row, int column) => Values[row * Columns + column];
+        public float OriginalAt(int row, int column) => Originals[row * Columns + column];
+        public bool IsTask(int row, int column) => Tasks[row * Columns + column];
+    }
+
     /// <summary>
     /// Mutable run memory. This is intentionally tiny: enough for returning customers,
     /// consequence flags, and later dialogue callbacks, but not a heavyweight save system.
@@ -115,8 +181,15 @@ namespace MadFact
         readonly Dictionary<string, int> _visitsByCustomer = new Dictionary<string, int>();
         readonly Dictionary<string, float> _lastSatisfactionByCustomer = new Dictionary<string, float>();
         readonly HashSet<string> _flags = new HashSet<string>();
+        readonly Dictionary<string, RatingsComparisonSnapshot> _ratingsSnapshots =
+            new Dictionary<string, RatingsComparisonSnapshot>();
 
         public readonly List<RecommendationRecord> Recommendations = new List<RecommendationRecord>();
+        public readonly List<PosterConceptChoice> PosterConcepts = new List<PosterConceptChoice>();
+        public readonly List<PosterGenerationRecord> PosterGenerations = new List<PosterGenerationRecord>();
+        public readonly string PosterGenerationSessionId = Guid.NewGuid().ToString("N");
+        public string PosterPrompt = "";
+        public int SelectedPosterIndex = -1;
 
         public int NextScenarioIndex(string trackId, int count)
         {
@@ -143,6 +216,15 @@ namespace MadFact
         {
             if (!string.IsNullOrEmpty(flag)) _flags.Add(flag);
         }
+
+        public void SaveRatingsSnapshot(RatingsComparisonSnapshot snapshot)
+        {
+            if (snapshot == null || string.IsNullOrEmpty(snapshot.Key)) return;
+            _ratingsSnapshots[snapshot.Key] = snapshot;
+        }
+
+        public bool TryGetRatingsSnapshot(string key, out RatingsComparisonSnapshot snapshot)
+            => _ratingsSnapshots.TryGetValue(key, out snapshot);
 
         public void RecordRecommendation(LevelScenario scenario, MovieData movie, SaleTier tier, float satisfaction, int questionsAsked)
             => RecordRecommendation(scenario.Id, scenario.Visit.Customer.Name, scenario.Phase, movie, tier, satisfaction, questionsAsked);

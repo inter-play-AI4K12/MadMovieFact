@@ -18,7 +18,9 @@ namespace MadFact
         public const string MatrixFactorization = "Assets/Scenes/Level05_MatrixFactorization.unity";
         public const string ContentBasedRecommendation = "Assets/Scenes/Level06_ContentBasedRecommendation.unity";
         public const string MarketGapResearch = "Assets/Scenes/Level07_MarketGapResearch.unity";
-        public const int MaxPlayableLevel = 7;
+        public const string PosterGeneration = "Assets/Scenes/Level08_PosterGeneration.unity";
+        public const int MaxPlayableLevel = 8;
+        // Kept as the menu's final displayed slot for compatibility with its authored loop.
         public const int ComingSoonLevel = 8;
 
         public static string PathForLevel(int level)
@@ -33,13 +35,14 @@ namespace MadFact
                 case 5: return MatrixFactorization;
                 case 6: return ContentBasedRecommendation;
                 case 7: return MarketGapResearch;
+                case 8: return PosterGeneration;
                 default: return Storefront;
             }
         }
 
         /// <summary>
         /// Returns the next playable level in the same day, or 0 when the completed
-        /// level ends its day. Level 8 remains the disabled coming-soon slot.
+        /// level ends its day.
         /// </summary>
         public static int NextLevelInSameDay(int completedLevel)
         {
@@ -49,6 +52,7 @@ namespace MadFact
                 case 3: return 4; // Day 2
                 case 4: return 5; // Day 2
                 case 6: return 7; // Day 3
+                case 7: return 8; // Day 3
                 default: return 0;
             }
         }
@@ -65,6 +69,7 @@ namespace MadFact
                 case Phase.Level5: return MatrixFactorization;
                 case Phase.Level6: return ContentBasedRecommendation;
                 case Phase.Level7: return MarketGapResearch;
+                case Phase.Level8: return PosterGeneration;
                 default: return Storefront;
             }
         }
@@ -81,6 +86,7 @@ namespace MadFact
                 case Phase.Level5: return "matrix-factorization-mainframe";
                 case Phase.Level6: return "content-feature-wall";
                 case Phase.Level7: return "market-gap-corkboard-studio";
+                case Phase.Level8: return "ai-poster-generation-studio";
                 default: return "storefront-vhs-shop";
             }
         }

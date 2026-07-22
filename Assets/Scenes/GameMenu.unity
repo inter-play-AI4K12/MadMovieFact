@@ -7401,10 +7401,10 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor: {r: 0.42352942, g: 0.42352942, b: 0.3764706, a: 1}
-    m_HighlightedColor: {r: 0.55035293, g: 0.55035293, b: 0.5136471, a: 1}
-    m_PressedColor: {r: 0.28800002, g: 0.28800002, b: 0.256, a: 1}
-    m_SelectedColor: {r: 0.55035293, g: 0.55035293, b: 0.5136471, a: 1}
+    m_NormalColor: {r: 0.2784314, g: 0.65882355, b: 0.32156864, a: 1}
+    m_HighlightedColor: {r: 0.43717647, g: 0.73388237, b: 0.47082353, a: 1}
+    m_PressedColor: {r: 0.18933335, g: 0.448, b: 0.21866667, a: 1}
+    m_SelectedColor: {r: 0.43717647, g: 0.73388237, b: 0.47082353, a: 1}
     m_DisabledColor: {r: 0.19058824, g: 0.19058824, b: 0.16941176, a: 0.65}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.06
@@ -7419,7 +7419,7 @@ MonoBehaviour:
     m_PressedTrigger: Pressed
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
-  m_Interactable: 0
+  m_Interactable: 1
   m_TargetGraphic: {fileID: 1172483556}
   m_OnClick:
     m_PersistentCalls:
@@ -7437,7 +7437,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.42352942, g: 0.42352942, b: 0.3764706, a: 1}
+  m_Color: {r: 0.2784314, g: 0.65882355, b: 0.32156864, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -9787,7 +9787,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: "LEVEL 8 \xB7 COMING SOON"
+  m_Text: LEVEL 8
 --- !u!222 &1525960763
 CanvasRenderer:
   m_ObjectHideFlags: 0

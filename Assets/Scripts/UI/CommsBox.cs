@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using MadFact.Telemetry;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace MadFact
@@ -21,6 +23,7 @@ namespace MadFact
         [SerializeField] Button _next;
         [SerializeField] Text _nextLabel;
         [SerializeField] Button _skip;
+        [SerializeField] Text _waitLabel;
         DialogueFocus _focus;
 
         readonly Queue<string> _queue = new Queue<string>();
@@ -31,6 +34,15 @@ namespace MadFact
         float _revealed;
         bool _typing;
         bool _instant;
+        bool _discussionLocked;
+        float _discussionUnlockAt;
+        int _hackProgress;
+        float _hackLastKeyTime;
+        Keyboard _hackKeyboard;
+
+        public const float DiscussionSeconds = 120f;
+        const string DiscussionPrompt = "Discuss why you chose the values and why the values differ.";
+        const string DiscussionHack = "HACK";
 
         static Sprite _oldDude, _robot, _sysIcon;
 
@@ -42,6 +54,7 @@ namespace MadFact
             EnsureFocus();
             if (_next == null) _next = UIFactory.FindDeep<Button>(transform, "Next");
             if (_skip == null) _skip = UIFactory.FindDeep<Button>(transform, "Skip");
+            EnsureTimedDiscussionUi();
             if (_next != null)
             {
                 if (_nextLabel == null) _nextLabel = _next.GetComponentInChildren<Text>(true);
@@ -116,6 +129,8 @@ namespace MadFact
             _skip = UIFactory.Button(root, "Skip", "SKIP »", SkipAll, Theme.FaceDark, 12, Theme.SystemSans, Theme.CommsGray);
             UIFactory.Place(UIFactory.RT(_skip.gameObject), new Vector2(1, 0), new Vector2(1, 0), new Vector2(94, 26), new Vector2(-146, 22));
 
+            EnsureTimedDiscussionUi();
+
             // whole-box click also advances typing
             var clicker = root.gameObject.AddComponent<Button>();
             clicker.transition = Selectable.Transition.None;
@@ -150,6 +165,40 @@ namespace MadFact
             => ShowInternal(who, lines, null, onComplete);
 
         /// <summary>
+        /// Holds a group-discussion prompt on screen before revealing NEXT. Typing the
+        /// facilitator code HACK during the countdown unlocks NEXT early.
+        /// </summary>
+        public void ShowTimedDiscussion(Action onComplete, float seconds = DiscussionSeconds)
+        {
+            ShowInternal(Speaker.OldDude, new[] { DiscussionPrompt }, null, onComplete);
+            _typing = false;
+            _body.text = _full;
+            _titleText.text = "GROUP DISCUSSION";
+            _discussionLocked = seconds > 0f;
+            _discussionUnlockAt = Time.unscaledTime + Mathf.Max(0f, seconds);
+            _hackProgress = 0;
+            _hackLastKeyTime = Time.unscaledTime;
+            if (_discussionLocked) StartHackListening();
+            if (_next != null) _next.gameObject.SetActive(!_discussionLocked);
+            if (_skip != null) _skip.gameObject.SetActive(false);
+            EnsureTimedDiscussionUi();
+            if (_waitLabel != null) _waitLabel.gameObject.SetActive(_discussionLocked);
+            UpdateDiscussionLabel();
+        }
+
+        /// <summary>Creates/restores the countdown text so authored scenes expose it.</summary>
+        public void EnsureTimedDiscussionUi()
+        {
+            if (_waitLabel == null) _waitLabel = UIFactory.FindDeep<Text>(transform, "DiscussionWait");
+            if (_waitLabel != null) return;
+            _waitLabel = UIFactory.Text(transform, "DiscussionWait", "", 11, Theme.CrtAmber,
+                Theme.SystemSans, TextAnchor.MiddleLeft, false, FontStyle.Bold);
+            UIFactory.Place(UIFactory.RT(_waitLabel.gameObject), new Vector2(0, 0), new Vector2(0, 0),
+                new Vector2(430, 24), new Vector2(144, 18));
+            _waitLabel.gameObject.SetActive(false);
+        }
+
+        /// <summary>
         /// Shows dialogue while spotlighting one UI target. The target tracks layout
         /// changes and remains focused for every line in this dialogue.
         /// </summary>
@@ -169,6 +218,7 @@ namespace MadFact
 
         void ShowInternal(Speaker who, string[] lines, RectTransform[] targets, Action onComplete)
         {
+            ResetDiscussionLock();
             EnsureFocus();
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
@@ -214,6 +264,7 @@ namespace MadFact
 
         public void ShowCustomer(CustomerData customer, string[] lines, Action onComplete = null)
         {
+            ResetDiscussionLock();
             EnsureFocus();
             _focus.Clear();
             _focusTargets.Clear();
@@ -238,6 +289,7 @@ namespace MadFact
         /// <summary>Dialogue from a one-off narrative figure (data broker, filmmaker, angry parent...).</summary>
         public void ShowNamed(string displayName, string titleBar, Sprite portrait, string[] lines, Action onComplete = null)
         {
+            ResetDiscussionLock();
             EnsureFocus();
             _focus.Clear();
             _focusTargets.Clear();
@@ -269,6 +321,7 @@ namespace MadFact
         /// </summary>
         public void AskChoice(string question, string[] options, Action<int> onPick)
         {
+            ResetDiscussionLock();
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             _queue.Clear();
@@ -348,10 +401,19 @@ namespace MadFact
             if (_choiceRoot != null) { Destroy(_choiceRoot); _choiceRoot = null; }
         }
 
+        void ResetDiscussionLock()
+        {
+            StopHackListening();
+            _discussionLocked = false;
+            _hackProgress = 0;
+            if (_waitLabel != null) _waitLabel.gameObject.SetActive(false);
+            if (_next != null) _next.gameObject.SetActive(true);
+        }
+
         /// <summary>Instantly ends the current dialogue (not choice prompts) and fires onComplete.</summary>
         void SkipAll()
         {
-            if (!gameObject.activeSelf) return;
+            if (!gameObject.activeSelf || _discussionLocked) return;
             _queue.Clear();
             _typing = false;
             Hide();
@@ -360,8 +422,11 @@ namespace MadFact
 
         public void Hide()
         {
+            StopHackListening();
             if (_focus != null) _focus.Clear();
             _focusTargets.Clear();
+            _discussionLocked = false;
+            if (_waitLabel != null) _waitLabel.gameObject.SetActive(false);
             gameObject.SetActive(false);
         }
 
@@ -389,6 +454,7 @@ namespace MadFact
 
         void Advance()
         {
+            if (_discussionLocked) return;
             if (_typing) { _typing = false; _body.text = _full; }
             else NextLine();
         }
@@ -400,12 +466,84 @@ namespace MadFact
 
         void Update()
         {
-            if (!_typing) return;
-            _revealed += Time.unscaledDeltaTime * 42f; // chars/sec
-            int n = Mathf.Min(_full.Length, Mathf.FloorToInt(_revealed));
-            _body.text = _full.Substring(0, n);
-            if (n >= _full.Length) _typing = false;
+            if (_typing)
+            {
+                _revealed += Time.unscaledDeltaTime * 42f; // chars/sec
+                int n = Mathf.Min(_full.Length, Mathf.FloorToInt(_revealed));
+                _body.text = _full.Substring(0, n);
+                if (n >= _full.Length) _typing = false;
+            }
+
+            if (!_discussionLocked) return;
+            if (_hackKeyboard == null) StartHackListening();
+            if (Time.unscaledTime >= _discussionUnlockAt)
+                UnlockDiscussion(false);
+            else
+                UpdateDiscussionLabel();
         }
+
+        void UpdateDiscussionLabel()
+        {
+            if (_waitLabel == null || !_discussionLocked) return;
+            int remaining = Mathf.Max(0, Mathf.CeilToInt(_discussionUnlockAt - Time.unscaledTime));
+            _waitLabel.text = $"NEXT UNLOCKS IN {remaining / 60}:{remaining % 60:00}";
+        }
+
+        void StartHackListening()
+        {
+            StopHackListening();
+            _hackKeyboard = Keyboard.current;
+            if (_hackKeyboard != null) _hackKeyboard.onTextInput += OnDiscussionTextInput;
+        }
+
+        void StopHackListening()
+        {
+            if (_hackKeyboard != null) _hackKeyboard.onTextInput -= OnDiscussionTextInput;
+            _hackKeyboard = null;
+        }
+
+        void OnDiscussionTextInput(char typed)
+        {
+            if (!_discussionLocked) return;
+            if (Time.unscaledTime - _hackLastKeyTime > 2.5f) _hackProgress = 0;
+            char upper = char.ToUpperInvariant(typed);
+            char expected = DiscussionHack[_hackProgress];
+            if (upper == expected)
+            {
+                _hackProgress++;
+                _hackLastKeyTime = Time.unscaledTime;
+                if (_hackProgress == DiscussionHack.Length) UnlockDiscussion(true);
+            }
+            else if (char.IsLetter(upper))
+            {
+                _hackProgress = upper == DiscussionHack[0] ? 1 : 0;
+                _hackLastKeyTime = Time.unscaledTime;
+            }
+        }
+
+        void UnlockDiscussion(bool usedHack)
+        {
+            if (!_discussionLocked) return;
+            StopHackListening();
+            _discussionLocked = false;
+            if (_waitLabel != null)
+            {
+                _waitLabel.text = usedHack ? "FACILITATOR OVERRIDE ACCEPTED" : "DISCUSSION TIME COMPLETE";
+                _waitLabel.gameObject.SetActive(true);
+            }
+            if (_next != null)
+            {
+                _next.gameObject.SetActive(true);
+                _nextLabel.text = "NEXT";
+            }
+            MadFactLokiLogger.Instance?.Log("discussion_pause_unlocked",
+                usedHack ? "Level discussion pause was unlocked with the facilitator code"
+                    : "Level discussion pause completed normally",
+                new { level_id = GameManager.I != null ? GameManager.I.CurrentLevel : 0, used_hack = usedHack });
+            if (AudioTension.I != null) AudioTension.I.Beep();
+        }
+
+        void OnDisable() => StopHackListening();
 
         // ---- Procedural portraits ----------------------------------------
         static readonly int[,] Bayer =

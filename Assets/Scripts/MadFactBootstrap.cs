@@ -28,9 +28,10 @@ namespace MadFact
         public Level6ContentBased L3Content;
         public Level3Mainframe L3;
         public Level7Corkboard L4;
+        public Level8PosterStudio L8;
 
         public bool Level1Cleared, Level2Cleared, Level3Cleared, Level4Cleared, Level6Cleared;
-        [Tooltip("-1 = normal full-game intro, 0 = storefront hub, 1..7 = start directly in that dedicated level scene.")]
+        [Tooltip("-1 = normal full-game intro, 0 = storefront hub, 1..8 = start directly in that dedicated level scene.")]
         public int StartPhaseOverride = -1;
         int _currentLevel = 1;
         int _capturedEntryLevel = -1;
@@ -96,6 +97,8 @@ namespace MadFact
                 L3Content = Level6ContentBased.Create(_canvas.transform);
             if ((all || StartPhaseOverride == 7) && L4 == null)
                 L4 = Level7Corkboard.Create(_canvas.transform);
+            if ((all || StartPhaseOverride == 8) && L8 == null)
+                L8 = Level8PosterStudio.Create(_canvas.transform);
 
             BringHudToFront();
         }
@@ -277,7 +280,12 @@ namespace MadFact
                 case 7:
                     Storefront.SetLine(0);
                     Storefront.SetEnter("OPEN LEVEL 7 TASKS", EnterCurrentLevel);
-                    Storefront.SetSubtitle("LEVEL 7: Market gap research. Make the movie people are starving for.");
+                    Storefront.SetSubtitle("LEVEL 7: Market gap research. Build a categorized brief for a missing movie.");
+                    break;
+                case 8:
+                    Storefront.SetLine(0);
+                    Storefront.SetEnter("OPEN LEVEL 8 TASKS", EnterCurrentLevel);
+                    Storefront.SetSubtitle("LEVEL 8: Poster lab. Edit the prompt, choose a style, and compare generated drafts.");
                     break;
             }
             Storefront.SetEnterVisible(true);
@@ -291,6 +299,7 @@ namespace MadFact
             if (L3Content != null) L3Content.Close();
             if (L3 != null) L3.Close();
             if (L4 != null) L4.Close();
+            if (L8 != null) L8.Close();
         }
 
         void StartDedicatedScene(int sceneLevel)
@@ -327,7 +336,8 @@ namespace MadFact
                 (_currentLevel == 3 && L3Ratings != null) ||
                 ((_currentLevel == 4 || _currentLevel == 5) && L3 != null) ||
                 (_currentLevel == 6 && L3Content != null) ||
-                (_currentLevel == 7 && L4 != null);
+                (_currentLevel == 7 && L4 != null) ||
+                (_currentLevel == 8 && L8 != null);
 
             if (!levelIsBuiltHere)
             {
@@ -348,6 +358,7 @@ namespace MadFact
                 case 5: GameManager.I.GoTo(Phase.Level5); L3.Open(); break;
                 case 6: GameManager.I.GoTo(Phase.Level6); L3Content.Open(); break;
                 case 7: GameManager.I.GoTo(Phase.Level7); L4.Open(); break;
+                case 8: GameManager.I.GoTo(Phase.Level8); L8.Open(); break;
             }
             MadFactLokiLogger.Instance?.Log("level_started", "Level started", new
             {
@@ -442,15 +453,26 @@ namespace MadFact
         public void OnGreenlit()
         {
             LogLevelCompleted(7);
+            Comms.Show(Speaker.OldDude, new[]
+            {
+                "Great brief. Next, turn those ideas into an editable prompt and create the poster."
+            }, () => FinishLevel(7));
+        }
+
+        public void OnPosterSelected()
+        {
+            LogLevelCompleted(8);
             MadFactLokiLogger.Instance?.Log("game_completed", "Player completed MadFact", new
             {
                 money = GameManager.I.Money,
                 trust = GameManager.I.Trust,
-                recommendations = GameManager.I.Run.Recommendations.Count
+                recommendations = GameManager.I.Run.Recommendations.Count,
+                poster_generations = GameManager.I.Run.PosterGenerations.Count,
+                selected_poster = GameManager.I.Run.SelectedPosterIndex + 1
             });
             GameManager.I.GoTo(Phase.Win);
             Comms.Show(Speaker.OldDude, NarrativeDatabase.GreenlitOldDude,
-                () => FinishLevel(7));
+                () => FinishLevel(8));
         }
 
         void LogLevelCompleted(int level)

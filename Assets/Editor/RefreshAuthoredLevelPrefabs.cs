@@ -22,7 +22,8 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Scenes/Level04_CollaborativeFiltering.unity",
         "Assets/Scenes/Level05_MatrixFactorization.unity",
         "Assets/Scenes/Level06_ContentBasedRecommendation.unity",
-        "Assets/Scenes/Level07_MarketGapResearch.unity"
+        "Assets/Scenes/Level07_MarketGapResearch.unity",
+        "Assets/Scenes/Level08_PosterGeneration.unity"
     };
 
     static readonly string[] SharedUiScenePaths =
@@ -35,7 +36,8 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Scenes/Level04_CollaborativeFiltering.unity",
         "Assets/Scenes/Level05_MatrixFactorization.unity",
         "Assets/Scenes/Level06_ContentBasedRecommendation.unity",
-        "Assets/Scenes/Level07_MarketGapResearch.unity"
+        "Assets/Scenes/Level07_MarketGapResearch.unity",
+        "Assets/Scenes/Level08_PosterGeneration.unity"
     };
 
     static readonly string[] AuthoredUiPrefabPaths =
@@ -48,7 +50,8 @@ public static class RefreshAuthoredLevelPrefabs
         "Assets/Prefabs/Levels/Level3RatingsTable.prefab",
         "Assets/Prefabs/Levels/Level3Mainframe.prefab",
         "Assets/Prefabs/Levels/Level6ContentBased.prefab",
-        "Assets/Prefabs/Levels/Level7Corkboard.prefab"
+        "Assets/Prefabs/Levels/Level7Corkboard.prefab",
+        "Assets/Prefabs/Levels/Level8PosterStudio.prefab"
     };
 
     static RefreshAuthoredLevelPrefabs()
@@ -125,6 +128,10 @@ public static class RefreshAuthoredLevelPrefabs
             SaveVisibleLevel(level7.gameObject, "Level7Corkboard",
                 "Assets/Prefabs/Levels/Level7Corkboard.prefab");
 
+            var level8 = Level8PosterStudio.Create(stagingRoot.transform);
+            SaveVisibleLevel(level8.gameObject, "Level8PosterStudio",
+                "Assets/Prefabs/Levels/Level8PosterStudio.prefab");
+
             BakeSerializablePreviewFonts();
             AssetDatabase.SaveAssets();
             Debug.Log("Refreshed all authored MadFact UI prefabs from their current builders.");
@@ -170,6 +177,50 @@ public static class RefreshAuthoredLevelPrefabs
                 "Assets/Prefabs/Levels/Level3Mainframe.prefab");
             AssetDatabase.SaveAssets();
             Debug.Log("Refreshed the shared authored collaborative-filtering mainframe prefab.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stagingRoot);
+        }
+    }
+
+    /// <summary>Refreshes only the shared dialogue box, including its discussion timer.</summary>
+    [MenuItem("MadFact/Refresh Authored Dialogue Box")]
+    public static void RefreshDialogueBox()
+    {
+        var stagingRoot = new GameObject("__DialoguePrefabStagingRoot", typeof(RectTransform));
+        stagingRoot.hideFlags = HideFlags.HideAndDontSave;
+
+        try
+        {
+            Save(CommsBox.Create(stagingRoot.transform).gameObject,
+                "Assets/Prefabs/UI/DialogueBox.prefab");
+            AssetDatabase.SaveAssets();
+            Debug.Log("Refreshed the authored dialogue box with the discussion timer UI.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(stagingRoot);
+        }
+    }
+
+    /// <summary>Refreshes only the linked Level 7 brief board and Level 8 poster studio.</summary>
+    [MenuItem("MadFact/Refresh Authored Levels 7 and 8")]
+    public static void RefreshPosterPipeline()
+    {
+        var stagingRoot = new GameObject("__PosterPipelinePrefabStagingRoot", typeof(RectTransform));
+        stagingRoot.hideFlags = HideFlags.HideAndDontSave;
+
+        try
+        {
+            var level7 = Level7Corkboard.Create(stagingRoot.transform);
+            SaveVisibleLevel(level7.gameObject, "Level7Corkboard",
+                "Assets/Prefabs/Levels/Level7Corkboard.prefab");
+            var level8 = Level8PosterStudio.Create(stagingRoot.transform);
+            SaveVisibleLevel(level8.gameObject, "Level8PosterStudio",
+                "Assets/Prefabs/Levels/Level8PosterStudio.prefab");
+            AssetDatabase.SaveAssets();
+            Debug.Log("Refreshed the authored Level 7 brief board and Level 8 poster studio prefabs.");
         }
         finally
         {
@@ -234,6 +285,7 @@ public static class RefreshAuthoredLevelPrefabs
         var level3Mainframe = Load("Assets/Prefabs/Levels/Level3Mainframe.prefab");
         var level6Content = Load("Assets/Prefabs/Levels/Level6ContentBased.prefab");
         var level7 = Load("Assets/Prefabs/Levels/Level7Corkboard.prefab");
+        var level8 = Load("Assets/Prefabs/Levels/Level8PosterStudio.prefab");
         var dialogue = Load("Assets/Prefabs/UI/DialogueBox.prefab");
         var hud = Load("Assets/Prefabs/UI/HUD.prefab");
 
@@ -243,6 +295,7 @@ public static class RefreshAuthoredLevelPrefabs
         RequireActive(level3Mainframe.transform, "Level3Mainframe");
         RequireActive(level6Content.transform, "Level6ContentBased");
         RequireActive(level7.transform, "Level7Corkboard");
+        RequireActive(level8.transform, "Level8PosterStudio");
 
         var dialogueBody = Require(dialogue.transform, "Body").GetComponent<Text>();
         if (dialogueBody == null || dialogueBody.lineSpacing < 1.2f)
@@ -293,6 +346,18 @@ public static class RefreshAuthoredLevelPrefabs
 
         ValidateLevel2Prefab(level2);
 
+        Require(level7.transform, "Cat0");
+        Require(level7.transform, "Cat1");
+        Require(level7.transform, "Cat2");
+        Require(level7.transform, "Cat3");
+        for (int i = 0; i < 6; i++) Require(level7.transform, "S" + i);
+
+        Require(level8.transform, "PromptInput");
+        Require(level8.transform, "Generate");
+        Require(level8.transform, "UsePoster");
+        for (int i = 0; i < Level8PosterStudio.MaxGenerations; i++)
+            Require(level8.transform, "History" + i);
+
         Debug.Log("Validated visible authored roots for all levels and detailed Level 1/2 layouts.");
     }
 
@@ -329,6 +394,66 @@ public static class RefreshAuthoredLevelPrefabs
         if (controller == null)
             throw new System.InvalidOperationException("Level 3 ratings prefab is missing its controller.");
         Debug.Log("Validated authored Level 3 ratings profiles, movie columns, stars, and answer controls.");
+    }
+
+    [MenuItem("MadFact/Validate Authored Levels 7 and 8")]
+    public static void ValidatePosterPipeline()
+    {
+        var level7 = Load("Assets/Prefabs/Levels/Level7Corkboard.prefab");
+        var level8 = Load("Assets/Prefabs/Levels/Level8PosterStudio.prefab");
+        RequireActive(level7.transform, "Level7Corkboard");
+        RequireActive(level8.transform, "Level8PosterStudio");
+        for (int category = 0; category < 4; category++)
+            Require(level7.transform, "Cat" + category);
+        for (int option = 0; option < 6; option++)
+            Require(level7.transform, "S" + option);
+
+        var serializedBrief = new SerializedObject(level7.GetComponent<Level7Corkboard>());
+        RequireSerializedReference(serializedBrief, "_root");
+        RequireSerializedReference(serializedBrief, "_board");
+        RequireSerializedReference(serializedBrief, "_matchText");
+        RequireSerializedReference(serializedBrief, "_matchFill");
+        RequireSerializedReference(serializedBrief, "_greenlight");
+        RequireSerializedArray(serializedBrief, "_gapBars", 4);
+        RequireSerializedArray(serializedBrief, "_posterBars", 4);
+        RequireSerializedArray(serializedBrief, "_categoryButtons", 4);
+        RequireSerializedArray(serializedBrief, "_optionButtons", 6);
+
+        Require(level8.transform, "PromptInput");
+        Require(level8.transform, "Generate");
+        Require(level8.transform, "UsePoster");
+        for (int style = 0; style < 6; style++)
+            Require(level8.transform, "Style" + style);
+        for (int generation = 0; generation < Level8PosterStudio.MaxGenerations; generation++)
+            Require(level8.transform, "History" + generation);
+
+        foreach (var prefab in new[] { level7, level8 })
+            foreach (var text in prefab.GetComponentsInChildren<Text>(true))
+                if (text.font == null)
+                    throw new System.InvalidOperationException(
+                        $"Text '{text.name}' in {prefab.name} has no serialized preview font.");
+
+        var serializedStudio = new SerializedObject(level8.GetComponent<Level8PosterStudio>());
+        RequireSerializedReference(serializedStudio, "_prompt");
+        RequireSerializedReference(serializedStudio, "_poster");
+        RequireSerializedReference(serializedStudio, "_generate");
+        RequireSerializedReference(serializedStudio, "_usePoster");
+        RequireSerializedArray(serializedStudio, "_styleButtons", 6);
+        RequireSerializedArray(serializedStudio, "_historyButtons", Level8PosterStudio.MaxGenerations);
+        RequireSerializedArray(serializedStudio, "_historyImages", Level8PosterStudio.MaxGenerations);
+        Debug.Log("Validated Level 7 match references and categories, plus the Level 8 prompt, styles, and seven history slots.");
+    }
+
+    static void RequireSerializedArray(SerializedObject serializedObject, string propertyName, int expectedSize)
+    {
+        var property = serializedObject.FindProperty(propertyName);
+        if (property == null || !property.isArray || property.arraySize != expectedSize)
+            throw new System.InvalidOperationException(
+                $"{serializedObject.targetObject.name}.{propertyName} must contain {expectedSize} references.");
+        for (int index = 0; index < property.arraySize; index++)
+            if (property.GetArrayElementAtIndex(index).objectReferenceValue == null)
+                throw new System.InvalidOperationException(
+                    $"{serializedObject.targetObject.name}.{propertyName}[{index}] is not serialized.");
     }
 
     static void ValidateLevel2Prefab(GameObject level2)
@@ -455,7 +580,8 @@ public static class RefreshAuthoredLevelPrefabs
                     child.GetComponent<Level3RatingsTable>() != null ||
                     child.GetComponent<Level3Mainframe>() != null ||
                     child.GetComponent<Level6ContentBased>() != null ||
-                    child.GetComponent<Level7Corkboard>() != null)
+                    child.GetComponent<Level7Corkboard>() != null ||
+                    child.GetComponent<Level8PosterStudio>() != null)
                     child.SetSiblingIndex(Mathf.Min(1, canvas.transform.childCount - 1));
             }
 

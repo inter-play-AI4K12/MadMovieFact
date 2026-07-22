@@ -7,7 +7,7 @@ namespace MadFact.Tests
         [Test]
         public void TutorialUsesFamiliarCharactersAndTwoHiddenFactors()
         {
-            CollectionAssert.AreEqual(new[] { "WENDELL", "DOT", "HANK" },
+            CollectionAssert.AreEqual(new[] { "WENDELL", "PRIYA", "HANK" },
                 MatrixTutorialModel.CustomerNames);
             Assert.AreEqual(2, MatrixTutorialModel.FactorCount);
         }
@@ -32,9 +32,12 @@ namespace MadFact.Tests
         public void TwoFactorManualSolutionCanBeatTheErrorGoal()
         {
             var model = new MatrixTutorialModel();
-            model.U[0] = new Latent(1f, 0f, 0f, 0f);       // Wendell: factor 1
-            model.U[1] = new Latent(0f, 1f, 0f, 0f);       // Dot: factor 2
-            model.U[2] = new Latent(.75f, .75f, 0f, 0f);   // Hank: both
+            model.U[0] = new Latent(.70f, .38f, 0f, 0f);
+            model.U[1] = new Latent(.70f, .38f, 0f, 0f);
+            model.U[2] = new Latent(.42f, .76f, 0f, 0f);
+            model.V[0] = new Latent(1.26f, .30f, 0f, 0f);
+            model.V[1] = new Latent(.50f, 1.04f, 0f, 0f);
+            model.V[2] = new Latent(0f, .66f, 0f, 0f);
 
             Assert.Less(model.MeanError(), MatrixTutorialModel.GoalMeanError);
         }

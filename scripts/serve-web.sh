@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PORT="${PORT:-8080}"
+PORT="${PORT:-8081}"
 HOST="${HOST:-0.0.0.0}"
 
 if [[ -f "$SCRIPT_DIR/index.html" ]]; then
