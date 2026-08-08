@@ -31,7 +31,7 @@ public static class BuildAuthoredGameMenu
         Selection.activeGameObject = settings != null ? settings : controller.gameObject;
         SceneView.lastActiveSceneView?.FrameSelected();
         SceneView.RepaintAll();
-        Debug.Log("Rebuilt GameMenu with editable Main, Settings, Logger Info, confirmation, and level panels.");
+        Debug.Log("Rebuilt GameMenu with editable Main, Settings, Consent, confirmation, and sequential level panels.");
     }
 
     static void EnsureCameraAndLight()

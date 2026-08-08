@@ -24,7 +24,9 @@ namespace MadFact
         Button _continueButton;
         TMP_InputField _displayName;
         TMP_InputField _participantId;
+        TMP_InputField _email;
         Toggle _consent;
+        Toggle _followUpConsent;
         TMP_Text _profileMessage;
         TMP_Text _profileSummary;
         TMP_Text _mainSubtitle;
@@ -120,28 +122,34 @@ namespace MadFact
             var mute = AddButton(_settingsPanel.transform, "", -86, ToggleMute, 310);
             mute.gameObject.name = "MuteVolume";
             _muteLabel = mute.GetComponentInChildren<TMP_Text>();
-            AddButton(_settingsPanel.transform, "EDIT LOGGER INFO", -134, () => OpenProfile(true), 310);
+            AddButton(_settingsPanel.transform, "EDIT CONSENT & CONTACT", -134, () => OpenProfile(true), 310);
             AddButton(_settingsPanel.transform, "BACK", -182, () => ShowOnly(_mainPanel), 180);
 
-            _profilePanel = CreatePanel("LoggerInfo", new Vector2(620, 470), Vector2.zero);
-            AddTitle(_profilePanel.transform, "LOGGER INFORMATION", "SHOWN ONCE BEFORE YOUR FIRST GAME");
-            AddLabel(_profilePanel.transform, "DISPLAY NAME", 112);
-            _displayName = AddInput(_profilePanel.transform, "DisplayName", 76, "How should the game address you?");
-            AddLabel(_profilePanel.transform, "PARTICIPANT / STUDY ID (OPTIONAL)", 30);
-            _participantId = AddInput(_profilePanel.transform, "ParticipantId", -6, "letters, numbers, dots, dashes, underscores");
-            _consent = AddToggle(_profilePanel.transform, -58,
-                "I consent to gameplay telemetry being recorded for this study.");
+            _profilePanel = CreatePanel("Consent", new Vector2(680, 530), Vector2.zero);
+            AddTitle(_profilePanel.transform, "YOUR CHOICES", "PLAY WITHOUT SHARING, OR OPT IN BELOW");
+            AddLabel(_profilePanel.transform, "DISPLAY NAME", 132);
+            _displayName = AddInput(_profilePanel.transform, "DisplayName", 98, "How should the game address you?");
+            AddLabel(_profilePanel.transform, "PARTICIPANT / STUDY ID (OPTIONAL)", 58);
+            _participantId = AddInput(_profilePanel.transform, "ParticipantId", 24, "letters, numbers, dots, dashes, underscores");
+            _consent = AddToggle(_profilePanel.transform, -22,
+                "Optional: I consent to gameplay choices, timing, and progress being recorded for research.", "TelemetryConsent");
+            AddLabel(_profilePanel.transform, "FOLLOW-UP EMAIL (OPTIONAL)", -62);
+            _email = AddInput(_profilePanel.transform, "FollowUpEmail", -96, "name@example.org");
+            _email.contentType = TMP_InputField.ContentType.EmailAddress;
+            _followUpConsent = AddToggle(_profilePanel.transform, -138,
+                "Optional: researchers may email me about this study. My email is stored separately from gameplay data.",
+                "FollowUpConsent");
             var privacy = SharpText(_profilePanel.transform, "Privacy",
-                "Recorded events include this info, game choices, timing, and progress. No email, location, or advertising IDs are collected.",
+                "You can play without either opt-in. With telemetry off, no gameplay events are sent. Email is never added to gameplay logs.",
                 13, Theme.FaceLight, TextAlignmentOptions.TopLeft, true);
             UIFactory.Place(UIFactory.RT(privacy.gameObject), new Vector2(.5f, .5f), new Vector2(.5f, .5f),
-                new Vector2(520, 42), new Vector2(0, -105));
+                new Vector2(590, 38), new Vector2(0, -177));
             _profileMessage = SharpText(_profilePanel.transform, "Validation", "", 13,
                 Theme.ErrorRed, TextAlignmentOptions.Center, true, FontStyles.Bold);
             UIFactory.Place(UIFactory.RT(_profileMessage.gameObject), new Vector2(.5f, .5f), new Vector2(.5f, .5f),
-                new Vector2(520, 28), new Vector2(0, -130));
-            AddButton(_profilePanel.transform, "SAVE & CONTINUE", -170, SaveProfile, 250);
-            AddButton(_profilePanel.transform, "CANCEL", -210, CloseProfile, 150);
+                new Vector2(590, 24), new Vector2(0, -205));
+            AddButton(_profilePanel.transform, "SAVE & CONTINUE", -232, SaveProfile, 250);
+            AddButton(_profilePanel.transform, "CANCEL", -270, CloseProfile, 150);
 
             _confirmPanel = CreatePanel("Confirm", new Vector2(520, 270), Vector2.zero);
             AddTitle(_confirmPanel.transform, "START A NEW GAME?", "YOUR CURRENT PROGRESS WILL BE DISMISSED.");
@@ -167,7 +175,7 @@ namespace MadFact
 
             _mainPanel = FindPanel("MainPanel");
             _settingsPanel = FindPanel("SettingsPanel");
-            _profilePanel = FindPanel("LoggerInfoPanel");
+            _profilePanel = FindPanel("ConsentPanel");
             _confirmPanel = FindPanel("ConfirmPanel");
             _levelsPanel = FindPanel("LevelSelectPanel");
             if (_mainPanel == null || _settingsPanel == null || _profilePanel == null ||
@@ -177,7 +185,9 @@ namespace MadFact
             _continueButton = UIFactory.FindDeep<Button>(_mainPanel.transform, "CONTINUE");
             _displayName = UIFactory.FindDeep<TMP_InputField>(_profilePanel.transform, "DisplayName");
             _participantId = UIFactory.FindDeep<TMP_InputField>(_profilePanel.transform, "ParticipantId");
-            _consent = UIFactory.FindDeep<Toggle>(_profilePanel.transform, "Consent");
+            _email = UIFactory.FindDeep<TMP_InputField>(_profilePanel.transform, "FollowUpEmail");
+            _consent = UIFactory.FindDeep<Toggle>(_profilePanel.transform, "TelemetryConsent");
+            _followUpConsent = UIFactory.FindDeep<Toggle>(_profilePanel.transform, "FollowUpConsent");
             _profileMessage = UIFactory.FindDeep<TMP_Text>(_profilePanel.transform, "Validation");
             _profileSummary = UIFactory.FindDeep<TMP_Text>(_settingsPanel.transform, "LoggerSummary");
             _mainSubtitle = UIFactory.FindDeep<TMP_Text>(_mainPanel.transform, "Subtitle");
@@ -185,7 +195,8 @@ namespace MadFact
             _muteLabel = mute != null ? mute.GetComponentInChildren<TMP_Text>(true) : null;
 
             bool valid = _continueButton != null && _displayName != null && _participantId != null &&
-                _consent != null && _profileMessage != null && _profileSummary != null &&
+                _email != null && _consent != null && _followUpConsent != null &&
+                _profileMessage != null && _profileSummary != null &&
                 _mainSubtitle != null && _muteLabel != null;
             if (valid)
             {
@@ -199,7 +210,9 @@ namespace MadFact
         {
             NormalizeInput(_displayName);
             NormalizeInput(_participantId);
+            NormalizeInput(_email);
             NormalizeToggle(_consent);
+            NormalizeToggle(_followUpConsent);
         }
 
         static void NormalizeInput(TMP_InputField field)
@@ -263,7 +276,7 @@ namespace MadFact
             BindButton(_mainPanel, "SETTINGS", OpenSettings);
             BindButton(_mainPanel, "QUIT", Quit);
             BindButton(_settingsPanel, "MuteVolume", ToggleMute);
-            BindButton(_settingsPanel, "EDITLOGGERINFO", () => OpenProfile(true));
+            BindButton(_settingsPanel, "EDITCONSENT&CONTACT", () => OpenProfile(true));
             BindButton(_settingsPanel, "BACK", () => ShowOnly(_mainPanel));
             BindButton(_profilePanel, "SAVE&CONTINUE", SaveProfile);
             BindButton(_profilePanel, "CANCEL", CloseProfile);
@@ -303,37 +316,21 @@ namespace MadFact
 
         void BuildLevelPanel()
         {
-            _levelsPanel = CreatePanel("LevelSelect", new Vector2(820, 430), Vector2.zero);
-            AddTitle(_levelsPanel.transform, "CHOOSE A SHIFT", "SELECT A LEVEL TO START A NEW RUN");
-            AddDayColumn("DAY 1", -260, new[] { 1, 2 });
-            AddDayColumn("DAY 2", 0, new[] { 3, 4, 5 });
-            AddDayColumn("DAY 3", 260, new[] { 6, 7, 8 });
-            AddButton(_levelsPanel.transform, "BACK", -185, () => ShowOnly(_mainPanel), 160);
-        }
-
-        void AddDayColumn(string title, float x, int[] levels)
-        {
-            var column = UIFactory.Bevel(_levelsPanel.transform, title, new Color(.04f, .09f, .08f, .94f), true);
-            UIFactory.Place(UIFactory.RT(column.gameObject), new Vector2(.5f, .5f), new Vector2(.5f, .5f),
-                new Vector2(225, 250), new Vector2(x, -4));
-            var heading = SharpText(column.transform, "Heading", title, 20, Theme.CrtAmber,
-                TextAlignmentOptions.Center, false, FontStyles.Bold);
-            UIFactory.Place(UIFactory.RT(heading.gameObject), new Vector2(.5f, 1), new Vector2(.5f, 1),
-                new Vector2(190, 34), new Vector2(0, -28));
-            for (int i = 0; i < levels.Length; i++)
+            _levelsPanel = CreatePanel("LevelSelect", new Vector2(860, 500), Vector2.zero);
+            AddTitle(_levelsPanel.transform, "CHOOSE A LEVEL", "ALL LEVELS, IN ORDER");
+            string[] titles = { "MANUAL", "RULES", "RATINGS", "NEIGHBORS", "FACTORS", "FEATURES", "MARKET GAP", "POSTER" };
+            for (int i = 0; i < LevelSceneCatalog.MaxPlayableLevel; i++)
             {
-                int level = levels[i];
-                var button = UIFactory.Button(column.transform, "Level" + level,
-                    level <= LevelSceneCatalog.MaxPlayableLevel
-                        ? "LEVEL " + level
-                        : "LEVEL " + level + " · COMING SOON",
-                    () => StartLevel(level),
-                    level <= LevelSceneCatalog.MaxPlayableLevel ? Theme.Cash : Theme.FaceDark, 14,
+                int level = i + 1;
+                int row = i / 4;
+                int column = i % 4;
+                var button = UIFactory.Button(_levelsPanel.transform, "Level" + level,
+                    level.ToString("00") + "  " + titles[i], () => StartLevel(level), Theme.Cash, 14,
                     Theme.SystemSans, Theme.TitleText);
                 UIFactory.Place(UIFactory.RT(button.gameObject), new Vector2(.5f, 1), new Vector2(.5f, 1),
-                    new Vector2(185, 42), new Vector2(0, -78 - i * 56));
-                button.interactable = level <= LevelSceneCatalog.MaxPlayableLevel;
+                    new Vector2(185, 62), new Vector2(-300 + column * 200, -132 - row * 82));
             }
+            AddButton(_levelsPanel.transform, "BACK", -205, () => ShowOnly(_mainPanel), 160);
         }
 
         GameObject CreatePanel(string name, Vector2 size, Vector2 position)
@@ -425,9 +422,9 @@ namespace MadFact
             return field;
         }
 
-        static Toggle AddToggle(Transform parent, float y, string label)
+        static Toggle AddToggle(Transform parent, float y, string label, string name = "Consent")
         {
-            var root = UIFactory.Node(parent, "Consent");
+            var root = UIFactory.Node(parent, name);
             UIFactory.Place(UIFactory.RT(root), new Vector2(.5f, .5f), new Vector2(.5f, .5f),
                 new Vector2(520, 36), new Vector2(0, y));
             var toggle = root.AddComponent<Toggle>();
@@ -533,9 +530,12 @@ namespace MadFact
             _profileReturnToSettings = returnToSettings;
             MadFactSessionManager.LoadSavedProfile(out string displayName, out string participantId,
                 out bool consent);
+            FollowUpContactStore.Load(out string email, out bool followUpConsent);
             _displayName.text = displayName;
             _participantId.text = participantId;
+            _email.text = email;
             _consent.isOn = consent;
+            _followUpConsent.isOn = followUpConsent;
             _profileMessage.text = "";
             ShowOnly(_profilePanel);
             _displayName.Select();
@@ -549,11 +549,13 @@ namespace MadFact
         {
             string displayName = (_displayName.text ?? "").Trim();
             string participantId = (_participantId.text ?? "").Trim();
+            string email = (_email.text ?? "").Trim();
             string error = MadFactSessionManager.Validate(displayName, participantId, _consent.isOn);
+            if (error == null) error = FollowUpContactStore.Validate(email, _followUpConsent.isOn);
             if (error != null)
             {
                 _profileMessage.text = error +
-                    (_consent.isOn ? "" : " Check the consent box before saving.");
+                    " You can leave the optional email blank or opt in to follow-up.";
                 MadFactLokiLogger.Instance?.Log(
                     "participant_profile_validation_failed",
                     "Logger information validation failed",
@@ -563,13 +565,14 @@ namespace MadFact
 
             EventSystem.current?.SetSelectedGameObject(null);
             MadFactSessionManager.SaveProfile(displayName, participantId, _consent.isOn);
+            FollowUpContactStore.Save(email, _followUpConsent.isOn);
             MadFactSessionManager.Instance.ApplySavedProfileToSession();
             if (!MadFactSessionManager.Instance.HasActiveSession)
                 MadFactSessionManager.Instance.TryStartSavedSession();
             RefreshProfileSummary();
             MadFactLokiLogger.Instance?.Log("participant_profile_saved",
                 "Player information saved from the game menu",
-                new { participant_id_supplied = participantId.Length > 0 });
+                new { participant_id_supplied = participantId.Length > 0, follow_up_opt_in = _followUpConsent.isOn });
             CloseProfile();
         }
 
@@ -580,7 +583,6 @@ namespace MadFact
             if (displayName.Length == 0) return "display_name_missing";
             if (displayName.Length > 50) return "display_name_too_long";
             if (!MadFactSessionManager.IsParticipantIdValid(participantId)) return "participant_id_invalid";
-            if (!consent) return "consent_missing";
             return "unknown";
         }
 
@@ -592,7 +594,7 @@ namespace MadFact
             Time.timeScale = 1f;
             GameManager.I.StartNewAtLevel(level);
             MadFactLokiLogger.Instance?.Log("game_started", "Game started from level select",
-                new { start_mode = "day_level_select", level_id = level });
+                new { start_mode = "sequential_level_menu", level_id = level });
             SceneManager.LoadScene(LevelSceneCatalog.PathForLevel(level), LoadSceneMode.Single);
         }
 

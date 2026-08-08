@@ -28,11 +28,12 @@ active MCP connection to run.
 3. Press **Play**.
 4. Choose **Start Full Game**.
 
-`MainMenu.unity` is the first enabled scene in Build Settings. The full-game button starts a clean
-run in `Storefront.unity`, then carries the persistent game state, money, customer history, matrix,
-and narrative flags through the dedicated level scenes.
+`GameMenu.unity` is the first enabled scene in Build Settings. Its visual level menu presents all
+eight levels in sequence, without day groups or nested day navigation. Starting a level creates a
+clean run and carries persistent game state through the dedicated level scenes.
 
-The menu also provides direct access to the storefront and every level for development and testing.
+Before play, the consent screen allows gameplay telemetry as an explicit opt-in. Follow-up email is
+also optional, has its own opt-in, and is stored separately from participant/gameplay telemetry.
 
 ## Create and serve a web build
 

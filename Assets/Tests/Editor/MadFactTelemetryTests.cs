@@ -17,13 +17,24 @@ namespace MadFact.Tests
 
         [TestCase("", "", true, "Please enter your display name.")]
         [TestCase("Player", "bad id", true, "The participant ID contains unsupported characters.")]
-        [TestCase("Player", "study_42-A", false, "Please review and accept the logging consent.")]
+        [TestCase("Player", "study_42-A", false, null)]
         [TestCase("Player", "study_42-A", true, null)]
         public void ParticipantValidationMatchesStudyRules(
             string displayName, string participantId, bool consent, string expected)
         {
             Assert.That(MadFactSessionManager.Validate(displayName, participantId, consent),
                 Is.EqualTo(expected));
+        }
+
+        [TestCase("", false, null)]
+        [TestCase("", true, "Enter an email address or turn off follow-up consent.")]
+        [TestCase("not-an-email", true, "Enter a valid follow-up email address.")]
+        [TestCase("researcher@example.org", false, "To save an email, opt in to study follow-up.")]
+        [TestCase("researcher@example.org", true, null)]
+        public void FollowUpEmailRequiresItsOwnExplicitOptIn(
+            string email, bool consent, string expected)
+        {
+            Assert.That(FollowUpContactStore.Validate(email, consent), Is.EqualTo(expected));
         }
 
         [Test]

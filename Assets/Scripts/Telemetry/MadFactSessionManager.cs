@@ -138,7 +138,6 @@ namespace MadFact.Telemetry
             if (displayName.Length > 50) return "Display name must be 50 characters or fewer.";
             if (participantId.Length > 0 && !SafeParticipantId.IsMatch(participantId))
                 return "The participant ID contains unsupported characters.";
-            if (!consent) return "Please review and accept the logging consent.";
             return null;
         }
 
