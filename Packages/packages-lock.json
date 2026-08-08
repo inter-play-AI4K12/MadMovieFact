@@ -1,8 +1,8 @@
 {
   "dependencies": {
     "com.ivanmurzak.unity.mcp": {
-      "version": "0.83.1",
-      "depth": 0,
+      "version": "0.86.3",
+      "depth": 1,
       "source": "registry",
       "dependencies": {
         "com.unity.test-framework": "1.1.33",
@@ -12,51 +12,51 @@
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.animation": {
-      "version": "1.2.25",
+      "version": "1.2.30",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.83.1",
+        "com.ivanmurzak.unity.mcp": "0.86.3",
         "com.unity.modules.animation": "1.0.0"
       },
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.cinemachine": {
-      "version": "1.0.11",
+      "version": "1.0.16",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.83.1",
+        "com.ivanmurzak.unity.mcp": "0.86.3",
         "com.unity.cinemachine": "3.1.6"
       },
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.inputsystem": {
-      "version": "1.0.11",
+      "version": "1.0.16",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.83.1",
+        "com.ivanmurzak.unity.mcp": "0.86.3",
         "com.unity.inputsystem": "1.7.0"
       },
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.particlesystem": {
-      "version": "1.2.25",
+      "version": "1.2.30",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.83.1",
+        "com.ivanmurzak.unity.mcp": "0.86.3",
         "com.unity.modules.particlesystem": "1.0.0"
       },
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.tilemap": {
-      "version": "1.0.10",
+      "version": "1.0.15",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.83.1",
+        "com.ivanmurzak.unity.mcp": "0.86.3",
         "com.unity.modules.tilemap": "1.0.0",
         "com.unity.2d.tilemap.extras": "3.1.3"
       },

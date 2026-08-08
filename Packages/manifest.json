@@ -1,11 +1,11 @@
 {
   "dependencies": {
     "com.ivanmurzak.unity.mcp": "0.83.1",
-    "com.ivanmurzak.unity.mcp.animation": "1.2.25",
-    "com.ivanmurzak.unity.mcp.cinemachine": "1.0.11",
-    "com.ivanmurzak.unity.mcp.inputsystem": "1.0.11",
-    "com.ivanmurzak.unity.mcp.particlesystem": "1.2.25",
-    "com.ivanmurzak.unity.mcp.tilemap": "1.0.10",
+    "com.ivanmurzak.unity.mcp.animation": "1.2.30",
+    "com.ivanmurzak.unity.mcp.cinemachine": "1.0.16",
+    "com.ivanmurzak.unity.mcp.inputsystem": "1.0.16",
+    "com.ivanmurzak.unity.mcp.particlesystem": "1.2.30",
+    "com.ivanmurzak.unity.mcp.tilemap": "1.0.15",
     "com.unity.ai.assistant": "2.14.0-pre.1",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.inputsystem": "1.19.0",
