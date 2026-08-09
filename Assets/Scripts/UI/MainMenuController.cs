@@ -359,12 +359,10 @@ namespace MadFact
 
         void AddMainTitle(Transform parent)
         {
-            Sprite titleSprite = Resources.Load<Sprite>("UI/MainMenuTitle");
-            var title = UIFactory.Image(parent, "MainMenuTitle", Color.white, titleSprite,
-                Image.Type.Simple, false);
-            title.preserveAspect = true;
+            var title = SharpText(parent, "MainMenuTitle", "ROC AI 26", 54, Theme.CrtGreen,
+                TextAlignmentOptions.Center, false, FontStyles.Bold);
             UIFactory.Place(UIFactory.RT(title.gameObject), new Vector2(.5f, 1), new Vector2(.5f, 1),
-                new Vector2(490, 276), new Vector2(0, -12));
+                new Vector2(490, 96), new Vector2(0, -72));
 
             _mainSubtitle = SharpText(parent, "Subtitle", "BE KIND. REWIND. RECOMMEND.", 14,
                 Theme.CrtAmber, TextAlignmentOptions.Center, false, FontStyles.Bold);

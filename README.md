@@ -1,6 +1,6 @@
-# MadMovieFact
+# ROC AI 26
 
-MadMovieFact is a 2D Unity learning game about recommendation systems. The player inherits
+ROC AI 26 is a 2D Unity learning game about recommendation systems. The player inherits
 Pellings Video, a struggling 1990s VHS store, and improves its recommendations across five
 levels:
 
