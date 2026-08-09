@@ -2,7 +2,7 @@
   "dependencies": {
     "com.ivanmurzak.unity.mcp": {
       "version": "0.86.3",
-      "depth": 1,
+      "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.test-framework": "1.1.33",
