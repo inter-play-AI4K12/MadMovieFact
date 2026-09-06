@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
+  <head><script src="telemetry-config.js"></script>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity Web Player | ROC AI 26</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
-  <body><div style="position:fixed;top:0;left:0;right:0;padding:12px 20px;background:#172b26;color:#f3efdf;font:13px Arial;z-index:10"><a href="../" style="color:#f3efdf">← Video club</a><span style="float:right">Public edition · AI poster generation unavailable</span></div>
+  <body><div style="position:fixed;top:0;left:0;right:0;padding:12px 20px;background:#172b26;color:#f3efdf;font:13px Arial;z-index:10"><a href="../" style="color:#f3efdf">← Video club</a><span style="float:right">Logging is optional · AI poster generation unavailable</span></div>
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -52,12 +52,12 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebGL.loader.js";
+      var loaderUrl = buildUrl + "/WebGL.loader.js?v=20260906";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/WebGL.data",
-        frameworkUrl: buildUrl + "/WebGL.framework.js",
-        codeUrl: buildUrl + "/WebGL.wasm",
+        dataUrl: buildUrl + "/WebGL.data?v=20260906",
+        frameworkUrl: buildUrl + "/WebGL.framework.js?v=20260906",
+        codeUrl: buildUrl + "/WebGL.wasm?v=20260906",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "inter.play Lab",
         productName: "ROC AI 26",
