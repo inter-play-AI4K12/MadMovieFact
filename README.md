@@ -1,23 +1,34 @@
 # MadFact public website
 
-Live site: https://inter-play-ai4k12.github.io/MadMovieFact/
-Game: https://inter-play-ai4k12.github.io/MadMovieFact/play/
+- Public page: https://inter-play-ai4k12.github.io/MadMovieFact/
+- Manuscript companion: https://inter-play-ai4k12.github.io/MadMovieFact/research/
+- Browser game: https://inter-play-ai4k12.github.io/MadMovieFact/play/
+- Telemetry relay: https://madfact-telemetry.farhadierf.chatgpt.site/api/telemetry
 
-The public website is deployed from the repository's `gh-pages` branch (root folder).
-`website/index.html`, `website/style.css`, and `website/assets/` are the editable landing page source.
-The deployed game is the existing August 8, 2026 ROC AI 26 WebGL export, not a new Unity build.
+The public website deploys from the existing repository's `gh-pages` branch.
+The browser game was rebuilt for this release with optional logging: guests can choose
+Play without logging, and profile validation accepts an unchecked consent box.
 
-Run `python3 scripts/prepare-pages.py /path/to/new/staging-directory` to combine the website
-with `Builds/WebGL`. The output directory must not exist. The packager copies only public
-assets and decompresses Unity gzip files so GitHub Pages needs no custom encoding headers.
-It deliberately excludes local server launchers and environment files.
+Run `python3 scripts/prepare-pages.py /path/to/fresh/staging-directory` to combine
+this website with `Builds/WebGL`. Only public assets are copied. Unity gzip files
+are decompressed for GitHub Pages. Runtime routing in `play/telemetry-config.js`
+contains only the public relay URL, never credentials. Bump the build URL cache
+version in the packager after future Unity exports.
 
-Publish the resulting directory to `gh-pages`, preserving the existing branch history for
-updates. The initial local deployment checkout is `Builds/Pages`; future updates there can
-be committed and pushed to `git@github.com:inter-play-AI4K12/MadMovieFact.git`.
-Do not force-push or include the main Unity source tree in the deployment branch.
+Publish the staged files using the existing `Builds/Pages` deployment checkout,
+preserving `gh-pages` history. Do not force-push or upload environment files.
 
-GitHub Pages provides static hosting only. Level 8 live poster generation and the telemetry
-relay are unavailable. The existing game requires its study-consent form before gameplay. Cancel returns
-to the menu but does not bypass that requirement. The static host has no telemetry relay. A future full-service deployment needs the same-origin server routes
-from `scripts/serve_web.py`, server-held credentials, and appropriate usage controls.
+The separate relay source is in `telemetry-relay`, which has its own hosting
+repository and `.openai/hosting.json`. LOKI_USER and LOKI_PASSWORD were configured
+as secret runtime values there and as GitHub Actions repository secrets.
+GitHub secrets do not automatically sync with the relay; rotate both stores when
+changing the Loki password. GitHub Pages does not execute a server-side proxy.
+
+Verification on September 6, 2026: 37 Unity telemetry tests and 7 relay tests passed;
+guest play reached Level 1 in the browser. The relay's health endpoint reports
+configured credentials, but actual telemetry forwarding returned 502 because the
+existing Loki origin returned HTTP 522 on a direct test. Collection requires
+restoring the server behind loki-madfact.interplaylab.io. The synthetic diagnostics
+use participant ID `synthetic-deployment-check` and contain no participant data.
+
+Live AI poster generation is not configured for this public edition.
